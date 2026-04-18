@@ -1,0 +1,5 @@
+
+CREATE TABLE neue_tabelle (
+  id BIGSERIAL PRIMARY KEY,
+  name TEXT NOT NULL
+);
