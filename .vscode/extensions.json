@@ -1,7 +1,0 @@
-{
-  "recommendations": [
-    "mtxr.sqltools",
-    "mtxr.sqltools-driver-pg",
-    "cweijan.vscode-postgresql-client2"
-  ]
-}
