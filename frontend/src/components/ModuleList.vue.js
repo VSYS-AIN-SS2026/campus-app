@@ -1,10 +1,11 @@
 import { computed } from 'vue';
 import ModuleCard from './ModuleCard.vue';
 const props = defineProps();
+const emit = defineEmits();
 const bySemester = computed(() => {
     const map = new Map();
     for (const m of props.modules) {
-        const key = m.semester_recommendation ?? 99;
+        const key = m.recommended_semester ?? 99;
         if (!map.has(key))
             map.set(key, []);
         map.get(key).push(m);
@@ -14,10 +15,11 @@ const bySemester = computed(() => {
 function semesterLabel(sem) {
     return sem === 99 ? 'Ohne Semesterzuordnung' : `${sem}. Semester`;
 }
-function totalEcts(modules) {
-    return modules.reduce((sum, m) => sum + (m.ects ?? 0), 0);
+function totalEcts(mods) {
+    return mods.reduce((s, m) => s + m.courses.reduce((cs, c) => cs + (c.ects ?? 0), 0), 0);
 }
 const __VLS_ctx = {
+    ...{},
     ...{},
     ...{},
     ...{},
@@ -58,15 +60,26 @@ for (const [[sem, mods]] of __VLS_vFor((__VLS_ctx.bySemester))) {
         const __VLS_0 = ModuleCard;
         // @ts-ignore
         const __VLS_1 = __VLS_asFunctionalComponent1(__VLS_0, new __VLS_0({
+            ...{ 'onSelect': {} },
             key: (m.id),
             module: (m),
         }));
         const __VLS_2 = __VLS_1({
+            ...{ 'onSelect': {} },
             key: (m.id),
             module: (m),
         }, ...__VLS_functionalComponentArgsRest(__VLS_1));
+        let __VLS_5;
+        const __VLS_6 = ({ select: {} },
+            { onSelect: (...[$event]) => {
+                    __VLS_ctx.emit('select', $event);
+                    // @ts-ignore
+                    [bySemester, semesterLabel, totalEcts, emit,];
+                } });
+        var __VLS_3;
+        var __VLS_4;
         // @ts-ignore
-        [bySemester, semesterLabel, totalEcts,];
+        [];
     }
     // @ts-ignore
     [];
@@ -74,6 +87,7 @@ for (const [[sem, mods]] of __VLS_vFor((__VLS_ctx.bySemester))) {
 // @ts-ignore
 [];
 const __VLS_export = (await import('vue')).defineComponent({
+    __typeEmits: {},
     __typeProps: {},
 });
 export default {};

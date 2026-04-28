@@ -1,21 +1,55 @@
+export interface Faculty {
+  id: string
+  code: string
+  name: string | null
+}
+
+export interface StudyProgram {
+  id: string
+  faculty_id: string
+  code: string
+  name: string | null
+}
+
 export interface Spo {
-  id: number
-  name: string
-  short_name: string
-  degree: string
-  valid_from: number | null
+  id: string
+  study_program_id: string
+  version_name: string
+  valid_from: string | null
 }
 
-export interface Module {
-  id: number
+export interface ModuleHandbook {
+  id: string
+  spo_id: string
+  code: string
+}
+
+export interface Course {
+  id: string
+  module_id: string
+  code: string
   name: string
-  short_name: string | null
+  course_type: string
+  coordinator: string | null
   ects: number
-  semester_recommendation: number | null
-  description: string | null
+  sws: number
+  details: Record<string, unknown>
 }
 
-export interface SpoModule extends Module {
-  is_mandatory: boolean
-  module_group: string | null
+export interface ModuleEntry {
+  id: string
+  code: string
+  name: string
+  start_semester: string
+  coordinator: string
+  version: number
+  details: Record<string, unknown>
+  recommended_semester: number | null
+  courses: Course[]
+}
+
+export interface HandbookOption {
+  id: string
+  code: string
+  label: string
 }

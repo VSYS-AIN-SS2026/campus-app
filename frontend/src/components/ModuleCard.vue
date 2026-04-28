@@ -1,25 +1,39 @@
 <script setup lang="ts">
-import type { SpoModule } from '../types'
+import { computed } from 'vue'
+import type { ModuleEntry } from '../types'
 
-defineProps<{
-  module: SpoModule
+const props = defineProps<{
+  module: ModuleEntry
 }>()
+
+const emit = defineEmits<{ select: [module: ModuleEntry] }>()
+
+const totalEcts = computed(() =>
+  props.module.courses.reduce((s, c) => s + (c.ects ?? 0), 0)
+)
 </script>
 
 <template>
-  <div class="module-card" :class="{ optional: !module.is_mandatory }">
+  <div class="module-card" role="button" tabindex="0" @click="emit('select', module)" @keydown.enter="emit('select', module)">
     <div class="card-left">
-      <span class="short-name">{{ module.short_name ?? '—' }}</span>
+      <span class="module-code">{{ module.code }}</span>
     </div>
     <div class="card-body">
       <p class="module-name">{{ module.name }}</p>
-      <p v-if="module.description" class="module-desc">{{ module.description }}</p>
+      <div v-if="module.courses.length" class="courses">
+        <span
+          v-for="c in module.courses"
+          :key="c.id"
+          class="course-chip"
+          :class="c.course_type.toLowerCase()"
+        >
+          {{ c.name }} · {{ c.ects }} ECTS
+        </span>
+      </div>
     </div>
     <div class="card-right">
-      <span class="ects-badge">{{ module.ects }} ECTS</span>
-      <span class="type-badge" :class="module.is_mandatory ? 'mandatory' : 'optional'">
-        {{ module.is_mandatory ? 'Pflicht' : 'WP' }}
-      </span>
+      <span class="ects-badge">{{ totalEcts }} ECTS</span>
+      <span class="coordinator">{{ module.coordinator }}</span>
     </div>
   </div>
 </template>
@@ -27,13 +41,15 @@ defineProps<{
 <style scoped>
 .module-card {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 16px;
   padding: 14px 18px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 10px;
   transition: border-color 0.15s, box-shadow 0.15s;
+  cursor: pointer;
+  user-select: none;
 }
 
 .module-card:hover {
@@ -41,17 +57,12 @@ defineProps<{
   box-shadow: 0 2px 12px rgba(99, 102, 241, 0.12);
 }
 
-.module-card.optional {
-  border-style: dashed;
-}
-
 .card-left {
   flex-shrink: 0;
-  width: 52px;
-  text-align: center;
+  padding-top: 2px;
 }
 
-.short-name {
+.module-code {
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -60,11 +71,15 @@ defineProps<{
   padding: 4px 6px;
   border-radius: 5px;
   display: inline-block;
+  white-space: nowrap;
 }
 
 .card-body {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .module-name {
@@ -72,18 +87,41 @@ defineProps<{
   font-size: 0.95rem;
   font-weight: 600;
   color: var(--color-text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-.module-desc {
-  margin: 3px 0 0;
-  font-size: 0.78rem;
+.courses {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.course-chip {
+  font-size: 0.72rem;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: var(--color-surface-raised);
   color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+}
+
+.course-chip.vorlesung {
+  background: rgba(99, 102, 241, 0.1);
+  color: var(--color-primary);
+  border-color: rgba(99, 102, 241, 0.2);
+}
+
+.course-chip.praktikum {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  border-color: rgba(16, 185, 129, 0.2);
+}
+
+.course-chip.seminar {
+  background: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+  border-color: rgba(245, 158, 11, 0.2);
 }
 
 .card-right {
@@ -104,21 +142,12 @@ defineProps<{
   white-space: nowrap;
 }
 
-.type-badge {
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  padding: 2px 7px;
-  border-radius: 20px;
-}
-
-.type-badge.mandatory {
-  background: rgba(16, 185, 129, 0.15);
-  color: #10b981;
-}
-
-.type-badge.optional {
-  background: rgba(245, 158, 11, 0.15);
-  color: #f59e0b;
+.coordinator {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 </style>

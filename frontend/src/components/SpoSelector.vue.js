@@ -10,37 +10,41 @@ let __VLS_components;
 let __VLS_intrinsics;
 let __VLS_directives;
 __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-    ...{ class: "spo-selector" },
+    ...{ class: "dropdown" },
 });
-/** @type {__VLS_StyleScopedClasses['spo-selector']} */ ;
-__VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)({
-    for: "spo-select",
-});
+/** @type {__VLS_StyleScopedClasses['dropdown']} */ ;
+if (__VLS_ctx.label) {
+    __VLS_asFunctionalElement1(__VLS_intrinsics.label, __VLS_intrinsics.label)({
+        for: (`select-${__VLS_ctx.label}`),
+    });
+    (__VLS_ctx.label);
+}
 __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
     ...{ class: "select-wrapper" },
 });
 /** @type {__VLS_StyleScopedClasses['select-wrapper']} */ ;
 __VLS_asFunctionalElement1(__VLS_intrinsics.select, __VLS_intrinsics.select)({
     ...{ onChange: (...[$event]) => {
-            __VLS_ctx.$emit('update:modelValue', Number($event.target.value) || null);
+            __VLS_ctx.$emit('update:modelValue', $event.target.value || null);
             // @ts-ignore
-            [$emit,];
+            [label, label, label, $emit,];
         } },
-    id: "spo-select",
+    id: (`select-${__VLS_ctx.label}`),
     value: (__VLS_ctx.modelValue),
-    disabled: (__VLS_ctx.loading),
+    disabled: (__VLS_ctx.loading || (!__VLS_ctx.items.length && !__VLS_ctx.modelValue)),
 });
 __VLS_asFunctionalElement1(__VLS_intrinsics.option, __VLS_intrinsics.option)({
-    value: (0),
+    value: "",
 });
-for (const [spo] of __VLS_vFor((__VLS_ctx.spos))) {
+(__VLS_ctx.placeholder ?? '— Auswählen —');
+for (const [item] of __VLS_vFor((__VLS_ctx.items))) {
     __VLS_asFunctionalElement1(__VLS_intrinsics.option, __VLS_intrinsics.option)({
-        key: (spo.id),
-        value: (spo.id),
+        key: (item.id),
+        value: (item.id),
     });
-    (spo.name);
+    (item.label);
     // @ts-ignore
-    [modelValue, loading, spos,];
+    [label, modelValue, modelValue, loading, items, items, placeholder,];
 }
 if (__VLS_ctx.loading) {
     __VLS_asFunctionalElement1(__VLS_intrinsics.span)({

@@ -1,16 +1,18 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import ModuleCard from './ModuleCard.vue'
-import type { SpoModule } from '../types'
+import type { ModuleEntry } from '../types'
 
 const props = defineProps<{
-  modules: SpoModule[]
+  modules: ModuleEntry[]
 }>()
 
+const emit = defineEmits<{ select: [module: ModuleEntry] }>()
+
 const bySemester = computed(() => {
-  const map = new Map<number, SpoModule[]>()
+  const map = new Map<number, ModuleEntry[]>()
   for (const m of props.modules) {
-    const key = m.semester_recommendation ?? 99
+    const key = m.recommended_semester ?? 99
     if (!map.has(key)) map.set(key, [])
     map.get(key)!.push(m)
   }
@@ -21,8 +23,8 @@ function semesterLabel(sem: number): string {
   return sem === 99 ? 'Ohne Semesterzuordnung' : `${sem}. Semester`
 }
 
-function totalEcts(modules: SpoModule[]): number {
-  return modules.reduce((sum, m) => sum + (m.ects ?? 0), 0)
+function totalEcts(mods: ModuleEntry[]): number {
+  return mods.reduce((s, m) => s + m.courses.reduce((cs, c) => cs + (c.ects ?? 0), 0), 0)
 }
 </script>
 
@@ -34,7 +36,7 @@ function totalEcts(modules: SpoModule[]): number {
         <span class="semester-ects">{{ totalEcts(mods) }} ECTS</span>
       </div>
       <div class="semester-modules">
-        <ModuleCard v-for="m in mods" :key="m.id" :module="m" />
+        <ModuleCard v-for="m in mods" :key="m.id" :module="m" @select="emit('select', $event)" />
       </div>
     </div>
   </div>
