@@ -25,6 +25,24 @@ export interface CourseDetails {
   literatur: string | null;  // Das ist der <ul> HTML-Text
 }
 
+export interface Category {
+  id: string;
+  name: string;
+  color: string;
+  type: 'art' | 'sprache' | 'vertiefung' | string;
+}
+
+// Das ist der Typ für eine Zeile in deiner Übersichtstabelle (die View)
+export interface ModuleListItem {
+  id: string;
+  kuerzel: string;
+  name: string;
+  start_semester: string;
+  koordinator: string;
+  version: number;
+  categories: Category[]; // Hier kommen die farbigen Tags rein!
+}
+
 // 2. Das Hauptmodul (wurde bereinigt, da viele Details jetzt im Course stecken)
 export interface ModuleDetails {
   modultyp: string;             // z.B. "WPM"
