@@ -9,10 +9,19 @@ const props = defineProps<{
 
 const emit = defineEmits<{ select: [module: ModuleEntry] }>()
 
+function semKey(m: ModuleEntry): number {
+  // start_semester ist die primäre Quelle ("1", "2", …)
+  const fromStart = parseInt(m.start_semester)
+  if (!isNaN(fromStart) && fromStart > 0) return fromStart
+  // Fallback: recommended_semester aus module_handbook_entries
+  if (m.recommended_semester != null) return m.recommended_semester
+  return 99
+}
+
 const bySemester = computed(() => {
   const map = new Map<number, ModuleEntry[]>()
   for (const m of props.modules) {
-    const key = m.recommended_semester ?? 99
+    const key = semKey(m)
     if (!map.has(key)) map.set(key, [])
     map.get(key)!.push(m)
   }

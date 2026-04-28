@@ -50,9 +50,16 @@ async function fetchModules(handbookId) {
     error.value = null;
     const { data, error: err } = await supabase
         .from('module_handbook_entries')
-        .select('recommended_semester, modules(id, code, name, coordinator, start_semester, version, details, courses(*))')
+        .select(`
+      recommended_semester,
+      modules!module_handbook_entries_module_id_fkey (
+        id, code, name, coordinator, start_semester, version, details,
+        is_mandatory, is_specialization, specialization_name, language,
+        courses (*)
+      )
+    `)
         .eq('handbook_id', handbookId)
-        .order('recommended_semester');
+        .order('recommended_semester', { nullsFirst: false });
     loading.value = false;
     if (err) {
         error.value = err.message;

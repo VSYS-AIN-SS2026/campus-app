@@ -13,9 +13,6 @@ let __VLS_components;
 let __VLS_intrinsics;
 let __VLS_directives;
 /** @type {__VLS_StyleScopedClasses['module-card']} */ ;
-/** @type {__VLS_StyleScopedClasses['course-chip']} */ ;
-/** @type {__VLS_StyleScopedClasses['course-chip']} */ ;
-/** @type {__VLS_StyleScopedClasses['course-chip']} */ ;
 __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
     ...{ onClick: (...[$event]) => {
             __VLS_ctx.emit('select', __VLS_ctx.module);
@@ -50,22 +47,43 @@ __VLS_asFunctionalElement1(__VLS_intrinsics.p, __VLS_intrinsics.p)({
 });
 /** @type {__VLS_StyleScopedClasses['module-name']} */ ;
 (__VLS_ctx.module.name);
-if (__VLS_ctx.module.courses.length) {
-    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
-        ...{ class: "courses" },
+__VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
+    ...{ class: "tags" },
+});
+/** @type {__VLS_StyleScopedClasses['tags']} */ ;
+__VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
+    ...{ class: "tag" },
+    ...{ class: (__VLS_ctx.module.is_mandatory ? 'tag-mandatory' : 'tag-optional') },
+});
+/** @type {__VLS_StyleScopedClasses['tag']} */ ;
+(__VLS_ctx.module.is_mandatory ? 'Pflicht' : 'Wahlpflicht');
+if (__VLS_ctx.module.is_specialization) {
+    __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
+        ...{ class: "tag tag-specialization" },
     });
-    /** @type {__VLS_StyleScopedClasses['courses']} */ ;
+    /** @type {__VLS_StyleScopedClasses['tag']} */ ;
+    /** @type {__VLS_StyleScopedClasses['tag-specialization']} */ ;
+    (__VLS_ctx.module.specialization_name ?? 'Vertiefung');
+}
+if (__VLS_ctx.module.language && __VLS_ctx.module.language !== 'Deutsch') {
+    __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
+        ...{ class: "tag tag-language" },
+    });
+    /** @type {__VLS_StyleScopedClasses['tag']} */ ;
+    /** @type {__VLS_StyleScopedClasses['tag-language']} */ ;
+    (__VLS_ctx.module.language);
+}
+if (__VLS_ctx.module.courses.length) {
     for (const [c] of __VLS_vFor((__VLS_ctx.module.courses))) {
         __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({
             key: (c.id),
-            ...{ class: "course-chip" },
-            ...{ class: (c.course_type.toLowerCase()) },
+            ...{ class: "tag" },
+            ...{ class: (`tag-course-${c.course_type.toLowerCase()}`) },
         });
-        /** @type {__VLS_StyleScopedClasses['course-chip']} */ ;
-        (c.name);
-        (c.ects);
+        /** @type {__VLS_StyleScopedClasses['tag']} */ ;
+        (c.course_type);
         // @ts-ignore
-        [module, module, module, module,];
+        [module, module, module, module, module, module, module, module, module, module, module,];
     }
 }
 __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({

@@ -2,10 +2,20 @@ import { computed } from 'vue';
 import ModuleCard from './ModuleCard.vue';
 const props = defineProps();
 const emit = defineEmits();
+function semKey(m) {
+    // start_semester ist die primäre Quelle ("1", "2", …)
+    const fromStart = parseInt(m.start_semester);
+    if (!isNaN(fromStart) && fromStart > 0)
+        return fromStart;
+    // Fallback: recommended_semester aus module_handbook_entries
+    if (m.recommended_semester != null)
+        return m.recommended_semester;
+    return 99;
+}
 const bySemester = computed(() => {
     const map = new Map();
     for (const m of props.modules) {
-        const key = m.recommended_semester ?? 99;
+        const key = semKey(m);
         if (!map.has(key))
             map.set(key, []);
         map.get(key).push(m);

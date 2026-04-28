@@ -44,6 +44,10 @@ export interface ModuleEntry {
   coordinator: string
   version: number
   details: Record<string, unknown>
+  is_mandatory: boolean
+  is_specialization: boolean
+  specialization_name: string | null
+  language: string
   recommended_semester: number | null
   courses: Course[]
 }
