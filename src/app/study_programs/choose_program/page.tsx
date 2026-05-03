@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { getSpos, getStudyPrograms } from '../../../features/study_programs/api/studyProgram.api'
+import { StudyProgramSelectionForm } from '../../../features/study_programs/components/StudyProgramSelectionForm'
 import type { Spo } from '../../../features/study_programs/types/spo.types'
 import type { StudyProgram } from '../../../features/study_programs/types/studyProgram.types'
 
@@ -17,14 +18,6 @@ function getSingleSearchParam(value: string | string[] | undefined) {
   }
 
   return resolvedValue.trim() ? resolvedValue : undefined
-}
-
-function getStudyProgramLabel(program: StudyProgram) {
-  return program.name ? `${program.code} - ${program.name}` : program.code
-}
-
-function getSpoLabel(spo: Spo) {
-  return spo.valid_from ? `${spo.version_name} · gültig ab ${spo.valid_from}` : spo.version_name
 }
 
 function getUniqueSposForStudyProgram(spos: Spo[], studyProgramId: string | undefined) {
@@ -108,90 +101,12 @@ export default async function StudyProgramsPage({ searchParams }: PageProps) {
           <p>Prüfe, ob die Tabelle `study_programs` bereits Daten enthält.</p>
         </article>
       ) : (
-        <section className="card-grid two-columns">
-          <article className="panel">
-            <h2>Auswahl treffen</h2>
-            <form action="/profile" method="GET">
-              <div className="field">
-                <label htmlFor="study-program-select">Studiengang</label>
-                <select
-                  className="select"
-                  defaultValue={selectedStudyProgramId ?? ''}
-                  id="study-program-select"
-                  name="studyProgramId"
-                >
-                  <option value="">Studiengang auswählen</option>
-                  {studyPrograms.map((program) => (
-                    <option key={program.id} value={program.id}>
-                      {getStudyProgramLabel(program)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="field">
-                <label htmlFor="spo-select">SPO</label>
-                <select
-                  className="select"
-                  defaultValue={selectedSpoId ?? ''}
-                  disabled={!selectedStudyProgram || availableSpos.length === 0}
-                  id="spo-select"
-                  name="spoId"
-                >
-                  <option value="">
-                    {selectedStudyProgram
-                      ? availableSpos.length > 0
-                        ? 'SPO auswählen'
-                        : 'Keine SPOs verfügbar'
-                      : 'Erst Studiengang auswählen'}
-                  </option>
-                  {availableSpos.map((spo) => (
-                    <option key={spo.id} value={spo.id}>
-                      {getSpoLabel(spo)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <p className="helper-text">
-                Die Auswahl wird hier weiter ohne Persistenz simuliert. Für die UI werden doppelte
-                SPO-Einträge mit gleichem Namen defensiv zusammengefasst.
-              </p>
-
-              <div className="actions">
-                <button className="button" type="submit">
-                  Im Profil anzeigen
-                </button>
-                <Link className="button button-secondary" href="/profile">
-                  Abbrechen
-                </Link>
-              </div>
-            </form>
-          </article>
-
-          <article className="panel">
-            <h2>Vorschau</h2>
-            {selectedStudyProgram ? (
-              <p className="status status-success">{getStudyProgramLabel(selectedStudyProgram)}</p>
-            ) : (
-              <p className="status">Noch keine Auswahl getroffen.</p>
-            )}
-            <div className="selection-summary">
-              <span className="summary-label">SPO</span>
-              {selectedSpo ? (
-                <p className="status status-success">{getSpoLabel(selectedSpo)}</p>
-              ) : selectedStudyProgram ? (
-                <p className="status">Noch keine SPO ausgewählt.</p>
-              ) : (
-                <p className="status">Wird nach der Studiengangswahl verfügbar.</p>
-              )}
-            </div>
-            <p>
-              Später kann hier eine echte Profilzuordnung mit Studierendenkonto, Immatrikulation
-              und SPO-Version angeschlossen werden.
-            </p>
-          </article>
-        </section>
+        <StudyProgramSelectionForm
+          initialSpoId={selectedSpoId}
+          initialStudyProgramId={selectedStudyProgramId}
+          spos={spos}
+          studyPrograms={studyPrograms}
+        />
       )}
     </main>
   )
