@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import { getStudyPrograms } from '../../features/study_programs/api/studyProgram.api'
+import { getSpos, getStudyPrograms } from '../../features/study_programs/api/studyProgram.api'
+import type { Spo } from '../../features/study_programs/types/spo.types'
 import type { StudyProgram } from '../../features/study_programs/types/studyProgram.types'
 
 export const dynamic = 'force-dynamic'
@@ -22,22 +23,29 @@ function getStudyProgramLabel(program: StudyProgram) {
   return program.name ? `${program.code} - ${program.name}` : program.code
 }
 
+function getSpoLabel(spo: Spo) {
+  return spo.valid_from ? `${spo.version_name} · gültig ab ${spo.valid_from}` : spo.version_name
+}
+
 export default async function ProfilePage({ searchParams }: PageProps) {
   const resolvedSearchParams = await searchParams
   const selectedStudyProgramId = getSingleSearchParam(resolvedSearchParams.studyProgramId)
+  const selectedSpoId = getSingleSearchParam(resolvedSearchParams.spoId)
 
   let studyPrograms: StudyProgram[] = []
+  let spos: Spo[] = []
   let errorMessage: string | null = null
 
   try {
-    studyPrograms = await getStudyPrograms()
+    ;[studyPrograms, spos] = await Promise.all([getStudyPrograms(), getSpos()])
   } catch (error) {
     errorMessage = error instanceof Error ? error.message : 'Studiengänge konnten nicht geladen werden.'
   }
 
   const selectedStudyProgram = studyPrograms.find((program) => program.id === selectedStudyProgramId) ?? null
+  const selectedSpo = spos.find((spo) => spo.id === selectedSpoId && spo.study_program_id === selectedStudyProgramId) ?? null
   const chooseProgramHref = selectedStudyProgramId
-    ? `/study_programs/choose_program?studyProgramId=${encodeURIComponent(selectedStudyProgramId)}`
+    ? `/study_programs/choose_program?studyProgramId=${encodeURIComponent(selectedStudyProgramId)}${selectedSpoId ? `&spoId=${encodeURIComponent(selectedSpoId)}` : ''}`
     : '/study_programs/choose_program'
 
   return (
@@ -72,7 +80,7 @@ export default async function ProfilePage({ searchParams }: PageProps) {
             </div>
             <div className="meta-item">
               <dt>Status</dt>
-              <dd>Simulation für VSYS26T4-36</dd>
+              <dd>Simulation für VSYS26T4-37</dd>
             </div>
           </dl>
         </article>
@@ -92,9 +100,22 @@ export default async function ProfilePage({ searchParams }: PageProps) {
             Profil-Tabelle verknüpft werden.
           </p>
 
+          <div className="selection-summary">
+            <span className="summary-label">SPO</span>
+            {errorMessage ? (
+              <p className="status status-error">SPOs konnten nicht geladen werden.</p>
+            ) : selectedSpo ? (
+              <p className="status status-success">{getSpoLabel(selectedSpo)}</p>
+            ) : selectedStudyProgram ? (
+              <p className="status">Noch keine SPO ausgewählt.</p>
+            ) : (
+              <p className="status">SPO wird nach der Studiengangswahl verfügbar.</p>
+            )}
+          </div>
+
           <div className="actions">
             <Link className="button" href={chooseProgramHref}>
-              Studiengang auswählen
+              Studiengang und SPO auswählen
             </Link>
             <Link className="button button-secondary" href="/">
               Zur Hauptseite

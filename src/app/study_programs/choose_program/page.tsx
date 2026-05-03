@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import { getStudyPrograms } from '../../../features/study_programs/api/studyProgram.api'
+import { getSpos, getStudyPrograms } from '../../../features/study_programs/api/studyProgram.api'
+import type { Spo } from '../../../features/study_programs/types/spo.types'
 import type { StudyProgram } from '../../../features/study_programs/types/studyProgram.types'
 
 export const dynamic = 'force-dynamic'
@@ -22,20 +23,56 @@ function getStudyProgramLabel(program: StudyProgram) {
   return program.name ? `${program.code} - ${program.name}` : program.code
 }
 
+function getSpoLabel(spo: Spo) {
+  return spo.valid_from ? `${spo.version_name} · gültig ab ${spo.valid_from}` : spo.version_name
+}
+
+function getUniqueSposForStudyProgram(spos: Spo[], studyProgramId: string | undefined) {
+  if (!studyProgramId) {
+    return []
+  }
+
+  const uniqueSpos = new Map<string, Spo>()
+
+  for (const spo of spos) {
+    if (spo.study_program_id !== studyProgramId) {
+      continue
+    }
+
+    const key = spo.version_name.trim().toLowerCase()
+    const existingSpo = uniqueSpos.get(key)
+
+    if (!existingSpo) {
+      uniqueSpos.set(key, spo)
+      continue
+    }
+
+    if (!existingSpo.valid_from && spo.valid_from) {
+      uniqueSpos.set(key, spo)
+    }
+  }
+
+  return Array.from(uniqueSpos.values())
+}
+
 export default async function StudyProgramsPage({ searchParams }: PageProps) {
   const resolvedSearchParams = await searchParams
   const selectedStudyProgramId = getSingleSearchParam(resolvedSearchParams.studyProgramId)
+  const selectedSpoId = getSingleSearchParam(resolvedSearchParams.spoId)
 
   let studyPrograms: StudyProgram[] = []
+  let spos: Spo[] = []
   let errorMessage: string | null = null
 
   try {
-    studyPrograms = await getStudyPrograms()
+    ;[studyPrograms, spos] = await Promise.all([getStudyPrograms(), getSpos()])
   } catch (error) {
     errorMessage = error instanceof Error ? error.message : 'Studiengänge konnten nicht geladen werden.'
   }
 
   const selectedStudyProgram = studyPrograms.find((program) => program.id === selectedStudyProgramId) ?? null
+  const availableSpos = getUniqueSposForStudyProgram(spos, selectedStudyProgramId)
+  const selectedSpo = availableSpos.find((spo) => spo.id === selectedSpoId) ?? null
 
   return (
     <main className="app-shell">
@@ -49,10 +86,10 @@ export default async function StudyProgramsPage({ searchParams }: PageProps) {
 
       <section className="hero hero-compact">
         <span className="eyebrow">Profilpflege</span>
-        <h1>Studiengang auswählen</h1>
+        <h1>Studiengang und SPO auswählen</h1>
         <p>
-          Das Dropdown liest alle vorhandenen Einträge aus der Supabase-Tabelle
-          <code> study_programs </code> und übergibt die Auswahl für diese Story zurück ins Profil.
+          Die Auswahl liest Studiengänge aus <code>study_programs</code> und dazu passende SPOs aus
+          <code> spos</code>. Für diese Story wird beides zurück ins Profil gespiegelt.
         </p>
       </section>
 
@@ -92,9 +129,33 @@ export default async function StudyProgramsPage({ searchParams }: PageProps) {
                 </select>
               </div>
 
+              <div className="field">
+                <label htmlFor="spo-select">SPO</label>
+                <select
+                  className="select"
+                  defaultValue={selectedSpoId ?? ''}
+                  disabled={!selectedStudyProgram || availableSpos.length === 0}
+                  id="spo-select"
+                  name="spoId"
+                >
+                  <option value="">
+                    {selectedStudyProgram
+                      ? availableSpos.length > 0
+                        ? 'SPO auswählen'
+                        : 'Keine SPOs verfügbar'
+                      : 'Erst Studiengang auswählen'}
+                  </option>
+                  {availableSpos.map((spo) => (
+                    <option key={spo.id} value={spo.id}>
+                      {getSpoLabel(spo)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <p className="helper-text">
-                Die Auswahl wird hier bewusst ohne Persistenz simuliert und nach dem Absenden im
-                Profil angezeigt.
+                Die Auswahl wird hier weiter ohne Persistenz simuliert. Für die UI werden doppelte
+                SPO-Einträge mit gleichem Namen defensiv zusammengefasst.
               </p>
 
               <div className="actions">
@@ -115,6 +176,16 @@ export default async function StudyProgramsPage({ searchParams }: PageProps) {
             ) : (
               <p className="status">Noch keine Auswahl getroffen.</p>
             )}
+            <div className="selection-summary">
+              <span className="summary-label">SPO</span>
+              {selectedSpo ? (
+                <p className="status status-success">{getSpoLabel(selectedSpo)}</p>
+              ) : selectedStudyProgram ? (
+                <p className="status">Noch keine SPO ausgewählt.</p>
+              ) : (
+                <p className="status">Wird nach der Studiengangswahl verfügbar.</p>
+              )}
+            </div>
             <p>
               Später kann hier eine echte Profilzuordnung mit Studierendenkonto, Immatrikulation
               und SPO-Version angeschlossen werden.
