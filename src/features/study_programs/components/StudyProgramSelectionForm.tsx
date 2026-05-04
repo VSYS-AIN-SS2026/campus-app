@@ -1,14 +1,27 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { useFormStatus } from 'react-dom'
 import type { Spo } from '../types/spo.types'
 import type { StudyProgram } from '../types/studyProgram.types'
 
 type Props = {
+  formAction: (formData: FormData) => void | Promise<void>
   initialSpoId?: string
   initialStudyProgramId?: string
+  saveMessage?: string | null
   spos: Spo[]
   studyPrograms: StudyProgram[]
+}
+
+function SaveButton() {
+  const { pending } = useFormStatus()
+
+  return (
+    <button className="button" disabled={pending} type="submit">
+      {pending ? 'Wird gespeichert...' : 'Im Profil speichern'}
+    </button>
+  )
 }
 
 function getStudyProgramLabel(program: StudyProgram) {
@@ -48,8 +61,10 @@ function getUniqueSposForStudyProgram(spos: Spo[], studyProgramId: string | unde
 }
 
 export function StudyProgramSelectionForm({
+  formAction,
   initialSpoId,
   initialStudyProgramId,
+  saveMessage,
   spos,
   studyPrograms,
 }: Props) {
@@ -81,7 +96,7 @@ export function StudyProgramSelectionForm({
     <section className="card-grid two-columns">
       <article className="panel">
         <h2>Auswahl treffen</h2>
-        <form action="/profile" method="GET">
+        <form action={formAction}>
           <div className="field">
             <label htmlFor="study-program-select">Studiengang</label>
             <select
@@ -134,10 +149,10 @@ export function StudyProgramSelectionForm({
             SPO-Einträge mit gleichem Namen werden in der Anzeige defensiv zusammengefasst.
           </p>
 
+          {saveMessage ? <p className="status status-info">{saveMessage}</p> : null}
+
           <div className="actions">
-            <button className="button" type="submit">
-              Im Profil anzeigen
-            </button>
+            <SaveButton />
           </div>
         </form>
       </article>

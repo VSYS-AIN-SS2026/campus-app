@@ -200,6 +200,11 @@ code {
 	color: #166534;
 }
 
+.status-info {
+	background: #dbeafe;
+	color: #1d4ed8;
+}
+
 .helper-text {
 	margin-top: 0.85rem;
 	font-size: 0.95rem;
