@@ -51,11 +51,19 @@ supabase db push
 
 ### 7. Environment Variables
 
-Die `.env.local` Datei ist bereits konfiguriert mit:
+Lege lokal eine `.env.local` Datei an. Als Vorlage kannst du `.env.example` verwenden.
+
+Benötigt werden:
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 
-**Fertig!** Du kannst jetzt mit dem Projekt arbeiten.
+Beispiel:
+
+```bash
+cp .env.example .env.local
+```
+
+Danach kannst du mit dem Projekt arbeiten.
 
 ## Datenbank-Workflow (wichtig für alle!)
 
