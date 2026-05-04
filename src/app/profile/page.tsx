@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { getSpos, getStudyPrograms } from '../../features/study_programs/api/studyProgram.api'
 import type { Spo } from '../../features/study_programs/types/spo.types'
 import type { StudyProgram } from '../../features/study_programs/types/studyProgram.types'
+import { getDemoUserProfile } from '../../features/users/api/user.api'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,26 +28,42 @@ function getSpoLabel(spo: Spo) {
   return spo.valid_from ? `${spo.version_name} · gültig ab ${spo.valid_from}` : spo.version_name
 }
 
+function getSaveMessage(saveState: string | undefined) {
+  if (saveState === 'success') {
+    return 'Studiengang und SPO wurden im Demo-Profil gespeichert.'
+  }
+
+  return null
+}
+
 export default async function ProfilePage({ searchParams }: PageProps) {
   const resolvedSearchParams = await searchParams
-  const selectedStudyProgramId = getSingleSearchParam(resolvedSearchParams.studyProgramId)
-  const selectedSpoId = getSingleSearchParam(resolvedSearchParams.spoId)
+  const saveState = getSingleSearchParam(resolvedSearchParams.save)
 
   let studyPrograms: StudyProgram[] = []
   let spos: Spo[] = []
+  let demoUserProfile = null
   let errorMessage: string | null = null
 
   try {
-    ;[studyPrograms, spos] = await Promise.all([getStudyPrograms(), getSpos()])
+    ;[studyPrograms, spos, demoUserProfile] = await Promise.all([
+      getStudyPrograms(),
+      getSpos(),
+      getDemoUserProfile(),
+    ])
   } catch (error) {
-    errorMessage = error instanceof Error ? error.message : 'Studiengänge konnten nicht geladen werden.'
+    console.error('Error loading profile page:', error)
+    errorMessage = 'Das Profil konnte gerade nicht vollständig geladen werden.'
   }
 
+  const selectedStudyProgramId = demoUserProfile?.study_program_id ?? getSingleSearchParam(resolvedSearchParams.studyProgramId)
+  const selectedSpoId = demoUserProfile?.spo_id ?? getSingleSearchParam(resolvedSearchParams.spoId)
   const selectedStudyProgram = studyPrograms.find((program) => program.id === selectedStudyProgramId) ?? null
   const selectedSpo = spos.find((spo) => spo.id === selectedSpoId && spo.study_program_id === selectedStudyProgramId) ?? null
   const chooseProgramHref = selectedStudyProgramId
     ? `/study_programs/choose_program?studyProgramId=${encodeURIComponent(selectedStudyProgramId)}${selectedSpoId ? `&spoId=${encodeURIComponent(selectedSpoId)}` : ''}`
     : '/study_programs/choose_program'
+  const saveMessage = getSaveMessage(saveState)
 
   return (
     <main className="app-shell">
@@ -60,9 +77,9 @@ export default async function ProfilePage({ searchParams }: PageProps) {
         <span className="eyebrow">Profil</span>
         <h1>Demo-Profil für die Studiengangauswahl</h1>
         <p>
-          Diese Seite simuliert einen künftigen Profilbereich für Studierende. Die Auswahl des
-          Studiengangs wird bewusst noch nicht persistiert, aber bereits sichtbar in den Flow
-          eingebunden.
+          Diese Seite simuliert einen künftigen Profilbereich für Studierende. Studiengang und SPO
+          werden in dieser Demo bereits in der Tabelle <code>users</code> gespeichert und hier
+          wieder ausgelesen.
         </p>
       </section>
 
@@ -80,7 +97,11 @@ export default async function ProfilePage({ searchParams }: PageProps) {
             </div>
             <div className="meta-item">
               <dt>Status</dt>
-              <dd>Simulation für VSYS26T4-37</dd>
+              <dd>Simulation für VSYS26T4-42</dd>
+            </div>
+            <div className="meta-item">
+              <dt>E-Mail</dt>
+              <dd>{demoUserProfile?.email ?? 'alex.beispiel@htwg-konstanz.de'}</dd>
             </div>
           </dl>
         </article>
@@ -96,9 +117,11 @@ export default async function ProfilePage({ searchParams }: PageProps) {
           )}
 
           <p className="helper-text">
-            Dieser Baustein kann später direkt mit einem Student-Record, Login-Kontext oder einer
-            Profil-Tabelle verknüpft werden.
+            Diese Demo speichert die Auswahl jetzt in der Tabelle <code>users</code> und liest sie
+            im Profil direkt wieder aus.
           </p>
+
+          {saveMessage ? <p className="status status-info">{saveMessage}</p> : null}
 
           <div className="selection-summary">
             <span className="summary-label">SPO</span>

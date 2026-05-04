@@ -1,6 +1,8 @@
 import Link from 'next/link'
+import { saveStudyProfileSelection } from '../../profile/actions'
 import { getSpos, getStudyPrograms } from '../../../features/study_programs/api/studyProgram.api'
 import { StudyProgramSelectionForm } from '../../../features/study_programs/components/StudyProgramSelectionForm'
+import { getDemoUserProfile } from '../../../features/users/api/user.api'
 import type { Spo } from '../../../features/study_programs/types/spo.types'
 import type { StudyProgram } from '../../../features/study_programs/types/studyProgram.types'
 
@@ -48,24 +50,49 @@ function getUniqueSposForStudyProgram(spos: Spo[], studyProgramId: string | unde
   return Array.from(uniqueSpos.values())
 }
 
+function getSaveMessage(saveState: string | undefined) {
+  switch (saveState) {
+    case 'missing-study-program':
+      return 'Bitte wähle zuerst einen Studiengang aus.'
+    case 'invalid-study-program':
+      return 'Der gewählte Studiengang ist nicht mehr verfügbar.'
+    case 'invalid-spo':
+      return 'Die gewählte SPO passt nicht zum Studiengang.'
+    case 'error':
+      return 'Die Auswahl konnte gerade nicht gespeichert werden.'
+    default:
+      return null
+  }
+}
+
 export default async function StudyProgramsPage({ searchParams }: PageProps) {
   const resolvedSearchParams = await searchParams
-  const selectedStudyProgramId = getSingleSearchParam(resolvedSearchParams.studyProgramId)
-  const selectedSpoId = getSingleSearchParam(resolvedSearchParams.spoId)
+  const saveState = getSingleSearchParam(resolvedSearchParams.save)
 
   let studyPrograms: StudyProgram[] = []
   let spos: Spo[] = []
+  let demoUserProfile = null
   let errorMessage: string | null = null
 
   try {
-    ;[studyPrograms, spos] = await Promise.all([getStudyPrograms(), getSpos()])
+    ;[studyPrograms, spos, demoUserProfile] = await Promise.all([
+      getStudyPrograms(),
+      getSpos(),
+      getDemoUserProfile(),
+    ])
   } catch (error) {
-    errorMessage = error instanceof Error ? error.message : 'Studiengänge konnten nicht geladen werden.'
+    console.error('Error loading study program selection page:', error)
+    errorMessage = 'Die Studiengangsauswahl konnte gerade nicht geladen werden.'
   }
 
+  const selectedStudyProgramId =
+    getSingleSearchParam(resolvedSearchParams.studyProgramId) ?? demoUserProfile?.study_program_id ?? undefined
+  const selectedSpoId =
+    getSingleSearchParam(resolvedSearchParams.spoId) ?? demoUserProfile?.spo_id ?? undefined
   const selectedStudyProgram = studyPrograms.find((program) => program.id === selectedStudyProgramId) ?? null
   const availableSpos = getUniqueSposForStudyProgram(spos, selectedStudyProgramId)
   const selectedSpo = availableSpos.find((spo) => spo.id === selectedSpoId) ?? null
+  const saveMessage = getSaveMessage(saveState)
 
   return (
     <main className="app-shell">
@@ -102,8 +129,10 @@ export default async function StudyProgramsPage({ searchParams }: PageProps) {
         </article>
       ) : (
         <StudyProgramSelectionForm
+          formAction={saveStudyProfileSelection}
           initialSpoId={selectedSpoId}
           initialStudyProgramId={selectedStudyProgramId}
+          saveMessage={saveMessage}
           spos={spos}
           studyPrograms={studyPrograms}
         />
