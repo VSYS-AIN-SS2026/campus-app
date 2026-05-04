@@ -109,7 +109,7 @@ export default async function StudyProgramsPage({ searchParams }: PageProps) {
         <h1>Studiengang und SPO auswählen</h1>
         <p>
           Die Auswahl liest Studiengänge aus <code>study_programs</code> und dazu passende SPOs aus
-          <code> spos</code>. Für diese Story wird beides zurück ins Profil gespiegelt.
+          <code>spos</code>. Für diese Story wird beides zurück ins Profil gespiegelt.
         </p>
       </section>
 
