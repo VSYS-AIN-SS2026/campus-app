@@ -1,5 +1,9 @@
 import Link from 'next/link'
-import { getStudyPrograms } from '../../../features/study_programs/api/studyProgram.api'
+import { saveStudyProfileSelection } from '../../profile/actions'
+import { getSpos, getStudyPrograms } from '../../../features/study_programs/api/studyProgram.api'
+import { StudyProgramSelectionForm } from '../../../features/study_programs/components/StudyProgramSelectionForm'
+import { getDemoUserProfile } from '../../../features/users/api/user.api'
+import type { Spo } from '../../../features/study_programs/types/spo.types'
 import type { StudyProgram } from '../../../features/study_programs/types/studyProgram.types'
 
 export const dynamic = 'force-dynamic'
@@ -18,24 +22,77 @@ function getSingleSearchParam(value: string | string[] | undefined) {
   return resolvedValue.trim() ? resolvedValue : undefined
 }
 
-function getStudyProgramLabel(program: StudyProgram) {
-  return program.name ? `${program.code} - ${program.name}` : program.code
+function getUniqueSposForStudyProgram(spos: Spo[], studyProgramId: string | undefined) {
+  if (!studyProgramId) {
+    return []
+  }
+
+  const uniqueSpos = new Map<string, Spo>()
+
+  for (const spo of spos) {
+    if (spo.study_program_id !== studyProgramId) {
+      continue
+    }
+
+    const key = spo.version_name.trim().toLowerCase()
+    const existingSpo = uniqueSpos.get(key)
+
+    if (!existingSpo) {
+      uniqueSpos.set(key, spo)
+      continue
+    }
+
+    if (!existingSpo.valid_from && spo.valid_from) {
+      uniqueSpos.set(key, spo)
+    }
+  }
+
+  return Array.from(uniqueSpos.values())
+}
+
+function getSaveMessage(saveState: string | undefined) {
+  switch (saveState) {
+    case 'missing-study-program':
+      return 'Bitte wähle zuerst einen Studiengang aus.'
+    case 'invalid-study-program':
+      return 'Der gewählte Studiengang ist nicht mehr verfügbar.'
+    case 'invalid-spo':
+      return 'Die gewählte SPO passt nicht zum Studiengang.'
+    case 'error':
+      return 'Die Auswahl konnte gerade nicht gespeichert werden.'
+    default:
+      return null
+  }
 }
 
 export default async function StudyProgramsPage({ searchParams }: PageProps) {
   const resolvedSearchParams = await searchParams
-  const selectedStudyProgramId = getSingleSearchParam(resolvedSearchParams.studyProgramId)
+  const saveState = getSingleSearchParam(resolvedSearchParams.save)
 
   let studyPrograms: StudyProgram[] = []
+  let spos: Spo[] = []
+  let demoUserProfile = null
   let errorMessage: string | null = null
 
   try {
-    studyPrograms = await getStudyPrograms()
+    ;[studyPrograms, spos, demoUserProfile] = await Promise.all([
+      getStudyPrograms(),
+      getSpos(),
+      getDemoUserProfile(),
+    ])
   } catch (error) {
-    errorMessage = error instanceof Error ? error.message : 'Studiengänge konnten nicht geladen werden.'
+    console.error('Error loading study program selection page:', error)
+    errorMessage = 'Die Studiengangsauswahl konnte gerade nicht geladen werden.'
   }
 
+  const selectedStudyProgramId =
+    getSingleSearchParam(resolvedSearchParams.studyProgramId) ?? demoUserProfile?.study_program_id ?? undefined
+  const selectedSpoId =
+    getSingleSearchParam(resolvedSearchParams.spoId) ?? demoUserProfile?.spo_id ?? undefined
   const selectedStudyProgram = studyPrograms.find((program) => program.id === selectedStudyProgramId) ?? null
+  const availableSpos = getUniqueSposForStudyProgram(spos, selectedStudyProgramId)
+  const selectedSpo = availableSpos.find((spo) => spo.id === selectedSpoId) ?? null
+  const saveMessage = getSaveMessage(saveState)
 
   return (
     <main className="app-shell">
@@ -49,10 +106,10 @@ export default async function StudyProgramsPage({ searchParams }: PageProps) {
 
       <section className="hero hero-compact">
         <span className="eyebrow">Profilpflege</span>
-        <h1>Studiengang auswählen</h1>
+        <h1>Studiengang und SPO auswählen</h1>
         <p>
-          Das Dropdown liest alle vorhandenen Einträge aus der Supabase-Tabelle
-          <code> study_programs </code> und übergibt die Auswahl für diese Story zurück ins Profil.
+          Die Auswahl liest Studiengänge aus <code>study_programs</code> und dazu passende SPOs aus
+          <code>spos</code>. Für diese Story wird beides zurück ins Profil gespiegelt.
         </p>
       </section>
 
@@ -71,56 +128,14 @@ export default async function StudyProgramsPage({ searchParams }: PageProps) {
           <p>Prüfe, ob die Tabelle `study_programs` bereits Daten enthält.</p>
         </article>
       ) : (
-        <section className="card-grid two-columns">
-          <article className="panel">
-            <h2>Auswahl treffen</h2>
-            <form action="/profile" method="GET">
-              <div className="field">
-                <label htmlFor="study-program-select">Studiengang</label>
-                <select
-                  className="select"
-                  defaultValue={selectedStudyProgramId ?? ''}
-                  id="study-program-select"
-                  name="studyProgramId"
-                >
-                  <option value="">Studiengang auswählen</option>
-                  {studyPrograms.map((program) => (
-                    <option key={program.id} value={program.id}>
-                      {getStudyProgramLabel(program)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <p className="helper-text">
-                Die Auswahl wird hier bewusst ohne Persistenz simuliert und nach dem Absenden im
-                Profil angezeigt.
-              </p>
-
-              <div className="actions">
-                <button className="button" type="submit">
-                  Im Profil anzeigen
-                </button>
-                <Link className="button button-secondary" href="/profile">
-                  Abbrechen
-                </Link>
-              </div>
-            </form>
-          </article>
-
-          <article className="panel">
-            <h2>Vorschau</h2>
-            {selectedStudyProgram ? (
-              <p className="status status-success">{getStudyProgramLabel(selectedStudyProgram)}</p>
-            ) : (
-              <p className="status">Noch keine Auswahl getroffen.</p>
-            )}
-            <p>
-              Später kann hier eine echte Profilzuordnung mit Studierendenkonto, Immatrikulation
-              und SPO-Version angeschlossen werden.
-            </p>
-          </article>
-        </section>
+        <StudyProgramSelectionForm
+          formAction={saveStudyProfileSelection}
+          initialSpoId={selectedSpoId}
+          initialStudyProgramId={selectedStudyProgramId}
+          saveMessage={saveMessage}
+          spos={spos}
+          studyPrograms={studyPrograms}
+        />
       )}
     </main>
   )
