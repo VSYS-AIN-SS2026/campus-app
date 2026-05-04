@@ -25,8 +25,11 @@ export async function saveStudyProfileSelection(formData: FormData) {
     redirect('/study_programs/choose_program?save=missing-study-program')
   }
 
-  let studyPrograms
-  let spos
+  type StudyPrograms = Awaited<ReturnType<typeof getStudyPrograms>>
+  type Spos = Awaited<ReturnType<typeof getSpos>>
+
+  let studyPrograms: StudyPrograms = []
+  let spos: Spos = []
 
   try {
     ;[studyPrograms, spos] = await Promise.all([getStudyPrograms(), getSpos()])
