@@ -1,0 +1,62 @@
+[
+  {
+    "id": "fixture-MATH-A2-c0",
+    "module_id": "fixture-MATH-A2",
+    "code": "-",
+    "name": "Numerische Mathematik",
+    "course_type": "V",
+    "coordinator": "Umlauf, Georg [umlauf]",
+    "ects": 3,
+    "sws": 2,
+    "details": {
+      "course_types": [
+        "V"
+      ],
+      "responsible_name": "Umlauf, Georg",
+      "responsible_login": "umlauf",
+      "additional_teachers": null,
+      "exam_graded": {
+        "form": "M",
+        "duration_min": 30,
+        "components": null,
+        "raw": "M30"
+      },
+      "exam_ungraded": null,
+      "performance_record": null,
+      "syllabus": "Rundungsfehler Kondition und Stabilität näherungsweise Berechnung von Nullstellen von Funktionen numerische Behandlung von linearen Gleichungssystemen (quadratisch, unter- und überbestimmt) Interpolation und Approximation (auch mehrdimensional)",
+      "source_apex_cid": 10506
+    },
+    "created_at": null,
+    "updated_at": null
+  },
+  {
+    "id": "fixture-MATH-A2-c1",
+    "module_id": "fixture-MATH-A2",
+    "code": "-",
+    "name": "Stochastik",
+    "course_type": "V",
+    "coordinator": "Staehle, Barbara [bstaehle]",
+    "ects": 3,
+    "sws": 2,
+    "details": {
+      "course_types": [
+        "V"
+      ],
+      "responsible_name": "Staehle, Barbara",
+      "responsible_login": "bstaehle",
+      "additional_teachers": null,
+      "exam_graded": {
+        "form": "K",
+        "duration_min": 90,
+        "components": null,
+        "raw": "K90"
+      },
+      "exam_ungraded": null,
+      "performance_record": null,
+      "syllabus": "Wahrscheinlichkeitsrechnung: (bedingte) Wahrscheinlichkeiten, diskrete und stetige Zufallsvariablen und Zufallsvektoren, bekannte Verteilungen, Abschätzen von Wahrscheinlichkeiten Deskriptive Statistik: Graphische Darstellungen und Kenngrößen ein- und zweidimensionaler Daten, Korrelation und Regression Induktive Statistik: Punkt-, Intervallschätzungen, Hypothesentests Stochastische Prozesse: diskrete und kontinuierliche Zeit",
+      "source_apex_cid": 10507
+    },
+    "created_at": null,
+    "updated_at": null
+  }
+]

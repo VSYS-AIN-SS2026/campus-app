@@ -1,0 +1,58 @@
+{
+  "id": "fixture-IPSS-15",
+  "code": "IPSS/15",
+  "name": "Integriertes Praktisches Studiensemester",
+  "start_semester": "4",
+  "coordinator": "Praktikantenamtsleiter*in",
+  "version": 1,
+  "is_mandatory": true,
+  "is_specialization": false,
+  "specialization_name": null,
+  "language": "Deutsch",
+  "details": {
+    "coordinator_name": "Praktikantenamtsleiter*in",
+    "coordinator_login": null,
+    "specialization_track": null,
+    "module_type": "PM",
+    "language_primary": "Deutsch",
+    "language_secondary": null,
+    "language_secondary_optional": false,
+    "start_semester_min": 4,
+    "start_semester_max": 4,
+    "contact_hours": 30,
+    "self_study_hours": 870,
+    "ects_total_computed": 30.0,
+    "semester_count": 1,
+    "start_phases": [
+      "Sommersemester",
+      "Wintersemester"
+    ],
+    "learning_formats": [
+      "Selbststudium",
+      "Workshop/Seminar"
+    ],
+    "learning_formats_misc": "Integriertes Praxissemester",
+    "exam_graded": null,
+    "exam_ungraded": null,
+    "performance_record": null,
+    "grade_composition_rule": null,
+    "grade_composition_misc": null,
+    "prerequisites_text": "Grundstudium",
+    "prerequisites_codes": [],
+    "needed_for_text": "BACH/23",
+    "needed_for_codes": [
+      "BACH/23"
+    ],
+    "combine_with_text": null,
+    "combine_with_codes": [],
+    "learning_objectives": "Die Studierenden haben die betrieblichen Abläufe und Anforderungen an einem beispielhaften Informatik-Arbeitsplatz aus eigener Erfahrung kennengelernt. Sie können Fach- und Schlüsselkompetenzen (insbes. Sozialkompetenz) in ihrer Bedeutung für die Berufstätigkeit einschätzen und können sie praxisorientiert anwenden und erweitern.",
+    "personal_competencies": null,
+    "literature": null,
+    "source_apex_mhid": 183,
+    "source_apex_mid": 2189,
+    "source_handbook_label": "AIN SPO 3 (01.03.2019)",
+    "last_updated": "2018-10-30"
+  },
+  "created_at": null,
+  "updated_at": null
+}

@@ -1,0 +1,59 @@
+[
+  {
+    "id": "fixture-ALG-01-c0",
+    "module_id": "fixture-ALG-01",
+    "code": "ALG",
+    "name": "Algebra",
+    "course_type": "V",
+    "coordinator": "Axthelm, Rebekka [raxthelm]",
+    "ects": 4,
+    "sws": 4,
+    "details": {
+      "course_types": [
+        "V"
+      ],
+      "responsible_name": "Axthelm, Rebekka",
+      "responsible_login": "raxthelm",
+      "additional_teachers": null,
+      "exam_graded": null,
+      "exam_ungraded": null,
+      "performance_record": null,
+      "syllabus": "Grundlagen (Mengen, Aussagen- und Prädikatenlogik) Relationen algebraische Strukturen Matrizen und Determinanten lineare Gleichungssysteme Homomorphismen und affine Abbildungen Vektorräume und Basen Eigenwerte und Eigenvektoren",
+      "source_apex_cid": 7613
+    },
+    "created_at": null,
+    "updated_at": null
+  },
+  {
+    "id": "fixture-ALG-01-c1",
+    "module_id": "fixture-ALG-01",
+    "code": "ALG-Ü",
+    "name": "Algebra Übungen",
+    "course_type": "Ü",
+    "coordinator": "Axthelm, Rebekka [raxthelm]",
+    "ects": 3,
+    "sws": 2,
+    "details": {
+      "course_types": [
+        "Ü"
+      ],
+      "responsible_name": "Axthelm, Rebekka",
+      "responsible_login": "raxthelm",
+      "additional_teachers": null,
+      "exam_graded": null,
+      "exam_ungraded": null,
+      "performance_record": {
+        "form": "SP",
+        "duration_min": null,
+        "components": [
+          "TE"
+        ],
+        "raw": "SP (TE)"
+      },
+      "syllabus": "In den Übungen werden Berechnungsmethoden zu den Themen in der Vorlesung geübt. Teilnehmer*innen präsentieren Ergebnisse und Verständnislücken, die dann in der Gruppe besprochen werden. Die Präsentation wird nicht bewertet ist aber Teil des unbenoteten Leistungsnachweises, zu dem des Weiteren das Bestehen von 4 online-Tests gehört.",
+      "source_apex_cid": 7612
+    },
+    "created_at": null,
+    "updated_at": null
+  }
+]

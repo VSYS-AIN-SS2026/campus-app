@@ -1,0 +1,61 @@
+[
+  {
+    "id": "fixture-SECOS-B5-8-c0",
+    "module_id": "fixture-SECOS-B5-8",
+    "code": "SECOS",
+    "name": "IT-Security",
+    "course_type": "V",
+    "coordinator": "Langweg, Hanno [hlangweg]",
+    "ects": 2,
+    "sws": 2,
+    "details": {
+      "course_types": [
+        "V"
+      ],
+      "responsible_name": "Langweg, Hanno",
+      "responsible_login": "hlangweg",
+      "additional_teachers": null,
+      "exam_graded": null,
+      "exam_ungraded": null,
+      "performance_record": null,
+      "syllabus": "Introduction, History, Current incidents Security Management: ISO 2700x, BSI-Grundschutz, Security Metrics, ROSI, Vulnerability Scoring, CVE Authentication Access Control, Security Models, Reference Monitor Security Engineering, Design Principles, Security Architectures, Supply Chain Security, Development Processes, Traceability Security Evaluation, Common Criteria Malware, Payloads, Distribution, Trends, Detection, Security Models, Data/Service Restoration, Accountability Data Protection Anonymity in Networks Cloud Security",
+      "source_apex_cid": 10395
+    },
+    "created_at": null,
+    "updated_at": null
+  },
+  {
+    "id": "fixture-SECOS-B5-8-c1",
+    "module_id": "fixture-SECOS-B5-8",
+    "code": "SECOS-Ü",
+    "name": "IT-Security",
+    "course_type": "Ü, LÜ",
+    "coordinator": "Langweg, Hanno [hlangweg]",
+    "ects": 3,
+    "sws": 2,
+    "details": {
+      "course_types": [
+        "Ü",
+        "LÜ"
+      ],
+      "responsible_name": "Langweg, Hanno",
+      "responsible_login": "hlangweg",
+      "additional_teachers": null,
+      "exam_graded": null,
+      "exam_ungraded": null,
+      "performance_record": {
+        "form": "SP",
+        "duration_min": null,
+        "components": [
+          "PR",
+          "AB"
+        ],
+        "raw": "SP (PR, AB)"
+      },
+      "syllabus": null,
+      "source_apex_cid": 10396
+    },
+    "created_at": null,
+    "updated_at": null
+  }
+]

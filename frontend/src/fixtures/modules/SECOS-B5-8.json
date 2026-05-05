@@ -1,0 +1,66 @@
+{
+  "id": "fixture-SECOS-B5-8",
+  "code": "SECOS/B5-8",
+  "name": "IT-Security (Security of Software and Systems)",
+  "start_semester": "A+B",
+  "coordinator": "Langweg, Hanno [hlangweg]",
+  "version": 1,
+  "is_mandatory": false,
+  "is_specialization": true,
+  "specialization_name": null,
+  "language": "Englisch, ggf. Deutsch",
+  "details": {
+    "coordinator_name": "Langweg, Hanno",
+    "coordinator_login": "hlangweg",
+    "specialization_track": "B5",
+    "module_type": "WPM",
+    "language_primary": "Englisch",
+    "language_secondary": "Deutsch",
+    "language_secondary_optional": true,
+    "start_semester_min": null,
+    "start_semester_max": null,
+    "contact_hours": 60,
+    "self_study_hours": 90,
+    "ects_total_computed": 5.0,
+    "semester_count": 1,
+    "start_phases": [
+      "Wintersemester"
+    ],
+    "learning_formats": [
+      "Vorlesung",
+      "Übung",
+      "Labor",
+      "Selbststudium",
+      "Projekt"
+    ],
+    "learning_formats_misc": null,
+    "exam_graded": {
+      "form": "K",
+      "duration_min": 90,
+      "components": null,
+      "raw": "K90"
+    },
+    "exam_ungraded": null,
+    "performance_record": null,
+    "grade_composition_rule": "Note der benoteten Modul(teil)prüfung",
+    "grade_composition_misc": null,
+    "prerequisites_text": null,
+    "prerequisites_codes": [],
+    "needed_for_text": null,
+    "needed_for_codes": [],
+    "combine_with_text": "INTP/x4, ITSA/C5-5",
+    "combine_with_codes": [
+      "INTP/x4",
+      "ITSA/C5"
+    ],
+    "learning_objectives": "Die Studierenden haben eine solide Grundlage in Kernkonzepten der IT-Sicherheit. Sie besitzen fortgeschrittenes Wissen, welche verbreiteten Schwachstellen und Angriffsmethoden gegen IT-Systeme existieren. Die Studierenden haben ein gründliches Wissen über Theorie und Methoden sowohl des Security-Managements, der Zugriffssteuerung als auch von Identifikation und Authentisierung. Sie können geeignete Methoden auswählen, anwenden und bewerten, um Sicherheitsarchitekturen, Schwachstellen und mögliche Angriffe zu analysieren. Sie sind in der Lage, Literatur des Fachgebiets IT-Sicherheit kritisch zu analysieren und daraus gewonnene Erkenntnisse zu strukturieren und aufzubereiten. Die Studierenden können ein begrenztes Forschungsprojekt planen, ausführen und in einem zusammenhängenden Bericht dokumentieren. Sie können Wissen und Fertigkeiten in der IT-Sicherheit auf neue Anwendungsgebiete übertragen.",
+    "personal_competencies": null,
+    "literature": "Gollmann, D. (2011). Computer Security. ISBN 978-0-470-74115-3 Anderson, R. (2008). Security Engineering. ISBN 978-0-470-06852-6 https://www.cl.cam.ac.uk/~rja14/book.html Gründer/Schrey (2007). Managementhandbuch IT-Sicherheit. ISBN 978-3-503-10002-6",
+    "source_apex_mhid": 185,
+    "source_apex_mid": 2119,
+    "source_handbook_label": "MSI SPO 4 (01.09.2017)",
+    "last_updated": "2018-10-30"
+  },
+  "created_at": null,
+  "updated_at": null
+}
