@@ -12,6 +12,9 @@ const totalEcts = computed(() =>
   props.module.courses.reduce((s, c) => s + (c.ects ?? 0), 0)
 )
 
+const visibleCategories = computed(() => props.module.categories.slice(0, 3))
+const hiddenCategoryCount = computed(() => Math.max(props.module.categories.length - visibleCategories.value.length, 0))
+
 function statusLabel(status: ModuleStatus): string {
   switch (status) {
     case 'belegt':
@@ -77,6 +80,20 @@ function courseTypeClassKey(courseType: string): string {
           {{ module.language }}
         </span>
 
+        <template v-if="module.categories.length">
+          <span
+            v-for="category in visibleCategories"
+            :key="category.id"
+            class="tag tag-category"
+          >
+            {{ category.name }}
+          </span>
+
+          <span v-if="hiddenCategoryCount" class="tag tag-category-more">
+            +{{ hiddenCategoryCount }}
+          </span>
+        </template>
+
         <template v-if="module.courses.length">
           <span
             v-for="c in module.courses"
@@ -118,15 +135,15 @@ function courseTypeClassKey(courseType: string): string {
 
 .module-card:hover {
   border-color: var(--color-primary);
-  box-shadow: var(--shadow);
+  box-shadow: 0 2px 12px var(--color-primary-glow);
 }
 
 .module-card-offen {
-  border-left: 3px solid var(--color-text-muted);
+  border-left: 3px solid var(--color-border);
 }
 
 .module-card-belegt {
-  border-left: 3px solid var(--color-primary-light);
+  border-left: 3px solid var(--color-primary);
 }
 
 .module-card-abgeschlossen {
@@ -218,54 +235,61 @@ function courseTypeClassKey(courseType: string): string {
 }
 
 .tag-mandatory {
-  background: var(--color-surface-raised);
-  color: var(--color-primary-dark);
-  border-color: var(--color-primary-light);
+  background: var(--color-primary-subtle);
+  color: var(--color-primary);
+  border-color: var(--color-primary-glow);
 }
 
 .tag-optional {
-  background: var(--color-surface-raised);
-  color: var(--color-primary-light);
-  border-color: var(--color-primary-light);
-}
-
-.tag-specialization {
   background: var(--color-surface-raised);
   color: var(--color-text-muted);
   border-color: var(--color-border);
 }
 
+.tag-specialization {
+  background: var(--color-primary-subtle);
+  color: var(--color-primary);
+  border-color: var(--color-primary-glow);
+}
+
 .tag-language {
-  background: var(--color-surface-raised);
-  color: var(--color-primary-light);
-  border-color: var(--color-border);
+  background: var(--color-primary-subtle);
+  color: var(--color-primary);
+  border-color: var(--color-primary-glow);
 }
 
 .tag-category {
-  background: var(--color-surface);
-  border-color: var(--color-primary-light);
-  color: var(--color-primary-light);
-}
-
-.tag-course-vorlesung, .tag-course-lecture {
-  color: var(--color-primary);
+  border-style: solid;
+  color: var(--color-text-muted);
   background: var(--color-surface-raised);
   border-color: var(--color-border);
 }
 
+.tag-category-more {
+  background: var(--color-surface-raised);
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
+}
+
+.tag-course-vorlesung, .tag-course-lecture {
+  background: var(--color-primary-subtle);
+  color: var(--color-primary);
+  border-color: var(--color-primary-glow);
+}
+
 .tag-course-praktikum {
-  background: var(--color-success-bg);
-  color: var(--color-success);
-  border-color: var(--color-success-border);
+  background: var(--color-surface-raised);
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
 }
 
 .tag-course-seminar {
-  background: var(--color-warning-bg);
-  color: var(--color-warning);
-  border-color: var(--color-warning-border);
+  background: var(--color-surface-raised);
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
 }
 
-.tag-course-exercise, .tag-course-uebung {
+.tag-course-übung, .tag-course-exercise, .tag-course-uebung {
   background: var(--color-surface-raised);
   color: var(--color-text-muted);
   border-color: var(--color-border);
@@ -300,20 +324,20 @@ function courseTypeClassKey(courseType: string): string {
 }
 
 .status-offen {
-  background: var(--color-surface);
+  background: var(--color-surface-raised);
   border-color: var(--color-border);
   color: var(--color-text-muted);
 }
 
 .status-belegt {
-  background: var(--color-surface);
-  border-color: var(--color-primary-light);
-  color: var(--color-primary-light);
+  background: var(--color-primary-subtle);
+  border-color: var(--color-primary-glow);
+  color: var(--color-primary);
 }
 
 .status-abgeschlossen {
-  background: var(--color-surface);
-  border-color: var(--color-primary);
+  background: var(--color-primary-subtle);
+  border-color: var(--color-primary-glow);
   color: var(--color-primary);
 }
 

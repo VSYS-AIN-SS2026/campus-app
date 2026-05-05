@@ -51,6 +51,11 @@ export interface ModuleCategory {
   name: string
   color: string | null
   type: string | null
+export interface Category {
+  id: string
+  name: string
+  color: string
+  type: string
 }
 
 export type ModuleStatus = 'offen' | 'belegt' | 'abgeschlossen'
@@ -69,6 +74,7 @@ export interface ModuleEntry {
   language: string
   categories: ModuleCategory[]
   recommended_semester: number | null
+  categories: Category[]
   courses: Course[]
   module_status: ModuleStatus
 }
