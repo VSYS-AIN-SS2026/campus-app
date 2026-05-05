@@ -140,8 +140,18 @@ def coerce(key: str, value: str | None) -> object:
     if value is None or value == "":
         return None
     if key in NUMERIC_KEYS:
-        m = re.match(r"-?\d+", value)
-        return int(m.group(0)) if m else value
+        # Pure integer
+        m = re.match(r"^-?\d+$", value)
+        if m:
+            return int(value)
+        # German decimal ("0,15", ",15") — APEX serves a few of these for SWS.
+        # SQL columns are INTEGER NOT NULL, so we round-down to int.
+        m = re.match(r"^-?\d*,\d+$", value)
+        if m:
+            return int(float(value.replace(",", ".")))
+        # Strip leading non-digit junk and try again ("> 15" -> 15)
+        m = re.search(r"-?\d+", value)
+        return int(m.group(0)) if m else 0
     if key in LIST_KEYS:
         return [v.strip() for v in value.split(",") if v.strip()]
     return value

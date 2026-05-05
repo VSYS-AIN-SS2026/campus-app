@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import type { Category, ModuleEntry, Course, ModuleStatus } from '../types'
+import type { Category, Course, ExamCode, ModuleEntry, ModuleStatus } from '../types'
 
 const props = defineProps<{
   module: ModuleEntry | null
@@ -115,10 +115,54 @@ function kindOf(k: string, v: unknown): DetailKind {
   return 'text'
 }
 
+// Keys we render explicitly via the structured Kurzinfo / Lernziele /
+// Kompetenzen / Literatur / Bezug sections — keep them out of the
+// fallback `buildItems` rendering to avoid double-display.
+const HANDLED_DETAIL_KEYS = new Set([
+  'coordinator_name', 'coordinator_login', 'specialization_track', 'module_type',
+  'language_primary', 'language_secondary', 'language_secondary_optional',
+  'start_semester_min', 'start_semester_max', 'semester_count', 'start_phases',
+  'contact_hours', 'self_study_hours', 'ects_total_computed',
+  'learning_formats', 'learning_formats_misc',
+  'exam_graded', 'exam_ungraded', 'performance_record',
+  'grade_composition_rule', 'grade_composition_misc',
+  'prerequisites_text', 'prerequisites_codes',
+  'needed_for_text', 'needed_for_codes',
+  'combine_with_text', 'combine_with_codes',
+  'learning_objectives', 'personal_competencies', 'literature',
+  'source_apex_mhid', 'source_apex_mid', 'source_handbook_label', 'last_updated',
+])
+
 function buildItems(details: Record<string, unknown>): DetailItem[] {
   return Object.entries(details)
-    .filter(([, v]) => v != null && v !== '')
+    .filter(([k, v]) => v != null && v !== '' && !HANDLED_DETAIL_KEYS.has(k))
     .map(([k, v]) => ({ key: k, label: formatKey(k), kind: kindOf(k, v), raw: v }))
+}
+
+const EXAM_FORM_LABELS: Record<string, string> = {
+  K: 'Klausur', M: 'mündlich', H: 'Hausarbeit', R: 'Referat',
+  SP: 'Studienprojekt', TE: 'Testate', LP: 'Laborprotokoll',
+  PR: 'Präsentation', AB: 'Ausarbeitung',
+}
+
+function formatExam(code: ExamCode | null | undefined): string | null {
+  if (!code) return null
+  if (!code.form) return code.raw
+  if (code.form === 'K' && code.duration_min) {
+    return `${code.raw} (${code.duration_min} Min Klausur)`
+  }
+  const formLabel = EXAM_FORM_LABELS[code.form]
+  if (formLabel && !code.components) {
+    return `${code.raw} (${formLabel})`
+  }
+  return code.raw
+}
+
+function moduleTypeLabel(m: ModuleEntry): string {
+  const t = m.details?.module_type
+  if (t === 'PM') return 'Pflichtmodul (PM)'
+  if (t === 'WPM') return 'Wahlpflichtmodul (WPM)'
+  return m.is_mandatory ? 'Pflichtmodul (PM)' : 'Wahlpflichtmodul (WPM)'
 }
 
 function objectEntries(raw: unknown): [string, unknown][] {
@@ -290,6 +334,40 @@ function toggleCategory(categoryId: string) {
                 <span class="text-muted">· ab {{ module.start_semester }}</span>
               </div>
 
+              <section class="section">
+                <div class="section-header">
+                  <h3 class="section-title">Kurzinfo</h3>
+                </div>
+                <dl class="kurzinfo-list">
+                  <div class="kurzinfo-row">
+                    <dt>Modultyp</dt>
+                    <dd>{{ moduleTypeLabel(module) }}</dd>
+                  </div>
+                  <div class="kurzinfo-row">
+                    <dt>Sprache</dt>
+                    <dd>{{ module.language || '—' }}</dd>
+                  </div>
+                  <div v-if="module.details?.start_phases?.length" class="kurzinfo-row">
+                    <dt>Start-Phase</dt>
+                    <dd>{{ module.details.start_phases.join(' / ') }}</dd>
+                  </div>
+                  <div v-if="module.details?.contact_hours != null || module.details?.self_study_hours != null" class="kurzinfo-row">
+                    <dt>Workload</dt>
+                    <dd>
+                      {{ module.details.contact_hours ?? '—' }} h Kontaktzeit + {{ module.details.self_study_hours ?? '—' }} h Selbststudium
+                      <span v-if="module.details.learning_formats_misc" class="text-muted"> · sonstiges: {{ module.details.learning_formats_misc }}</span>
+                    </dd>
+                  </div>
+                  <div class="kurzinfo-row">
+                    <dt>Prüfung</dt>
+                    <dd>
+                      {{ formatExam(module.details?.exam_graded) ?? formatExam(module.details?.exam_ungraded) ?? formatExam(module.details?.performance_record) ?? '—' }}
+                      <span v-if="module.details?.grade_composition_misc" class="text-muted"> · sonstiges: {{ module.details.grade_composition_misc }}</span>
+                    </dd>
+                  </div>
+                </dl>
+              </section>
+
               <section v-if="module.courses.length" class="section">
                 <div class="section-header">
                   <h3 class="section-title">Lehrveranstaltungen</h3>
@@ -312,9 +390,53 @@ function toggleCategory(categoryId: string) {
                 </div>
               </section>
 
+              <section v-if="module.details?.learning_objectives" class="section">
+                <div class="section-header">
+                  <h3 class="section-title">Lernziele</h3>
+                </div>
+                <p class="prose">{{ module.details.learning_objectives }}</p>
+              </section>
+
+              <section v-if="module.details?.personal_competencies" class="section">
+                <div class="section-header">
+                  <h3 class="section-title">Personale Kompetenzen</h3>
+                </div>
+                <p class="prose">{{ module.details.personal_competencies }}</p>
+              </section>
+
+              <section v-if="module.details?.literature" class="section">
+                <div class="section-header">
+                  <h3 class="section-title">Literatur</h3>
+                </div>
+                <p class="prose">{{ module.details.literature }}</p>
+              </section>
+
+              <section
+                v-if="module.details?.prerequisites_text || module.details?.needed_for_codes?.length || module.details?.combine_with_codes?.length"
+                class="section"
+              >
+                <div class="section-header">
+                  <h3 class="section-title">Bezug zu anderen Modulen</h3>
+                </div>
+                <dl class="kurzinfo-list">
+                  <div v-if="module.details.prerequisites_text" class="kurzinfo-row">
+                    <dt>Voraussetzungen</dt>
+                    <dd>{{ module.details.prerequisites_text }}</dd>
+                  </div>
+                  <div v-if="module.details.needed_for_codes?.length" class="kurzinfo-row">
+                    <dt>Erforderlich für</dt>
+                    <dd>{{ module.details.needed_for_codes.join(', ') }}</dd>
+                  </div>
+                  <div v-if="module.details.combine_with_codes?.length" class="kurzinfo-row">
+                    <dt>Sinnvoll zu kombinieren mit</dt>
+                    <dd>{{ module.details.combine_with_codes.join(', ') }}</dd>
+                  </div>
+                </dl>
+              </section>
+
               <section v-if="moduleItems.length" class="section">
                 <div class="section-header">
-                  <h3 class="section-title">Details</h3>
+                  <h3 class="section-title">Weitere Details</h3>
                 </div>
                 <div class="details-stack">
                   <template v-for="item in moduleItems" :key="item.key">
@@ -912,9 +1034,34 @@ function toggleCategory(categoryId: string) {
   line-height: 1.55; word-break: break-word;
 }
 
+.kurzinfo-list { display: grid; gap: 0; margin: 0; }
+.kurzinfo-row {
+  display: grid; grid-template-columns: minmax(7rem, max-content) 1fr;
+  column-gap: 14px; padding: 8px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.kurzinfo-row:last-child { border-bottom: 0; }
+.kurzinfo-row dt {
+  font-size: .72rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .07em; color: var(--color-text-muted);
+}
+.kurzinfo-row dd {
+  margin: 0; font-size: .88rem; color: var(--color-text);
+  line-height: 1.55; word-break: break-word;
+}
+
+.prose {
+  margin: 0; font-size: .9rem; color: var(--color-text);
+  line-height: 1.65; white-space: pre-wrap;
+}
+
 @media (max-width: 640px) {
   .status-grid {
     grid-template-columns: 1fr;
+  }
+  .kurzinfo-row {
+    grid-template-columns: 1fr;
+    row-gap: 4px;
   }
 }
 </style>
