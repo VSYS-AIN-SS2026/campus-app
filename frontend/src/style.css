@@ -1,46 +1,120 @@
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 16px;
   line-height: 1.5;
   font-weight: 400;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
 
-  --color-primary:       #6366f1;
-  --color-primary-glow:  rgba(99, 102, 241, 0.2);
-  --color-primary-subtle:rgba(99, 102, 241, 0.1);
+  --color-primary:        #005ca9;
+  --color-primary-dark:   #00457f;
+  --color-primary-light:  #2f79b8;
+  --color-primary-glow:   #2f79b833;
 
-  --color-text:         #f1f5f9;
-  --color-text-muted:   #94a3b8;
-  --color-bg:           #0f1117;
-  --color-surface:      #1a1d27;
-  --color-surface-raised:#23273a;
-  --color-border:       #2d3148;
+  --color-text:           #e6edf5;
+  --color-text-muted:     #9cb1c7;
+  --color-bg:             #0f1824;
+  --color-surface:        #172334;
+  --color-surface-raised: #213247;
+  --color-border:         #30465f;
+
+  --font-size-xs:   0.75rem;
+  --font-size-sm:   0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg:   1.125rem;
+  --font-size-xl:   1.375rem;
+  --font-size-2xl:  1.75rem;
+
+  --radius: 8px;
+  --radius-control: 10px;
+  --shadow: 0 10px 24px #0a122033, 0 2px 6px #0a122026;
+
+  --color-error:          #79a8cf;
+  --color-error-bg:       #1b2a3d;
+  --color-error-border:   #3f6286;
+
+  --color-warning:        #90b8da;
+  --color-warning-bg:     #1d2f44;
+  --color-warning-border: #4d7095;
+
+  --color-success:        #a6c9e6;
+  --color-success-bg:     #20354c;
+  --color-success-border: #5b7fa5;
 }
 
 @media (prefers-color-scheme: light) {
   :root {
-    --color-text:          #1e293b;
-    --color-text-muted:    #64748b;
-    --color-bg:            #f8fafc;
-    --color-surface:       #ffffff;
-    --color-surface-raised:#f1f5f9;
-    --color-border:        #e2e8f0;
+    --color-primary:        #005ca9;
+    --color-primary-dark:   #00457f;
+    --color-primary-light:  #2f79b8;
+    --color-primary-glow:   #2f79b826;
+    --color-text:           #132236;
+    --color-text-muted:     #4a6079;
+    --color-bg:             #f3f7fb;
+    --color-surface:        #ffffff;
+    --color-surface-raised: #edf3f9;
+    --color-border:         #c9d9ea;
+
+    --color-error:          #356f9f;
+    --color-error-bg:       #eaf2f9;
+    --color-error-border:   #b8d0e6;
+
+    --color-warning:        #4b82b1;
+    --color-warning-bg:     #edf4fb;
+    --color-warning-border: #c5d9ec;
+
+    --color-success:        #2a5f8f;
+    --color-success-bg:     #e8f1f9;
+    --color-success-border: #b2cde4;
   }
 }
 
 *, *::before, *::after {
   box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 body {
-  margin: 0;
   min-height: 100vh;
   background-color: var(--color-bg);
   color: var(--color-text);
+  font-size: var(--font-size-base);
+  line-height: 1.6;
 }
 
-p { margin: 0; }
+p {
+  line-height: 1.65;
+  color: var(--color-text-muted);
+}
+
+h1 {
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--color-text);
+}
+
+h2 {
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+h3 {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+@media (max-width: 640px) {
+  :root {
+    --font-size-2xl: 1.4rem;
+    --font-size-xl:  1.15rem;
+    font-size: 15px;
+  }
+}
 
 #app {
   min-height: 100vh;
