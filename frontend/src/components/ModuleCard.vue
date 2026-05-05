@@ -12,6 +12,9 @@ const totalEcts = computed(() =>
   props.module.courses.reduce((s, c) => s + (c.ects ?? 0), 0)
 )
 
+const visibleCategories = computed(() => props.module.categories.slice(0, 3))
+const hiddenCategoryCount = computed(() => Math.max(props.module.categories.length - visibleCategories.value.length, 0))
+
 function statusLabel(status: ModuleStatus): string {
   switch (status) {
     case 'belegt':
@@ -53,6 +56,20 @@ function statusLabel(status: ModuleStatus): string {
           {{ module.language }}
         </span>
 
+        <template v-if="module.categories.length">
+          <span
+            v-for="category in visibleCategories"
+            :key="category.id"
+            class="tag tag-category"
+          >
+            {{ category.name }}
+          </span>
+
+          <span v-if="hiddenCategoryCount" class="tag tag-category-more">
+            +{{ hiddenCategoryCount }}
+          </span>
+        </template>
+
         <template v-if="module.courses.length">
           <span
             v-for="c in module.courses"
@@ -92,19 +109,19 @@ function statusLabel(status: ModuleStatus): string {
 
 .module-card:hover {
   border-color: var(--color-primary);
-  box-shadow: 0 2px 12px rgba(99, 102, 241, 0.12);
+  box-shadow: 0 2px 12px var(--color-primary-glow);
 }
 
 .module-card-offen {
-  border-left: 3px solid rgba(148, 163, 184, 0.75);
+  border-left: 3px solid var(--color-border);
 }
 
 .module-card-belegt {
-  border-left: 3px solid rgba(245, 158, 11, 0.85);
+  border-left: 3px solid var(--color-primary);
 }
 
 .module-card-abgeschlossen {
-  border-left: 3px solid rgba(16, 185, 129, 0.85);
+  border-left: 3px solid var(--color-primary);
 }
 
 .card-left { flex-shrink: 0; padding-top: 2px; }
@@ -156,51 +173,64 @@ function statusLabel(status: ModuleStatus): string {
 }
 
 .tag-mandatory {
-  background: rgba(16, 185, 129, 0.12);
-  color: #10b981;
-  border-color: rgba(16, 185, 129, 0.25);
+  background: var(--color-primary-subtle);
+  color: var(--color-primary);
+  border-color: var(--color-primary-glow);
 }
 
 .tag-optional {
-  background: rgba(245, 158, 11, 0.12);
-  color: #f59e0b;
-  border-color: rgba(245, 158, 11, 0.25);
+  background: var(--color-surface-raised);
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
 }
 
 .tag-specialization {
-  background: rgba(168, 85, 247, 0.12);
-  color: #a855f7;
-  border-color: rgba(168, 85, 247, 0.25);
+  background: var(--color-primary-subtle);
+  color: var(--color-primary);
+  border-color: var(--color-primary-glow);
 }
 
 .tag-language {
-  background: rgba(59, 130, 246, 0.12);
-  color: #3b82f6;
-  border-color: rgba(59, 130, 246, 0.25);
+  background: var(--color-primary-subtle);
+  color: var(--color-primary);
+  border-color: var(--color-primary-glow);
+}
+
+.tag-category {
+  border-style: solid;
+  color: var(--color-text-muted);
+  background: var(--color-surface-raised);
+  border-color: var(--color-border);
+}
+
+.tag-category-more {
+  background: var(--color-surface-raised);
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
 }
 
 .tag-course-vorlesung, .tag-course-lecture {
-  background: rgba(99, 102, 241, 0.1);
+  background: var(--color-primary-subtle);
   color: var(--color-primary);
-  border-color: rgba(99, 102, 241, 0.2);
+  border-color: var(--color-primary-glow);
 }
 
 .tag-course-praktikum {
-  background: rgba(16, 185, 129, 0.08);
-  color: #10b981;
-  border-color: rgba(16, 185, 129, 0.18);
+  background: var(--color-surface-raised);
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
 }
 
 .tag-course-seminar {
-  background: rgba(245, 158, 11, 0.08);
-  color: #f59e0b;
-  border-color: rgba(245, 158, 11, 0.18);
+  background: var(--color-surface-raised);
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
 }
 
 .tag-course-übung, .tag-course-exercise, .tag-course-uebung {
-  background: rgba(236, 72, 153, 0.08);
-  color: #ec4899;
-  border-color: rgba(236, 72, 153, 0.18);
+  background: var(--color-surface-raised);
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
 }
 
 .card-right {
@@ -221,21 +251,21 @@ function statusLabel(status: ModuleStatus): string {
 }
 
 .status-offen {
-  background: rgba(148, 163, 184, 0.12);
-  border-color: rgba(148, 163, 184, 0.2);
-  color: #94a3b8;
+  background: var(--color-surface-raised);
+  border-color: var(--color-border);
+  color: var(--color-text-muted);
 }
 
 .status-belegt {
-  background: rgba(245, 158, 11, 0.12);
-  border-color: rgba(245, 158, 11, 0.25);
-  color: #f59e0b;
+  background: var(--color-primary-subtle);
+  border-color: var(--color-primary-glow);
+  color: var(--color-primary);
 }
 
 .status-abgeschlossen {
-  background: rgba(16, 185, 129, 0.12);
-  border-color: rgba(16, 185, 129, 0.25);
-  color: #10b981;
+  background: var(--color-primary-subtle);
+  border-color: var(--color-primary-glow);
+  color: var(--color-primary);
 }
 
 .ects-badge {
