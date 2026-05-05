@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
-import { supabase, supabaseConfigError } from './supabase'
+import type { User } from '@supabase/supabase-js'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { magicLinkRedirectTo, supabase, supabaseConfigError } from './supabase'
 import SpoSelector from './components/SpoSelector.vue'
 import ModuleList from './components/ModuleList.vue'
 import ModuleDrawer from './components/ModuleDrawer.vue'
@@ -113,7 +114,18 @@ const profileError = ref<string | null>(null)
 const profileInfo = ref<string | null>(null)
 const profileSaving = ref(false)
 const restoringProfileSelection = ref(false)
-const themeMode = ref<ThemeMode>(getInitialThemeMode())
+const authLoading = ref(true)
+const authSending = ref(false)
+const authEmail = ref('')
+const authFirstName = ref('')
+const authLastName = ref('')
+const authError = ref<string | null>(null)
+const authInfo = ref<string | null>(null)
+const currentUser = ref<User | null>(null)
+const loadedUserId = ref<string | null>(null)
+const pendingMagicLinkNamesStorageKey = 'pendingMagicLinkNamesByEmail'
+
+let authUnsubscribe: (() => void) | null = null
 
 // --- dropdown items ---
 const studyProgramItems = computed(() =>
@@ -141,10 +153,229 @@ const selectionDirty = computed(() =>
 const canEditModuleStatuses = computed(() =>
   !selectionDirty.value && !!demoUserProfile.value?.spo_id
 )
+const currentUserEmail = computed(() => currentUser.value?.email ?? '')
+function getTrimmedString(value: unknown) {
+  return typeof value === 'string' ? value.trim() : ''
+}
+
+function readPendingMagicLinkNames() {
+  const rawValue = localStorage.getItem(pendingMagicLinkNamesStorageKey)
+
+  if (!rawValue) {
+    return {} as Record<string, { firstName: string, lastName: string }>
+  }
+
+  try {
+    const parsedValue = JSON.parse(rawValue) as unknown
+
+    if (!parsedValue || typeof parsedValue !== 'object' || Array.isArray(parsedValue)) {
+      localStorage.removeItem(pendingMagicLinkNamesStorageKey)
+      return {} as Record<string, { firstName: string, lastName: string }>
+    }
+
+    return parsedValue as Record<string, { firstName: string, lastName: string }>
+  }
+  catch {
+    localStorage.removeItem(pendingMagicLinkNamesStorageKey)
+    return {} as Record<string, { firstName: string, lastName: string }>
+  }
+}
+
+function persistPendingMagicLinkName(email: string, firstName: string, lastName: string) {
+  const pendingNames = readPendingMagicLinkNames()
+  pendingNames[email] = { firstName, lastName }
+  localStorage.setItem(pendingMagicLinkNamesStorageKey, JSON.stringify(pendingNames))
+}
+
+function popPendingMagicLinkName(email: string) {
+  const pendingNames = readPendingMagicLinkNames()
+  const pendingName = pendingNames[email]
+
+  if (!pendingName) {
+    return null
+  }
+
+  delete pendingNames[email]
+
+  if (Object.keys(pendingNames).length) {
+    localStorage.setItem(pendingMagicLinkNamesStorageKey, JSON.stringify(pendingNames))
+  }
+  else {
+    localStorage.removeItem(pendingMagicLinkNamesStorageKey)
+  }
+
+  return pendingName
+}
+
+function getFullNameFromMetadata(metadata: Record<string, unknown> | null | undefined) {
+  if (!metadata) {
+    return ''
+  }
+
+  const firstName = getTrimmedString(metadata.first_name) || getTrimmedString(metadata.given_name)
+  const lastName = getTrimmedString(metadata.last_name) || getTrimmedString(metadata.family_name)
+
+  if (firstName && lastName) {
+    return `${firstName} ${lastName}`
+  }
+
+  return firstName || lastName || getTrimmedString(metadata.full_name) || getTrimmedString(metadata.name)
+}
+
+async function syncMissingAuthMetadataName(user: User) {
+  if (!supabase) {
+    return user
+  }
+
+  const metadataName = getFullNameFromMetadata(user.user_metadata as Record<string, unknown> | undefined)
+
+  if (metadataName) {
+    return user
+  }
+
+  const normalizedEmail = user.email?.trim().toLowerCase()
+
+  if (!normalizedEmail) {
+    return user
+  }
+
+  const pendingName = popPendingMagicLinkName(normalizedEmail)
+
+  if (!pendingName) {
+    return user
+  }
+
+  const fullName = `${pendingName.firstName} ${pendingName.lastName}`.trim()
+  const { data, error: updateError } = await supabase.auth.updateUser({
+    data: {
+      first_name: pendingName.firstName,
+      last_name: pendingName.lastName,
+      full_name: fullName,
+    },
+  })
+
+  if (updateError) {
+    persistPendingMagicLinkName(normalizedEmail, pendingName.firstName, pendingName.lastName)
+    return user
+  }
+
+  return data.user ?? user
+}
+
+const currentUserFullName = computed(() => {
+  const metadataName = getFullNameFromMetadata(currentUser.value?.user_metadata as Record<string, unknown> | undefined)
+
+  if (metadataName) {
+    return metadataName
+  }
+
+  const identityName = getFullNameFromMetadata(
+    currentUser.value?.identities?.[0]?.identity_data as Record<string, unknown> | undefined
+  )
+
+  return identityName
+})
+const profileName = computed(() =>
+  currentUserFullName.value || demoUserProfile.value?.full_name?.trim() || currentUserEmail.value || 'Student'
+)
 
 function clearSelectionMessages() {
   profileError.value = null
   profileInfo.value = null
+}
+
+function resetAppState() {
+  studyPrograms.value = []
+  allSpos.value = []
+  allHandbooks.value = []
+  demoUserProfile.value = null
+  modules.value = []
+  selectedModule.value = null
+  loading.value = false
+  error.value = null
+  moduleStatusError.value = null
+  profileError.value = null
+  profileInfo.value = null
+  profileSaving.value = false
+  savingModuleId.value = null
+  loadedUserId.value = null
+}
+
+async function sendMagicLink() {
+  authError.value = null
+  authInfo.value = null
+
+  if (!supabase) {
+    authError.value = supabaseConfigError
+    return
+  }
+
+  const normalizedEmail = authEmail.value.trim().toLowerCase()
+
+  if (!normalizedEmail) {
+    authError.value = 'Bitte gib eine E-Mail-Adresse ein.'
+    return
+  }
+
+  const normalizedFirstName = authFirstName.value.trim()
+  const normalizedLastName = authLastName.value.trim()
+
+  if (!normalizedFirstName) {
+    authError.value = 'Bitte gib deinen Vornamen ein.'
+    return
+  }
+
+  if (!normalizedLastName) {
+    authError.value = 'Bitte gib deinen Nachnamen ein.'
+    return
+  }
+
+  authSending.value = true
+
+  const { error: err } = await supabase.auth.signInWithOtp({
+    email: normalizedEmail,
+    options: {
+      emailRedirectTo: magicLinkRedirectTo,
+      shouldCreateUser: true,
+      data: {
+        first_name: normalizedFirstName,
+        last_name: normalizedLastName,
+        full_name: `${normalizedFirstName} ${normalizedLastName}`,
+      },
+    },
+  })
+
+  authSending.value = false
+
+  if (err) {
+    const details = [err.message, err.code, err.status?.toString()].filter(Boolean).join(' | ')
+    authError.value = details
+      ? `Magic-Link konnte nicht versendet werden: ${details}`
+      : 'Magic-Link konnte nicht versendet werden: Unbekannter Supabase-Fehler.'
+    return
+  }
+
+  persistPendingMagicLinkName(normalizedEmail, normalizedFirstName, normalizedLastName)
+  authInfo.value = `Magic-Link versendet an ${normalizedEmail}. Öffne die E-Mail und klicke auf den Link.`
+}
+
+async function signOut() {
+  authError.value = null
+  authInfo.value = null
+
+  if (!supabase) {
+    return
+  }
+
+  const { error: err } = await supabase.auth.signOut()
+
+  if (err) {
+    authError.value = 'Abmelden ist fehlgeschlagen.'
+    return
+  }
+
+  currentUser.value = null
+  resetAppState()
 }
 
 function setModuleStatus(moduleId: string, status: ModuleStatus) {
@@ -371,6 +602,13 @@ async function saveStudyProfileSelection() {
 }
 
 async function fetchInitialData() {
+  if (!currentUser.value) {
+    return
+  }
+
+  if (loadedUserId.value === currentUser.value.id) {
+    return
+  }
   loading.value = true
   error.value = null
   profileError.value = null
@@ -443,6 +681,8 @@ async function fetchInitialData() {
   if (selectedSpoId.value) {
     await fetchModulesForSpo(selectedSpoId.value, beginModuleRequest())
   }
+
+  loadedUserId.value = currentUser.value.id
 }
 
 function shouldReplaceModule(existingModule: ModuleEntry, nextModule: ModuleEntry) {
@@ -583,12 +823,60 @@ watch(selectedSpoId, (id) => {
   }
 })
 
-watch(themeMode, (mode) => {
-  localStorage.setItem(THEME_STORAGE_KEY, mode)
-  applyThemeMode(mode)
-}, { immediate: true })
+async function initAuth() {
+  authError.value = null
+  authInfo.value = null
 
-fetchInitialData()
+  if (!supabase) {
+    authLoading.value = false
+    authError.value = supabaseConfigError
+    return
+  }
+
+  const { data, error: sessionError } = await supabase.auth.getSession()
+
+  if (sessionError) {
+    authError.value = 'Session konnte nicht geladen werden.'
+    authLoading.value = false
+    return
+  }
+
+  const sessionUser = data.session?.user ?? null
+  currentUser.value = sessionUser ? await syncMissingAuthMetadataName(sessionUser) : null
+  authLoading.value = false
+
+  if (currentUser.value) {
+    void fetchInitialData()
+  }
+
+  const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+    void (async () => {
+      currentUser.value = session?.user ?? null
+      authError.value = null
+
+      if (currentUser.value) {
+        currentUser.value = await syncMissingAuthMetadataName(currentUser.value)
+        loadedUserId.value = null
+        await fetchInitialData()
+        return
+      }
+
+      resetAppState()
+    })()
+  })
+
+  authUnsubscribe = () => {
+    listener.subscription.unsubscribe()
+  }
+}
+
+onMounted(() => {
+  void initAuth()
+})
+
+onUnmounted(() => {
+  authUnsubscribe?.()
+})
 </script>
 
 <template>
@@ -599,140 +887,206 @@ fetchInitialData()
           <img src="/favicon.ico" alt="HTWG Logo" class="brand-logo" />
           <span class="brand-name">Campus App</span>
         </div>
-
-        <button
-          type="button"
-          class="theme-toggle"
-          @click="themeMode = themeMode === 'light' ? 'dark' : 'light'"
-        >
-          {{ themeMode === 'light' ? 'Dark mode' : 'Light mode' }}
-        </button>
+        <div class="header-actions">
+          <span v-if="currentUser" class="session-email">{{ currentUserEmail }}</span>
+          <button
+            v-if="currentUser"
+            type="button"
+            class="ghost-button"
+            @click="signOut"
+          >
+            Abmelden
+          </button>
+        </div>
       </div>
     </header>
 
     <main class="app-main">
-      <div class="page-header">
-        <h1 class="page-title">Meine Module</h1>
-        <p class="page-subtitle">Wähle deinen Studiengang und die SPO, speichere die Auswahl im Demo-Profil und sieh direkt die zugehörigen Module.</p>
-      </div>
-
-      <div class="profile-grid">
-        <section class="profile-panel">
-          <span class="panel-eyebrow">Demo-Profil</span>
-          <h2 class="panel-title">Alex Beispiel</h2>
-
-          <div class="profile-meta">
-            <div class="profile-meta-item">
-              <span class="meta-label">E-Mail</span>
-              <span class="meta-value">{{ demoUserProfile?.email ?? 'alex.beispiel@htwg-konstanz.de' }}</span>
-            </div>
-            <div class="profile-meta-item">
-              <span class="meta-label">Hochschule</span>
-              <span class="meta-value">HTWG Konstanz</span>
-            </div>
-          </div>
-        </section>
-
-        <section class="profile-panel">
-          <span class="panel-eyebrow">Gespeicherte Auswahl</span>
-          <h2 class="panel-title">Studiengang und SPO</h2>
-
-          <p class="profile-selection" :class="savedStudyProgram ? 'profile-selection-active' : ''">
-            {{ savedStudyProgram ? getStudyProgramLabel(savedStudyProgram) : 'Noch kein Studiengang gespeichert.' }}
-          </p>
-          <p class="profile-selection profile-selection-secondary" :class="savedSpo ? 'profile-selection-active' : ''">
-            {{ savedSpo ? getSpoLabel(savedSpo) : savedStudyProgram ? 'Noch keine SPO gespeichert.' : 'Bitte zuerst eine Auswahl treffen.' }}
-          </p>
-
-          <p class="helper-copy">
-            {{ selectionDirty ? 'Du hast Änderungen, die noch nicht im Demo-Profil gespeichert sind.' : 'Auswahl und Demo-Profil sind aktuell gleich.' }}
-          </p>
-        </section>
-      </div>
-
-      <div class="controls-bar">
-        <SpoSelector
-          v-model="selectedStudyProgramId"
-          :items="studyProgramItems"
-          :loading="loading && !studyPrograms.length"
-          label="Studiengang"
-          placeholder="— Studiengang auswählen —"
-        />
-        <SpoSelector
-          v-model="selectedSpoId"
-          :items="spoItems"
-          :loading="false"
-          label="SPO"
-          placeholder="— SPO auswählen —"
-        />
-      </div>
-
-      <div class="selection-toolbar">
-        <div class="selection-toolbar-inner">
-          <div class="selection-toolbar-copy">
-            <p class="selection-toolbar-title">Auswahl speichern</p>
-            <p class="helper-copy">
-              Studiengang und SPO werden für den Demo-User in <code>users</code> gespeichert.
-            </p>
-          </div>
-
-          <button
-            class="save-button"
-            type="button"
-            :disabled="profileSaving || !selectedStudyProgramId || !selectionDirty"
-            @click="saveStudyProfileSelection"
-          >
-            {{ profileSaving ? 'Wird gespeichert…' : 'Im Demo-Profil speichern' }}
-          </button>
+      <template v-if="authLoading">
+        <div class="loading-state">
+          <div class="spinner" />
+          <p>Session wird geladen…</p>
         </div>
-      </div>
-
-      <div v-if="profileError" class="error-banner">
-        {{ profileError }}
-      </div>
-
-      <div v-if="profileInfo" class="success-banner">
-        {{ profileInfo }}
-      </div>
-
-      <div v-if="error" class="error-banner">
-        {{ error }}
-      </div>
-
-      <div v-if="moduleStatusError" class="info-banner">
-        {{ moduleStatusError }}
-      </div>
-
-      <div v-if="categoryError" class="info-banner">
-        {{ categoryError }}
-      </div>
-
-      <div v-if="selectedSpoId && !canEditModuleStatuses" class="info-banner">
-        Speichere zuerst die aktuelle Studiengang- und SPO-Auswahl im Demo-Profil, damit Modulstatus und Kategorien persistent geändert werden können.
-      </div>
-
-      <template v-if="selectedSpoId && !loading">
-        <ModuleList :modules="modules" @select="selectedModule = $event" />
       </template>
 
-      <div v-else-if="loading" class="loading-state">
-        <div class="spinner" />
-        <p>Wird geladen…</p>
-      </div>
+      <template v-else-if="!currentUser">
+        <section class="auth-card">
+          <span class="panel-eyebrow">Registrierung & Login</span>
+          <h1 class="page-title">Anmelden per Magic Link</h1>
+          <p class="page-subtitle">
+            Gib deine E-Mail-Adresse ein – wir schicken dir einen Link zum Einloggen.
+          </p>
 
-      <div v-else-if="!selectedStudyProgramId" class="empty-state">
-        <div class="empty-icon"></div>
-        <p>Wähle einen Studiengang aus, um fortzufahren.</p>
-      </div>
+          <form class="auth-form" @submit.prevent="sendMagicLink">
+            <label class="meta-label" for="magic-link-first-name">Vorname</label>
+            <input
+              id="magic-link-first-name"
+              v-model="authFirstName"
+              class="auth-input"
+              type="text"
+              autocomplete="given-name"
+              placeholder="Vorname"
+              required
+            >
+            <label class="meta-label" for="magic-link-last-name">Nachname</label>
+            <input
+              id="magic-link-last-name"
+              v-model="authLastName"
+              class="auth-input"
+              type="text"
+              autocomplete="family-name"
+              placeholder="Nachname"
+              required
+            >
+            <label class="meta-label" for="magic-link-email">E-Mail</label>
+            <input
+              id="magic-link-email"
+              v-model="authEmail"
+              class="auth-input"
+              type="email"
+              autocomplete="email"
+              placeholder="name@beispiel.de"
+              required
+            >
+            <button class="save-button auth-submit" type="submit" :disabled="authSending">
+              {{ authSending ? 'Wird versendet…' : 'Magic Link senden' }}
+            </button>
+          </form>
 
-      <div v-else-if="!selectedSpoId" class="empty-state">
-        <div class="empty-icon"></div>
-        <p>Wähle eine SPO aus, um die zugehörigen Module anzuzeigen.</p>
-      </div>
+          <p class="helper-copy">
+            Redirect URL: <code>{{ magicLinkRedirectTo }}</code>
+          </p>
+        </section>
+
+        <div v-if="authError" class="error-banner">
+          ⚠️ {{ authError }}
+        </div>
+
+        <div v-if="authInfo" class="success-banner">
+          {{ authInfo }}
+        </div>
+      </template>
+
+      <template v-else>
+        <div class="page-header">
+          <h1 class="page-title">Meine Module</h1>
+          <p class="page-subtitle">Wähle deinen Studiengang und die SPO, speichere die Auswahl im Demo-Profil und sieh direkt die zugehörigen Module.</p>
+        </div>
+
+        <div class="profile-grid">
+          <section class="profile-panel">
+            <span class="panel-eyebrow">Demo-Profil</span>
+            <h2 class="panel-title">Alex Beispiel</h2>
+
+            <div class="profile-meta">
+              <div class="profile-meta-item">
+                <span class="meta-label">E-Mail</span>
+                <span class="meta-value">{{ demoUserProfile?.email ?? 'alex.beispiel@htwg-konstanz.de' }}</span>
+              </div>
+              <div class="profile-meta-item">
+                <span class="meta-label">Hochschule</span>
+                <span class="meta-value">HTWG Konstanz</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="profile-panel">
+            <span class="panel-eyebrow">Gespeicherte Auswahl</span>
+            <h2 class="panel-title">Studiengang und SPO</h2>
+
+            <p class="profile-selection" :class="savedStudyProgram ? 'profile-selection-active' : ''">
+              {{ savedStudyProgram ? getStudyProgramLabel(savedStudyProgram) : 'Noch kein Studiengang gespeichert.' }}
+            </p>
+            <p class="profile-selection profile-selection-secondary" :class="savedSpo ? 'profile-selection-active' : ''">
+              {{ savedSpo ? getSpoLabel(savedSpo) : savedStudyProgram ? 'Noch keine SPO gespeichert.' : 'Bitte zuerst eine Auswahl treffen.' }}
+            </p>
+
+            <p class="helper-copy">
+              {{ selectionDirty ? 'Du hast Änderungen, die noch nicht im Demo-Profil gespeichert sind.' : 'Auswahl und Demo-Profil sind aktuell gleich.' }}
+            </p>
+          </section>
+        </div>
+
+        <div class="controls-bar">
+          <SpoSelector
+            v-model="selectedStudyProgramId"
+            :items="studyProgramItems"
+            :loading="loading && !studyPrograms.length"
+            label="Studiengang"
+            placeholder="— Studiengang auswählen —"
+          />
+          <SpoSelector
+            v-model="selectedSpoId"
+            :items="spoItems"
+            :loading="false"
+            label="SPO"
+            placeholder="— SPO auswählen —"
+          />
+        </div>
+
+        <div class="selection-toolbar">
+          <div class="selection-toolbar-inner">
+            <div class="selection-toolbar-copy">
+              <p class="selection-toolbar-title">Auswahl speichern</p>
+              <p class="helper-copy">
+                Studiengang und SPO werden für den Demo-User in <code>users</code> gespeichert.
+              </p>
+            </div>
+
+            <button
+              class="save-button"
+              type="button"
+              :disabled="profileSaving || !selectedStudyProgramId || !selectionDirty"
+              @click="saveStudyProfileSelection"
+            >
+              {{ profileSaving ? 'Wird gespeichert…' : 'Im Demo-Profil speichern' }}
+            </button>
+          </div>
+        </div>
+
+        <div v-if="profileError" class="error-banner">
+          {{ profileError }}
+        </div>
+
+        <div v-if="profileInfo" class="success-banner">
+          {{ profileInfo }}
+        </div>
+
+        <div v-if="error" class="error-banner">
+          {{ error }}
+        </div>
+
+        <div v-if="moduleStatusError" class="info-banner">
+          {{ moduleStatusError }}
+        </div>
+
+        <div v-if="categoryError" class="info-banner">
+           {{ categoryError }}
+        </div>
+
+        <div v-if="selectedSpoId && !canEditModuleStatuses" class="info-banner">
+           Speichere zuerst die aktuelle Studiengang- und SPO-Auswahl im Demo-Profil, damit Modulstatus und Kategorien persistent geändert werden können.
+        </div>
+
+        <template v-if="selectedSpoId && !loading">
+          <ModuleList :modules="modules" @select="selectedModule = $event" />
+        </template>
+
+        <div v-else-if="!selectedStudyProgramId" class="empty-state">
+          <div class="empty-icon"></div>
+          <p>Wähle einen Studiengang aus, um fortzufahren.</p>
+        </div>
+
+        <div v-else-if="!selectedSpoId" class="empty-state">
+          <div class="empty-icon"></div>
+          <p>Wähle eine SPO aus, um die zugehörigen Module anzuzeigen.</p>
+        </div>
+      </template>
     </main>
   </div>
 
   <ModuleDrawer
+    v-if="currentUser"
     :module="selectedModule"
     :categories="allCategories"
     :saving="savingModuleId === selectedModule?.id"
@@ -794,22 +1148,25 @@ fetchInitialData()
   letter-spacing: -0.01em;
 }
 
-.theme-toggle {
-  border: 1px solid var(--color-border);
-  background: var(--color-surface-raised);
-  color: var(--color-text);
-  border-radius: 999px;
-  padding: 8px 14px;
-  font: inherit;
-  font-size: 0.82rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, transform 0.15s;
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-.theme-toggle:hover {
-  border-color: var(--color-primary-light);
-  transform: translateY(-1px);
+.session-email {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.ghost-button {
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font: inherit;
+  cursor: pointer;
 }
 
 .app-main {
@@ -821,6 +1178,35 @@ fetchInitialData()
   display: flex;
   flex-direction: column;
   gap: 28px;
+}
+
+.auth-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.auth-input {
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  padding: 10px 12px;
+  font: inherit;
+}
+
+.auth-submit {
+  width: fit-content;
 }
 
 .page-header {

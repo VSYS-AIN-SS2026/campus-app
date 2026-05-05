@@ -1,0 +1,67 @@
+{
+  "id": "fixture-MAT1-01",
+  "code": "MAT1/01",
+  "name": "Mathematik 1",
+  "start_semester": "1",
+  "coordinator": "Axthelm, Rebekka [raxthelm]",
+  "version": 1,
+  "is_mandatory": true,
+  "is_specialization": false,
+  "specialization_name": null,
+  "language": "Deutsch",
+  "details": {
+    "coordinator_name": "Axthelm, Rebekka",
+    "coordinator_login": "raxthelm",
+    "specialization_track": null,
+    "module_type": "PM",
+    "language_primary": "Deutsch",
+    "language_secondary": null,
+    "language_secondary_optional": false,
+    "start_semester_min": 1,
+    "start_semester_max": 1,
+    "contact_hours": 90,
+    "self_study_hours": 150,
+    "ects_total_computed": 8.0,
+    "semester_count": 1,
+    "start_phases": [
+      "Sommersemester",
+      "Wintersemester"
+    ],
+    "learning_formats": [
+      "Vorlesung",
+      "Übung",
+      "Selbststudium"
+    ],
+    "learning_formats_misc": null,
+    "exam_graded": {
+      "form": "K",
+      "duration_min": 90,
+      "components": null,
+      "raw": "K90"
+    },
+    "exam_ungraded": null,
+    "performance_record": null,
+    "grade_composition_rule": "Note der benoteten Modul(teil)prüfung",
+    "grade_composition_misc": null,
+    "prerequisites_text": null,
+    "prerequisites_codes": [],
+    "needed_for_text": "STO/06,  SSS/10, COGR/AI3,  3DCV/AI5, nützlich für alle Vertiefungsrichtungen",
+    "needed_for_codes": [
+      "STO/06",
+      "SSS/10",
+      "COGR/AI3",
+      "3DCV/AI5"
+    ],
+    "combine_with_text": null,
+    "combine_with_codes": [],
+    "learning_objectives": "Die Studierenden beherrschen mathematische Symboliken und Schreibweisen und haben ein Verständnis für aussagelogische Schlussfolgerungen sowie mengentheoretische Strukturen. Sie sind in der Lage grundlegende Berechnungsmethoden der Linearen Algebra durchzuführen, um ingenieurtechnische Fragestellungen zu bearbeiten. Sie begreifen darüber hinaus die Bedeutung der verschiedenen Themen für ihr spezielles Studienfach.",
+    "personal_competencies": "Die Studierenden können mathematische Themen selbständig erarbeiten und Übungsaufgaben selbständig lösen. In den Übungen wird das Zusammenarbeiten von Studierenden gefördert, insbesondere dann wenn sie unterschiedlichen Kenntnisstand haben. Jeder Studierende wird motiviert, Buch über den eigenen Erfolg zu führen.",
+    "literature": "Axthelm, Unterlagen zur Mathematik 1 (Grundlagen und Lineare Algebra) auf http://www-home.htwg-konstanz.de/~raxthelm",
+    "source_apex_mhid": 188,
+    "source_apex_mid": 2202,
+    "source_handbook_label": "AIN SPO 3.1 (01.03.2020)",
+    "last_updated": "2018-10-30"
+  },
+  "created_at": null,
+  "updated_at": null
+}

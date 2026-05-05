@@ -1,0 +1,62 @@
+[
+  {
+    "id": "fixture-IPSS-15-c0",
+    "module_id": "fixture-IPSS-15",
+    "code": "IPSS",
+    "name": "Praktisches Studiensemester",
+    "course_type": "PSS",
+    "coordinator": "Professor*innen der Fakultät IN",
+    "ects": 27,
+    "sws": 0,
+    "details": {
+      "course_types": [
+        "PSS"
+      ],
+      "responsible_name": "Professor*innen der Fakultät IN",
+      "responsible_login": null,
+      "additional_teachers": null,
+      "exam_graded": null,
+      "exam_ungraded": null,
+      "performance_record": {
+        "form": "SP",
+        "duration_min": null,
+        "components": null,
+        "raw": "SP"
+      },
+      "syllabus": "Praktisches Studiensemester (PSS): Praktikum in einem Betrieb oder in einer anderen Einrichtung der Berufspraxis.",
+      "source_apex_cid": 10268
+    },
+    "created_at": null,
+    "updated_at": null
+  },
+  {
+    "id": "fixture-IPSS-15-c1",
+    "module_id": "fixture-IPSS-15",
+    "code": "IPSS-Ü",
+    "name": "Blockveranstaltungen zum PSS",
+    "course_type": "W",
+    "coordinator": "Lehrbeauftragte*r",
+    "ects": 3,
+    "sws": 1,
+    "details": {
+      "course_types": [
+        "W"
+      ],
+      "responsible_name": "Lehrbeauftragte*r",
+      "responsible_login": null,
+      "additional_teachers": null,
+      "exam_graded": null,
+      "exam_ungraded": null,
+      "performance_record": {
+        "form": "R",
+        "duration_min": null,
+        "components": null,
+        "raw": "R"
+      },
+      "syllabus": "Blockveranstaltungen zum PSS: Bestandsaufnahme – Wie schätze ich mich ein? Was sind meine Ziele? Wege in den Arbeitsmarkt – Wo findet man eine Stelle? Stelleanalyse Bewerbung Inhalte, Telefonbewerbung, Onlinebewerbung Vorstellungsgespräch Interview, Emotionale Intelligenz, Kommunikation Assesmentcenter Grundlagen der Studien-Berichtserstellung am Beispiel PSS-Bericht Erfahrungsberichte der Praktikanten (WIN/6).",
+      "source_apex_cid": 10269
+    },
+    "created_at": null,
+    "updated_at": null
+  }
+]

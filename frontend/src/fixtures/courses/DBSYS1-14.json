@@ -1,0 +1,60 @@
+[
+  {
+    "id": "fixture-DBSYS1-14-c0",
+    "module_id": "fixture-DBSYS1-14",
+    "code": "DBSYS1",
+    "name": "Datenbanksysteme 1",
+    "course_type": "V",
+    "coordinator": "Eck, Oliver [eck]",
+    "ects": 3,
+    "sws": 2,
+    "details": {
+      "course_types": [
+        "V"
+      ],
+      "responsible_name": "Eck, Oliver",
+      "responsible_login": "eck",
+      "additional_teachers": null,
+      "exam_graded": null,
+      "exam_ungraded": null,
+      "performance_record": null,
+      "syllabus": "Konzeptioneller Datenbankentwurf Relationales Datenbankmodell Normalformenlehre Anfragesprache SQL Einbettung SQL in Programmiersprachen",
+      "source_apex_cid": 10266
+    },
+    "created_at": null,
+    "updated_at": null
+  },
+  {
+    "id": "fixture-DBSYS1-14-c1",
+    "module_id": "fixture-DBSYS1-14",
+    "code": "DBSYS1-Ü",
+    "name": "Datenbanksysteme 1 Übungen",
+    "course_type": "LÜ",
+    "coordinator": "Eck, Oliver [eck]",
+    "ects": 2,
+    "sws": 2,
+    "details": {
+      "course_types": [
+        "LÜ"
+      ],
+      "responsible_name": "Eck, Oliver",
+      "responsible_login": "eck",
+      "additional_teachers": null,
+      "exam_graded": null,
+      "exam_ungraded": null,
+      "performance_record": {
+        "form": "SP",
+        "duration_min": null,
+        "components": [
+          "LP",
+          "AB"
+        ],
+        "raw": "SP (LP, AB)"
+      },
+      "syllabus": "Datenbankentwurf Datenbank-Abfragen mit SQL Datenbank-Programmierung",
+      "source_apex_cid": 10267
+    },
+    "created_at": null,
+    "updated_at": null
+  }
+]

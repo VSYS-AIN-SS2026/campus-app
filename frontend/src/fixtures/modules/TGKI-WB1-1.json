@@ -1,0 +1,66 @@
+{
+  "id": "fixture-TGKI-WB1-1",
+  "code": "TGKI/WB1-1",
+  "name": "Technische Grundlagen der KI",
+  "start_semester": "3",
+  "coordinator": "Franz, Matthias [mfranz]",
+  "version": 1,
+  "is_mandatory": false,
+  "is_specialization": true,
+  "specialization_name": null,
+  "language": "Deutsch",
+  "details": {
+    "coordinator_name": "Franz, Matthias",
+    "coordinator_login": "mfranz",
+    "specialization_track": "WB1",
+    "module_type": "WPM",
+    "language_primary": "Deutsch",
+    "language_secondary": null,
+    "language_secondary_optional": false,
+    "start_semester_min": 3,
+    "start_semester_max": 3,
+    "contact_hours": 75,
+    "self_study_hours": 105,
+    "ects_total_computed": 6.0,
+    "semester_count": 1,
+    "start_phases": [
+      "Sommersemester",
+      "Wintersemester"
+    ],
+    "learning_formats": [
+      "Vorlesung",
+      "Labor",
+      "Übung",
+      "Selbststudium"
+    ],
+    "learning_formats_misc": null,
+    "exam_graded": {
+      "form": "K",
+      "duration_min": 90,
+      "components": null,
+      "raw": "K90"
+    },
+    "exam_ungraded": null,
+    "performance_record": null,
+    "grade_composition_rule": "Note der benoteten Modul(teil)prüfung",
+    "grade_composition_misc": null,
+    "prerequisites_text": "ALG/01, ANA/05",
+    "prerequisites_codes": [
+      "ALG/01",
+      "ANA/05"
+    ],
+    "needed_for_text": null,
+    "needed_for_codes": [],
+    "combine_with_text": null,
+    "combine_with_codes": [],
+    "learning_objectives": "Die Studierenden kennen wichtige Arbeitsmethoden der digitalen Signalverarbeitung und der linearen Systemtheorie und können diese exemplarisch auf Sensoren und messtechnische Themen anwenden. Mit Hilfe dieser Methoden sind sie in der Lage, sich selbständig in Themen der Signalverarbeitung und Sensorik weiter zu vertiefen. Im Rahmen der für die Laborübungen anzufertigenden Protokolle lernen die Studierenden die Grundregeln des wissenschaftlichen Schreibens und die Benutzung der dafür benötigten Software.",
+    "personal_competencies": "Mit der Durchführung der Laborübungen wird auch die Fähigkeit zum Teamwork in kleinen Gruppen gestärkt.",
+    "literature": "Franz, M.O.: Unterlagen zu Sensoren, Signale und Systeme, HTWG Konstanz (in Moodle unter AIN/SSS) U. Karrenberg, „Signale – Prozesse – Systeme“, Springer, Heidelberg, 2005. A. V. Oppenheim, A. S. Willsky: Signale und Systeme, Wiley VCH, 2004.",
+    "source_apex_mhid": 247,
+    "source_apex_mid": 3624,
+    "source_handbook_label": "AIN SPO 4 (01.03.2024)",
+    "last_updated": "2018-10-30"
+  },
+  "created_at": null,
+  "updated_at": null
+}

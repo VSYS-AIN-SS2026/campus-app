@@ -1,0 +1,59 @@
+[
+  {
+    "id": "fixture-ARIN-AI1-c0",
+    "module_id": "fixture-ARIN-AI1",
+    "code": "ARIN",
+    "name": "Artificial Intelligence",
+    "course_type": "V",
+    "coordinator": "Bittel, Oliver [bittel]",
+    "ects": 3,
+    "sws": 2,
+    "details": {
+      "course_types": [
+        "V"
+      ],
+      "responsible_name": "Bittel, Oliver",
+      "responsible_login": "bittel",
+      "additional_teachers": null,
+      "exam_graded": null,
+      "exam_ungraded": null,
+      "performance_record": null,
+      "syllabus": "Was ist künstliche Intelligenz Problemlösen durch Suchen Wissen und Schließen Unsicheres Wissen und Schließen Maschinelles Lernen",
+      "source_apex_cid": 10282
+    },
+    "created_at": null,
+    "updated_at": null
+  },
+  {
+    "id": "fixture-ARIN-AI1-c1",
+    "module_id": "fixture-ARIN-AI1",
+    "code": "ARIN-Ü",
+    "name": "Artificial Intelligence Übungen",
+    "course_type": "LÜ",
+    "coordinator": "Bittel, Oliver [bittel]",
+    "ects": 3,
+    "sws": 2,
+    "details": {
+      "course_types": [
+        "LÜ"
+      ],
+      "responsible_name": "Bittel, Oliver",
+      "responsible_login": "bittel",
+      "additional_teachers": "Franz, Matthias [mfranz], Umlauf, Georg [umlauf]",
+      "exam_graded": null,
+      "exam_ungraded": null,
+      "performance_record": {
+        "form": "SP",
+        "duration_min": null,
+        "components": [
+          "LP"
+        ],
+        "raw": "SP (LP)"
+      },
+      "syllabus": null,
+      "source_apex_cid": 10283
+    },
+    "created_at": null,
+    "updated_at": null
+  }
+]

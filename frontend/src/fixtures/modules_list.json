@@ -1,0 +1,110 @@
+[
+  {
+    "id": "fixture-MAT1-01",
+    "kuerzel": "MAT1/01",
+    "name": "Mathematik 1",
+    "start_semester": "1",
+    "koordinator": "Axthelm, Rebekka [raxthelm]",
+    "version": 1,
+    "is_mandatory": true,
+    "is_specialization": false,
+    "specialization_name": null,
+    "language": "Deutsch"
+  },
+  {
+    "id": "fixture-ARIN-AI1",
+    "kuerzel": "ARIN/AI1",
+    "name": "Artificial Intelligence",
+    "start_semester": "5-7",
+    "koordinator": "Bittel, Oliver [bittel]",
+    "version": 1,
+    "is_mandatory": true,
+    "is_specialization": true,
+    "specialization_name": null,
+    "language": "Deutsch"
+  },
+  {
+    "id": "fixture-BARB-21",
+    "kuerzel": "BARB/21",
+    "name": "Bachelorarbeit",
+    "start_semester": "7",
+    "koordinator": "Studiendekan*in / Studiengangsleiter*in AIN",
+    "version": 1,
+    "is_mandatory": true,
+    "is_specialization": false,
+    "specialization_name": null,
+    "language": "Deutsch"
+  },
+  {
+    "id": "fixture-IPSS-15",
+    "kuerzel": "IPSS/15",
+    "name": "Integriertes Praktisches Studiensemester",
+    "start_semester": "4",
+    "koordinator": "Praktikantenamtsleiter*in",
+    "version": 1,
+    "is_mandatory": true,
+    "is_specialization": false,
+    "specialization_name": null,
+    "language": "Deutsch"
+  },
+  {
+    "id": "fixture-ALG-01",
+    "kuerzel": "ALG/01",
+    "name": "Algebra",
+    "start_semester": "1/2",
+    "koordinator": "Axthelm, Rebekka [raxthelm]",
+    "version": 1,
+    "is_mandatory": true,
+    "is_specialization": false,
+    "specialization_name": null,
+    "language": "Deutsch"
+  },
+  {
+    "id": "fixture-TGKI-WB1-1",
+    "kuerzel": "TGKI/WB1-1",
+    "name": "Technische Grundlagen der KI",
+    "start_semester": "3",
+    "koordinator": "Franz, Matthias [mfranz]",
+    "version": 1,
+    "is_mandatory": false,
+    "is_specialization": true,
+    "specialization_name": null,
+    "language": "Deutsch"
+  },
+  {
+    "id": "fixture-MATH-A2",
+    "kuerzel": "MATH/A2",
+    "name": "Mathematik",
+    "start_semester": "A",
+    "koordinator": "Umlauf, Georg [umlauf]",
+    "version": 1,
+    "is_mandatory": true,
+    "is_specialization": true,
+    "specialization_name": null,
+    "language": "Deutsch/Englisch"
+  },
+  {
+    "id": "fixture-SECOS-B5-8",
+    "kuerzel": "SECOS/B5-8",
+    "name": "IT-Security (Security of Software and Systems)",
+    "start_semester": "A+B",
+    "koordinator": "Langweg, Hanno [hlangweg]",
+    "version": 1,
+    "is_mandatory": false,
+    "is_specialization": true,
+    "specialization_name": null,
+    "language": "Englisch, ggf. Deutsch"
+  },
+  {
+    "id": "fixture-DBSYS1-14",
+    "kuerzel": "DBSYS1/14",
+    "name": "Datenbanksysteme 1",
+    "start_semester": "3",
+    "koordinator": "Eck, Oliver [eck]",
+    "version": 1,
+    "is_mandatory": true,
+    "is_specialization": false,
+    "specialization_name": null,
+    "language": "Deutsch"
+  }
+]

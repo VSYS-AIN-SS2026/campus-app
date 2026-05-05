@@ -7,7 +7,8 @@
     "dev": "vite --host 127.0.0.1 --port 4173 --strictPort",
     "typecheck": "vue-tsc --noEmit",
     "build": "npm run typecheck && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "clean": "find src \\( -name '*.js' -o -name '*.vue.js' \\) -delete && rm -rf node_modules/.vite"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.104.0",

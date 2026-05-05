@@ -1,0 +1,60 @@
+[
+  {
+    "id": "fixture-TGKI-WB1-1-c0",
+    "module_id": "fixture-TGKI-WB1-1",
+    "code": "TGKI",
+    "name": "Technische Grundlagen der KI",
+    "course_type": "V",
+    "coordinator": "Franz, Matthias [mfranz]",
+    "ects": 3,
+    "sws": 3,
+    "details": {
+      "course_types": [
+        "V"
+      ],
+      "responsible_name": "Franz, Matthias",
+      "responsible_login": "mfranz",
+      "additional_teachers": null,
+      "exam_graded": null,
+      "exam_ungraded": null,
+      "performance_record": null,
+      "syllabus": "Die Vorlesung führt in die grundlegenden Verfahren zur Untersuchung und Modellierung digitaler Signale und Systeme ein. Zu Beginn werden die mathematische und graphische Darstellung von Signalen und die wichtigsten Grundsignale vorgestellt, zusammen mit einer Einführung in die komplexen Zahlen und in grundlegende Systemeigenschaften wie Kausalität, Linearität und Zeitinvarianz. Solche Systeme werden dann genauer im Zu-sammenhang mit dem Begriff der Faltung behandelt, bevor die Fourieranalyse von Sig-nalen entwickelt wird. Das erworbene Wissen wird auf zwei wichtigen Anwendungsge-bieten vertieft: Filterung von Signalen und Diskretisierung von kontinuierlichen Signalen durch Abtastung.",
+      "source_apex_cid": 7594
+    },
+    "created_at": null,
+    "updated_at": null
+  },
+  {
+    "id": "fixture-TGKI-WB1-1-c1",
+    "module_id": "fixture-TGKI-WB1-1",
+    "code": "TGKI-Ü",
+    "name": "Technische Grundlagen der KI",
+    "course_type": "LÜ",
+    "coordinator": "Franz, Matthias [mfranz]",
+    "ects": 3,
+    "sws": 2,
+    "details": {
+      "course_types": [
+        "LÜ"
+      ],
+      "responsible_name": "Franz, Matthias",
+      "responsible_login": "mfranz",
+      "additional_teachers": null,
+      "exam_graded": null,
+      "exam_ungraded": null,
+      "performance_record": {
+        "form": "SP",
+        "duration_min": null,
+        "components": [
+          "LP",
+          "TE"
+        ],
+        "raw": "SP (LP, TE)"
+      },
+      "syllabus": "Die Laborübungen vertiefen die in der Vorlesung behandelten Themen und vermitteln deren praktische Anwendung. Schwerpunkte des Praktikums: Aufbau Kalibrierung und Einsatz eines einfachen Entfernungsmessers Kalibrierung von digitalen Kameras Fourieranalyse und Akustik Aufbau eines einfachen Spracherkenners Abtastung und Digitalisierung",
+      "source_apex_cid": 7593
+    },
+    "created_at": null,
+    "updated_at": null
+  }
+]

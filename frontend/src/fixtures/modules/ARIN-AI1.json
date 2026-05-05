@@ -1,0 +1,65 @@
+{
+  "id": "fixture-ARIN-AI1",
+  "code": "ARIN/AI1",
+  "name": "Artificial Intelligence",
+  "start_semester": "5-7",
+  "coordinator": "Bittel, Oliver [bittel]",
+  "version": 1,
+  "is_mandatory": true,
+  "is_specialization": true,
+  "specialization_name": null,
+  "language": "Deutsch",
+  "details": {
+    "coordinator_name": "Bittel, Oliver",
+    "coordinator_login": "bittel",
+    "specialization_track": "AI",
+    "module_type": "PM",
+    "language_primary": "Deutsch",
+    "language_secondary": null,
+    "language_secondary_optional": false,
+    "start_semester_min": 5,
+    "start_semester_max": 7,
+    "contact_hours": 60,
+    "self_study_hours": 120,
+    "ects_total_computed": 6.0,
+    "semester_count": 1,
+    "start_phases": [
+      "Sommersemester"
+    ],
+    "learning_formats": [
+      "Vorlesung",
+      "Labor",
+      "Selbststudium"
+    ],
+    "learning_formats_misc": null,
+    "exam_graded": {
+      "form": "K",
+      "duration_min": 90,
+      "components": null,
+      "raw": "K90"
+    },
+    "exam_ungraded": null,
+    "performance_record": null,
+    "grade_composition_rule": "Note der benoteten Modul(teil)prüfung",
+    "grade_composition_misc": null,
+    "prerequisites_text": null,
+    "prerequisites_codes": [],
+    "needed_for_text": null,
+    "needed_for_codes": [],
+    "combine_with_text": "2DCV/AI4, 3DCV/AI5, MORO/AI2",
+    "combine_with_codes": [
+      "2DCV/AI4",
+      "3DCV/AI5",
+      "MORO/AI2"
+    ],
+    "learning_objectives": "Grundlegende Begriffe und Methoden der künstlichen Intelligenz kennen lernen. Lösung von typischen Problemstellungen mit Hilfe von Python Zeit-/Selbstmanagement für individuelle Laboraufgaben mit vorgegebenen Abgabeterminen",
+    "personal_competencies": null,
+    "literature": "Ertel, Grundkurs Künstliche Intelligenz, Springer Vieweg, 2013. Russel und Norvig, Künstliche Intelligenz – Ein Moderner Ansatz, Pearson, 2012.",
+    "source_apex_mhid": 183,
+    "source_apex_mid": 2194,
+    "source_handbook_label": "AIN SPO 3 (01.03.2019)",
+    "last_updated": "2018-10-30"
+  },
+  "created_at": null,
+  "updated_at": null
+}
