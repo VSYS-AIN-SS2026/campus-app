@@ -5,6 +5,7 @@ import SpoSelector from './components/SpoSelector.vue'
 import ModuleList from './components/ModuleList.vue'
 import ModuleDrawer from './components/ModuleDrawer.vue'
 import type {
+  Category,
   ModuleEntry,
   ModuleHandbook,
   ModuleStatus,
@@ -17,6 +18,14 @@ type ModuleStatusRow = {
   module_id: string
   status: ModuleStatus
   updated_at: string
+}
+
+type ModuleCategoryRow = {
+  module_id: string
+  category_id: string
+  name: string
+  color: string
+  type: string
 }
 
 let activeModuleRequestId = 0
@@ -65,6 +74,7 @@ function isActiveModuleRequest(requestId: number) {
 const studyPrograms = ref<StudyProgram[]>([])
 const allSpos = ref<Spo[]>([])
 const allHandbooks = ref<ModuleHandbook[]>([])
+const allCategories = ref<Category[]>([])
 const demoUserProfile = ref<UserProfile | null>(null)
 
 // --- selection state ---
@@ -77,7 +87,9 @@ const selectedModule = ref<ModuleEntry | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
 const moduleStatusError = ref<string | null>(null)
+const categoryError = ref<string | null>(null)
 const savingModuleId = ref<string | null>(null)
+const savingCategoryModuleId = ref<string | null>(null)
 const profileError = ref<string | null>(null)
 const profileInfo = ref<string | null>(null)
 const profileSaving = ref(false)
@@ -135,11 +147,36 @@ function setModuleStatus(moduleId: string, status: ModuleStatus) {
   module.module_status = status
 }
 
+function setModuleCategories(moduleId: string, categories: Category[]) {
+  const module = modules.value.find(entry => entry.id === moduleId)
+  if (!module) return
+  module.categories = categories
+}
+
 function applyModuleStatuses(statusRows: ModuleStatusRow[]) {
   const statusMap = new Map(statusRows.map(row => [row.module_id, row.status]))
 
   for (const module of modules.value) {
     module.module_status = statusMap.get(module.id) ?? 'offen'
+  }
+}
+
+function applyModuleCategories(categoryRows: ModuleCategoryRow[]) {
+  const categoryMap = new Map<string, Category[]>()
+
+  for (const row of categoryRows) {
+    const categories = categoryMap.get(row.module_id) ?? []
+    categories.push({
+      id: row.category_id,
+      name: row.name,
+      color: row.color,
+      type: row.type,
+    })
+    categoryMap.set(row.module_id, categories)
+  }
+
+  for (const module of modules.value) {
+    module.categories = categoryMap.get(module.id) ?? []
   }
 }
 
@@ -169,6 +206,34 @@ async function fetchModuleStatuses(moduleIds: string[], requestId: number) {
   }
 
   applyModuleStatuses((data ?? []) as ModuleStatusRow[])
+}
+
+async function fetchModuleCategories(moduleIds: string[], requestId: number) {
+  categoryError.value = null
+
+  if (!supabase) {
+    categoryError.value = supabaseConfigError
+    return
+  }
+
+  if (!moduleIds.length || !isActiveModuleRequest(requestId)) {
+    return
+  }
+
+  const { data, error: err } = await supabase.rpc('get_module_categories', {
+    selected_module_ids: moduleIds,
+  })
+
+  if (!isActiveModuleRequest(requestId)) {
+    return
+  }
+
+  if (err) {
+    categoryError.value = 'Die Modulkategorien konnten nicht geladen werden.'
+    return
+  }
+
+  applyModuleCategories((data ?? []) as ModuleCategoryRow[])
 }
 
 async function saveModuleStatus(moduleId: string, status: ModuleStatus) {
@@ -218,6 +283,54 @@ async function saveModuleStatus(moduleId: string, status: ModuleStatus) {
   }
 }
 
+async function saveModuleCategories(moduleId: string, categoryIds: string[]) {
+  if (!supabase) {
+    categoryError.value = supabaseConfigError
+    return
+  }
+
+  if (!canEditModuleStatuses.value) {
+    categoryError.value = 'Speichere zuerst Studiengang und SPO im Demo-Profil, bevor du Modulkategorien änderst.'
+    return
+  }
+
+  if (savingCategoryModuleId.value) {
+    return
+  }
+
+  const currentModule = modules.value.find(entry => entry.id === moduleId)
+  if (!currentModule) {
+    return
+  }
+
+  const previousCategories = currentModule.categories
+  const optimisticCategories = allCategories.value.filter(category => categoryIds.includes(category.id))
+
+  categoryError.value = null
+  savingCategoryModuleId.value = moduleId
+  setModuleCategories(moduleId, optimisticCategories)
+
+  const { data, error: err } = await supabase.rpc('save_module_categories', {
+    selected_module_id: moduleId,
+    selected_category_ids: categoryIds,
+  })
+
+  savingCategoryModuleId.value = null
+
+  if (err) {
+    setModuleCategories(moduleId, previousCategories)
+    categoryError.value = 'Die Modulkategorien konnten nicht gespeichert werden.'
+    return
+  }
+
+  setModuleCategories(moduleId, ((data ?? []) as ModuleCategoryRow[]).map(row => ({
+    id: row.category_id,
+    name: row.name,
+    color: row.color,
+    type: row.type,
+  })))
+}
+
 async function saveStudyProfileSelection() {
   clearSelectionMessages()
 
@@ -262,7 +375,7 @@ async function fetchInitialData() {
     return
   }
 
-  const [spRes, spoRes, hbRes, profileRes] = await Promise.all([
+  const [spRes, spoRes, hbRes, categoryRes, profileRes] = await Promise.all([
     supabase.from('study_programs').select('id, faculty_id, code, name').order('name').order('code'),
     supabase
       .from('spos')
@@ -271,6 +384,7 @@ async function fetchInitialData() {
       .order('valid_from', { ascending: false, nullsFirst: false })
       .order('version_name'),
     supabase.from('module_handbooks').select('id, spo_id, code').order('code'),
+    supabase.from('categories').select('id, name, color, type').order('type').order('name'),
     supabase.rpc('get_demo_user_profile').maybeSingle(),
   ])
 
@@ -279,10 +393,12 @@ async function fetchInitialData() {
   if (spRes.error) { error.value = spRes.error.message; return }
   if (spoRes.error) { error.value = spoRes.error.message; return }
   if (hbRes.error) { error.value = hbRes.error.message; return }
+  if (categoryRes.error) { categoryError.value = categoryRes.error.message }
 
   studyPrograms.value = (spRes.data ?? []) as StudyProgram[]
   allSpos.value = (spoRes.data ?? []) as Spo[]
   allHandbooks.value = (hbRes.data ?? []) as ModuleHandbook[]
+  allCategories.value = (categoryRes.data ?? []) as Category[]
 
   if (profileRes.error) {
     profileError.value = 'Das Demo-Profil konnte nicht geladen werden.'
@@ -379,6 +495,7 @@ async function fetchModules(handbookIds: string[], requestId: number) {
     const module = {
       ...row.modules,
       recommended_semester: row.recommended_semester,
+      categories: [],
       courses: row.modules?.courses ?? [],
       module_status: 'offen',
     } as ModuleEntry
@@ -392,7 +509,12 @@ async function fetchModules(handbookIds: string[], requestId: number) {
 
   modules.value = Array.from(uniqueModules.values())
 
-  await fetchModuleStatuses(modules.value.map(module => module.id), requestId)
+  const moduleIds = modules.value.map(module => module.id)
+
+  await Promise.all([
+    fetchModuleStatuses(moduleIds, requestId),
+    fetchModuleCategories(moduleIds, requestId),
+  ])
 
   if (!isActiveModuleRequest(requestId)) {
     return
@@ -557,8 +679,12 @@ fetchInitialData()
         ⚠️ {{ moduleStatusError }}
       </div>
 
+      <div v-if="categoryError" class="info-banner">
+        ⚠️ {{ categoryError }}
+      </div>
+
       <div v-if="selectedSpoId && !canEditModuleStatuses" class="info-banner">
-        ⚠️ Speichere zuerst die aktuelle Studiengang- und SPO-Auswahl im Demo-Profil, damit Modulstatus persistent geändert werden kann.
+        ⚠️ Speichere zuerst die aktuelle Studiengang- und SPO-Auswahl im Demo-Profil, damit Modulstatus und Kategorien persistent geändert werden können.
       </div>
 
       <template v-if="selectedSpoId && !loading">
@@ -607,11 +733,16 @@ fetchInitialData()
 
   <ModuleDrawer
     :module="selectedModule"
+    :categories="allCategories"
     :saving="savingModuleId === selectedModule?.id"
     :disabled="!canEditModuleStatuses"
     :error="moduleStatusError"
+    :category-saving="savingCategoryModuleId === selectedModule?.id"
+    :category-disabled="!canEditModuleStatuses"
+    :category-error="categoryError"
     @close="selectedModule = null"
     @update-status="saveModuleStatus"
+    @update-categories="saveModuleCategories"
   />
 </template>
 

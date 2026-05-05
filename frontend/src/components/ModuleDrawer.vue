@@ -1,16 +1,21 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import type { ModuleEntry, Course, ModuleStatus } from '../types'
+import type { Category, ModuleEntry, Course, ModuleStatus } from '../types'
 
 const props = defineProps<{
   module: ModuleEntry | null
+  categories: Category[]
   saving: boolean
   disabled: boolean
   error: string | null
+  categorySaving: boolean
+  categoryDisabled: boolean
+  categoryError: string | null
 }>()
 const emit = defineEmits<{
   close: []
   'update-status': [moduleId: string, status: ModuleStatus]
+  'update-categories': [moduleId: string, categoryIds: string[]]
 }>()
 
 const selectedCourse = ref<Course | null>(null)
@@ -134,6 +139,49 @@ function splitReqs(v: unknown): string[] {
 const totalEcts   = computed(() => props.module?.courses.reduce((s, c) => s + (c.ects ?? 0), 0) ?? 0)
 const moduleItems = computed(() => buildItems(props.module?.details ?? {}))
 const courseItems = computed(() => buildItems(selectedCourse.value?.details ?? {}))
+
+const CATEGORY_TYPE_LABELS: Record<string, string> = {
+  kontext: 'Kontext',
+  thema: 'Thema',
+  fachgebiet: 'Fachgebiet',
+  kompetenz: 'Kompetenz',
+}
+
+const categoryGroups = computed(() => {
+  const groups = new Map<string, Category[]>()
+
+  for (const category of props.categories) {
+    const group = groups.get(category.type) ?? []
+    group.push(category)
+    groups.set(category.type, group)
+  }
+
+  return Array.from(groups.entries())
+})
+
+function categoryTypeLabel(type: string) {
+  return CATEGORY_TYPE_LABELS[type] ?? type.charAt(0).toUpperCase() + type.slice(1)
+}
+
+function hasCategory(categoryId: string) {
+  return !!props.module?.categories.some(category => category.id === categoryId)
+}
+
+function toggleCategory(categoryId: string) {
+  if (!props.module || props.categorySaving || props.categoryDisabled) {
+    return
+  }
+
+  const categoryIds = new Set(props.module.categories.map(category => category.id))
+
+  if (categoryIds.has(categoryId)) {
+    categoryIds.delete(categoryId)
+  } else {
+    categoryIds.add(categoryId)
+  }
+
+  emit('update-categories', props.module.id, Array.from(categoryIds))
+}
 </script>
 
 <template>
@@ -190,6 +238,47 @@ const courseItems = computed(() => buildItems(selectedCourse.value?.details ?? {
                 <p v-if="saving" class="status-feedback">Modulstatus wird gespeichert…</p>
                 <p v-else-if="disabled" class="status-feedback">Speichere zuerst die aktuelle Auswahl im Demo-Profil.</p>
                 <p v-else-if="error" class="status-feedback status-feedback-error">{{ error }}</p>
+              </section>
+
+              <section class="section">
+                <div class="section-header">
+                  <h3 class="section-title">Kategorien</h3>
+                  <span class="count-badge">{{ module.categories.length }}</span>
+                </div>
+
+                <div v-if="module.categories.length" class="category-chip-row">
+                  <span
+                    v-for="category in module.categories"
+                    :key="category.id"
+                    class="category-chip"
+                  >
+                    {{ category.name }}
+                  </span>
+                </div>
+
+                <div v-if="categories.length" class="category-groups">
+                  <div v-for="[type, entries] in categoryGroups" :key="type" class="category-group">
+                    <span class="category-group-label">{{ categoryTypeLabel(type) }}</span>
+                    <div class="category-toggle-grid">
+                      <button
+                        v-for="category in entries"
+                        :key="category.id"
+                        type="button"
+                        class="category-toggle"
+                        :class="{ 'category-toggle-active': hasCategory(category.id) }"
+                        :disabled="categorySaving || categoryDisabled"
+                        @click="toggleCategory(category.id)"
+                      >
+                        {{ category.name }}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <p v-else class="status-feedback">Es wurden noch keine Kategorien angelegt.</p>
+                <p v-if="categorySaving" class="status-feedback">Kategorien werden gespeichert…</p>
+                <p v-else-if="categoryDisabled" class="status-feedback">Speichere zuerst die aktuelle Auswahl im Demo-Profil.</p>
+                <p v-else-if="categoryError" class="status-feedback status-feedback-error">{{ categoryError }}</p>
               </section>
 
               <div class="coordinator-row">
@@ -490,11 +579,11 @@ const courseItems = computed(() => buildItems(selectedCourse.value?.details ?? {
   border: 1px solid var(--color-border); background: var(--color-surface-raised);
   color: var(--color-text-muted); white-space: nowrap;
 }
-.chip-semester { color: var(--color-primary); background: var(--color-primary-subtle); border-color: rgba(99,102,241,.2); }
-.chip-ects     { color: #10b981; background: rgba(16,185,129,.1); border-color: rgba(16,185,129,.2); }
-.chip-status-offen { color: #94a3b8; background: rgba(148,163,184,.12); border-color: rgba(148,163,184,.2); }
-.chip-status-belegt { color: #f59e0b; background: rgba(245,158,11,.12); border-color: rgba(245,158,11,.25); }
-.chip-status-abgeschlossen { color: #10b981; background: rgba(16,185,129,.12); border-color: rgba(16,185,129,.25); }
+.chip-semester { color: var(--color-primary); background: var(--color-primary-subtle); border-color: var(--color-primary-glow); }
+.chip-ects     { color: var(--color-primary); background: var(--color-primary-subtle); border-color: var(--color-primary-glow); }
+.chip-status-offen { color: var(--color-text-muted); background: var(--color-surface-raised); border-color: var(--color-border); }
+.chip-status-belegt { color: var(--color-primary); background: var(--color-primary-subtle); border-color: var(--color-primary-glow); }
+.chip-status-abgeschlossen { color: var(--color-primary); background: var(--color-primary-subtle); border-color: var(--color-primary-glow); }
 
 .coordinator-row {
   display: flex; align-items: center; gap: 8px;
@@ -563,21 +652,21 @@ const courseItems = computed(() => buildItems(selectedCourse.value?.details ?? {
 }
 
 .status-button-offen.status-button-active {
-  background: rgba(148,163,184,.12);
-  border-color: rgba(148,163,184,.25);
-  color: #94a3b8;
+  background: var(--color-surface-raised);
+  border-color: var(--color-border);
+  color: var(--color-text-muted);
 }
 
 .status-button-belegt.status-button-active {
-  background: rgba(245,158,11,.12);
-  border-color: rgba(245,158,11,.25);
-  color: #f59e0b;
+  background: var(--color-primary-subtle);
+  border-color: var(--color-primary-glow);
+  color: var(--color-primary);
 }
 
 .status-button-abgeschlossen.status-button-active {
-  background: rgba(16,185,129,.12);
-  border-color: rgba(16,185,129,.25);
-  color: #10b981;
+  background: var(--color-primary-subtle);
+  border-color: var(--color-primary-glow);
+  color: var(--color-primary);
 }
 
 .status-feedback {
@@ -587,7 +676,81 @@ const courseItems = computed(() => buildItems(selectedCourse.value?.details ?? {
 }
 
 .status-feedback-error {
-  color: #fbbf24;
+  color: var(--color-primary);
+}
+
+.category-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.category-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: .76rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  color: var(--color-text-muted);
+  background: var(--color-surface-raised);
+  border-color: var(--color-border);
+}
+
+.category-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.category-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.category-group-label {
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.category-toggle-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.category-toggle {
+  font: inherit;
+  font-size: .78rem;
+  font-weight: 700;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  border-color: var(--color-border);
+  cursor: pointer;
+  transition: transform .15s, box-shadow .15s, opacity .15s;
+}
+
+.category-toggle:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, .14);
+}
+
+.category-toggle:disabled {
+  cursor: progress;
+  opacity: .75;
+}
+
+.category-toggle-active {
+  box-shadow: inset 0 0 0 1px currentColor;
 }
 
 .course-list { display: flex; flex-direction: column; gap: 6px; }
@@ -609,10 +772,10 @@ const courseItems = computed(() => buildItems(selectedCourse.value?.details ?? {
   border-radius: 7px; font-size: .7rem; font-weight: 800;
   background: var(--color-surface); color: var(--color-text-muted); border: 1px solid var(--color-border);
 }
-.type-badge.vorlesung, .type-badge.lecture { background: rgba(99,102,241,.12); color: var(--color-primary); border-color: rgba(99,102,241,.25); }
-.type-badge.praktikum                      { background: rgba(16,185,129,.12); color: #10b981; border-color: rgba(16,185,129,.25); }
-.type-badge.seminar                        { background: rgba(245,158,11,.12); color: #f59e0b; border-color: rgba(245,158,11,.25); }
-.type-badge.übung, .type-badge.exercise, .type-badge.uebung { background: rgba(236,72,153,.12); color: #ec4899; border-color: rgba(236,72,153,.25); }
+.type-badge.vorlesung, .type-badge.lecture { background: var(--color-primary-subtle); color: var(--color-primary); border-color: var(--color-primary-glow); }
+.type-badge.praktikum                      { background: var(--color-surface-raised); color: var(--color-text-muted); border-color: var(--color-border); }
+.type-badge.seminar                        { background: var(--color-surface-raised); color: var(--color-text-muted); border-color: var(--color-border); }
+.type-badge.übung, .type-badge.exercise, .type-badge.uebung { background: var(--color-surface-raised); color: var(--color-text-muted); border-color: var(--color-border); }
 .course-info { flex: 1; min-width: 0; }
 .course-name { display: block; font-size: .88rem; font-weight: 600; color: var(--color-text); line-height: 1.3; margin-bottom: 3px; }
 .course-meta { display: block; font-size: .75rem; color: var(--color-text-muted); line-height: 1.4; }
@@ -646,24 +809,24 @@ const courseItems = computed(() => buildItems(selectedCourse.value?.details ?? {
   color: var(--color-text);
 }
 
-.dcard-workload { background: rgba(245,158,11,.07); border-color: rgba(245,158,11,.25); }
-.dcard-workload .dcard-label { color: #d97706; }
+.dcard-workload { background: var(--color-surface-raised); border-color: var(--color-border); }
+.dcard-workload .dcard-label { color: var(--color-primary); }
 .workload-body { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .workload-hours {
   font-size: 2rem; font-weight: 800; letter-spacing: -.03em;
-  color: #d97706; line-height: 1;
+  color: var(--color-primary); line-height: 1;
 }
 .workload-note { font-size: .82rem; color: var(--color-text-muted); line-height: 1.4; }
 
-.dcard-pruefung { background: rgba(99,102,241,.07); border-color: rgba(99,102,241,.25); }
+.dcard-pruefung { background: var(--color-surface-raised); border-color: var(--color-primary-glow); }
 .dcard-pruefung .dcard-label { color: var(--color-primary); }
 
-.dcard-vorauss { background: rgba(20,184,166,.07); border-color: rgba(20,184,166,.25); }
-.dcard-vorauss .dcard-label { color: #0d9488; }
+.dcard-vorauss { background: var(--color-surface-raised); border-color: var(--color-border); }
+.dcard-vorauss .dcard-label { color: var(--color-primary); }
 .req-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .req-chip {
   font-size: .78rem; font-weight: 600; padding: 4px 11px; border-radius: 99px;
-  background: rgba(20,184,166,.12); color: #0d9488; border: 1px solid rgba(20,184,166,.3);
+  background: var(--color-surface-raised); color: var(--color-text); border: 1px solid var(--color-border);
 }
 
 .stat-row {
@@ -681,10 +844,10 @@ const courseItems = computed(() => buildItems(selectedCourse.value?.details ?? {
   text-transform: uppercase; letter-spacing: .1em; padding: 4px 10px; border-radius: 6px;
   background: var(--color-surface-raised); color: var(--color-text-muted); border: 1px solid var(--color-border);
 }
-.type-label.vorlesung, .type-label.lecture { background: rgba(99,102,241,.12); color: var(--color-primary); border-color: rgba(99,102,241,.3); }
-.type-label.praktikum                      { background: rgba(16,185,129,.12); color: #10b981; border-color: rgba(16,185,129,.3); }
-.type-label.seminar                        { background: rgba(245,158,11,.12); color: #f59e0b; border-color: rgba(245,158,11,.3); }
-.type-label.übung, .type-label.exercise, .type-label.uebung { background: rgba(236,72,153,.12); color: #ec4899; border-color: rgba(236,72,153,.3); }
+.type-label.vorlesung, .type-label.lecture { background: var(--color-primary-subtle); color: var(--color-primary); border-color: var(--color-primary-glow); }
+.type-label.praktikum                      { background: var(--color-surface-raised); color: var(--color-text-muted); border-color: var(--color-border); }
+.type-label.seminar                        { background: var(--color-surface-raised); color: var(--color-text-muted); border-color: var(--color-border); }
+.type-label.übung, .type-label.exercise, .type-label.uebung { background: var(--color-surface-raised); color: var(--color-text-muted); border-color: var(--color-border); }
 
 .info-block { display: flex; flex-direction: column; gap: 1px; }
 .info-row {
