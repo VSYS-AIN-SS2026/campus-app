@@ -29,7 +29,25 @@ type ModuleCategoryRow = {
   type: string
 }
 
+type ThemeMode = 'light' | 'dark'
+
 let activeModuleRequestId = 0
+
+const THEME_STORAGE_KEY = 'themeMode'
+
+function getInitialThemeMode(): ThemeMode {
+  const savedTheme = localStorage.getItem(THEME_STORAGE_KEY)
+
+  if (savedTheme === 'light' || savedTheme === 'dark') {
+    return savedTheme
+  }
+
+  return 'light'
+}
+
+function applyThemeMode(themeMode: ThemeMode) {
+  document.documentElement.setAttribute('data-theme', themeMode)
+}
 
 function getStudyProgramLabel(program: StudyProgram) {
   return program.name ? `${program.code} - ${program.name}` : program.code
@@ -95,6 +113,7 @@ const profileError = ref<string | null>(null)
 const profileInfo = ref<string | null>(null)
 const profileSaving = ref(false)
 const restoringProfileSelection = ref(false)
+const themeMode = ref<ThemeMode>(getInitialThemeMode())
 
 // --- dropdown items ---
 const studyProgramItems = computed(() =>
@@ -564,6 +583,11 @@ watch(selectedSpoId, (id) => {
   }
 })
 
+watch(themeMode, (mode) => {
+  localStorage.setItem(THEME_STORAGE_KEY, mode)
+  applyThemeMode(mode)
+}, { immediate: true })
+
 fetchInitialData()
 </script>
 
@@ -575,6 +599,14 @@ fetchInitialData()
           <img src="/favicon.ico" alt="HTWG Logo" class="brand-logo" />
           <span class="brand-name">Campus App</span>
         </div>
+
+        <button
+          type="button"
+          class="theme-toggle"
+          @click="themeMode = themeMode === 'light' ? 'dark' : 'light'"
+        >
+          {{ themeMode === 'light' ? 'Dark mode' : 'Light mode' }}
+        </button>
       </div>
     </header>
 
@@ -672,11 +704,11 @@ fetchInitialData()
       </div>
 
       <div v-if="categoryError" class="info-banner">
-        ⚠️ {{ categoryError }}
+        {{ categoryError }}
       </div>
 
       <div v-if="selectedSpoId && !canEditModuleStatuses" class="info-banner">
-        ⚠️ Speichere zuerst die aktuelle Studiengang- und SPO-Auswahl im Demo-Profil, damit Modulstatus und Kategorien persistent geändert werden können.
+        Speichere zuerst die aktuelle Studiengang- und SPO-Auswahl im Demo-Profil, damit Modulstatus und Kategorien persistent geändert werden können.
       </div>
 
       <template v-if="selectedSpoId && !loading">
@@ -738,6 +770,7 @@ fetchInitialData()
   height: 56px;
   display: flex;
   align-items: center;
+  justify-content: space-between;
 }
 
 .brand {
@@ -759,6 +792,24 @@ fetchInitialData()
   font-weight: 700;
   color: var(--color-text);
   letter-spacing: -0.01em;
+}
+
+.theme-toggle {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.15s;
+}
+
+.theme-toggle:hover {
+  border-color: var(--color-primary-light);
+  transform: translateY(-1px);
 }
 
 .app-main {
@@ -999,6 +1050,10 @@ fetchInitialData()
   }
   .header-inner {
     padding: 0 16px;
+  }
+  .theme-toggle {
+    padding: 7px 12px;
+    font-size: 0.76rem;
   }
   .controls-bar {
     flex-direction: column;

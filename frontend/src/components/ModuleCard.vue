@@ -330,15 +330,15 @@ function courseTypeClassKey(courseType: string): string {
 }
 
 .status-belegt {
-  background: var(--color-primary-subtle);
-  border-color: var(--color-primary-glow);
-  color: var(--color-primary);
+  background: rgba(245, 158, 11, 0.14);
+  border-color: rgba(245, 158, 11, 0.28);
+  color: #f6b94b;
 }
 
 .status-abgeschlossen {
-  background: var(--color-primary-subtle);
-  border-color: var(--color-primary-glow);
-  color: var(--color-primary);
+  background: rgba(16, 185, 129, 0.14);
+  border-color: rgba(16, 185, 129, 0.28);
+  color: #6ee7b7;
 }
 
 .ects-badge {

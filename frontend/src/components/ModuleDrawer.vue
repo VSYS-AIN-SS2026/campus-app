@@ -591,8 +591,8 @@ function toggleCategory(categoryId: string) {
 .chip-semester { color: var(--color-primary); background: var(--color-primary-subtle); border-color: var(--color-primary-glow); }
 .chip-ects     { color: var(--color-primary); background: var(--color-primary-subtle); border-color: var(--color-primary-glow); }
 .chip-status-offen { color: var(--color-text-muted); background: var(--color-surface-raised); border-color: var(--color-border); }
-.chip-status-belegt { color: var(--color-primary); background: var(--color-primary-subtle); border-color: var(--color-primary-glow); }
-.chip-status-abgeschlossen { color: var(--color-primary); background: var(--color-primary-subtle); border-color: var(--color-primary-glow); }
+.chip-status-belegt { color: #f6b94b; background: rgba(245, 158, 11, 0.14); border-color: rgba(245, 158, 11, 0.28); }
+.chip-status-abgeschlossen { color: #6ee7b7; background: rgba(16, 185, 129, 0.14); border-color: rgba(16, 185, 129, 0.28); }
 
 .coordinator-row {
   display: flex; align-items: center; gap: 0.5em;
@@ -673,15 +673,15 @@ function toggleCategory(categoryId: string) {
 }
 
 .status-button-belegt.status-button-active {
-  background: var(--color-primary-subtle);
-  border-color: var(--color-primary-glow);
-  color: var(--color-primary);
+  background: rgba(245, 158, 11, 0.14);
+  border-color: rgba(245, 158, 11, 0.28);
+  color: #f6b94b;
 }
 
 .status-button-abgeschlossen.status-button-active {
-  background: var(--color-primary-subtle);
-  border-color: var(--color-primary-glow);
-  color: var(--color-primary);
+  background: rgba(16, 185, 129, 0.14);
+  border-color: rgba(16, 185, 129, 0.28);
+  color: #6ee7b7;
 }
 
 .status-feedback {
