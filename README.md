@@ -1,6 +1,6 @@
 # Campus App
 
-Eine Web-Anwendung für Campus-Verwaltung mit Supabase als Backend.
+Eine Vue/Vite-Web-Anwendung für Campus-Verwaltung mit Supabase als Backend.
 
 ## Erste Schritte (für neue Teammitglieder)
 
@@ -16,6 +16,9 @@ cd campus-app
 ```bash
 npm install
 ```
+
+Der Root-Install lädt die CLI-Tools im Repo-Root und installiert danach automatisch die
+Frontend-Abhängigkeiten in `frontend/`.
 
 ### 3. Supabase CLI installieren
 
@@ -51,19 +54,20 @@ supabase db push
 
 ### 7. Environment Variables
 
-Lege lokal eine `.env.local` Datei an. Als Vorlage kannst du `.env.example` verwenden.
+Lege lokal eine `frontend/.env.local` Datei an. Als Vorlage kannst du `.env.example` oder
+`frontend/.env.example` verwenden.
 
 Benötigt werden:
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
 
 Beispiel:
 
 ```bash
-cp .env.example .env.local
+cp .env.example frontend/.env.local
 ```
 
-Danach kannst du mit dem Projekt arbeiten.
+Danach kannst du mit `npm run dev` das Frontend starten.
 
 ## Datenbank-Workflow (wichtig für alle!)
 
@@ -114,29 +118,17 @@ supabase db push
 ## Supabase in Code verwenden
 
 ```typescript
-import { supabase } from '@/lib/supabase'
+import { supabase } from './supabase'
 
 // Daten abrufen
 const { data, error } = await supabase
-  .from('students')
-  .select('*')
+  .from('study_programs')
+  .select('id, code, name')
 
-// Daten einfügen
-const { data, error } = await supabase
-  .from('students')
-  .insert({ name: 'Max', email: 'max@example.com' })
-
-// Daten aktualisieren
-const { data, error } = await supabase
-  .from('students')
-  .update({ name: 'Maximilian' })
-  .eq('id', 1)
-
-// Daten löschen
-const { data, error } = await supabase
-  .from('students')
-  .delete()
-  .eq('id', 1)
+// RPC aufrufen
+const { data: profile } = await supabase
+  .rpc('get_demo_user_profile')
+  .maybeSingle()
 ```
 
 ## Nützliche Befehle
@@ -173,13 +165,15 @@ supabase stop
 
 ```
 campus-app/
-├── .env.local              # Supabase Credentials
-├── lib/
-│   └── supabase.ts        # Supabase Client
+├── .env.example            # Vorlage für frontend/.env.local
+├── frontend/
+│   ├── src/
+│   │   └── supabase.ts    # Supabase Client für das Vue-Frontend
+│   └── package.json       # Vite/Vue Scripts und Dependencies
 ├── supabase/
 │   ├── config.toml        # Supabase Konfiguration
 │   └── migrations/        # Alle Datenbank-Änderungen (SQL)
-├── package.json
+├── package.json            # Root-Scripts für Frontend und Supabase
 └── README.md
 ```
 
@@ -191,8 +185,11 @@ campus-app/
 
 ## Vorhandene Tabellen
 
-- `students` - Studenten-Verwaltung
-- `courses` - Kurs-Verwaltung
+- `study_programs` - Studiengänge
+- `spos` - Studien- und Prüfungsordnungen
+- `users` - Demo-Profil mit Auswahl
+- `user_module_statuses` - Persistente Modulstatus pro User
+- `module_handbooks`, `modules`, `courses` - Modulkatalog und Lehrveranstaltungen
 
 Siehe `supabase/migrations/` für Details.
 
@@ -232,6 +229,6 @@ supabase db push
 - [ ] Bei Supabase angemeldet (`supabase login`)
 - [ ] Projekt verlinkt (`supabase link --project-ref yemmuitnxoyhxdsbfcfb`)
 - [ ] Migrationen gepusht (`supabase db push`)
-- [ ] `.env.local` vorhanden
+- [ ] `frontend/.env.local` vorhanden
 
 **Wenn alles abgehakt ist, kannst du loslegen!**

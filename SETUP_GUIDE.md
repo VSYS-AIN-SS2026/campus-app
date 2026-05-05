@@ -1,19 +1,22 @@
 # Setup Guide: Supabase, CLI & GitHub
 
-Dieser Guide erklärt das komplette Setup für das Campus-App Projekt.
+Dieser Guide erklärt das Setup für das Campus-App Projekt mit Vue/Vite-Frontend und Supabase.
 
 ## Übersicht
 
-Unser Projekt verwendet drei Hauptkomponenten:
+Unser Projekt verwendet vier Hauptkomponenten:
 
 1. **GitHub Repository** - Code-Versionierung und Zusammenarbeit
-2. **Supabase Cloud** - Datenbank und Backend-Services
-3. **Supabase CLI** - Lokales Tool für Datenbank-Management
+2. **Vue/Vite Frontend** - Benutzeroberfläche in `frontend/`
+3. **Supabase Cloud** - Datenbank und Backend-Services
+4. **Supabase CLI** - Lokales Tool für Datenbank-Management
 
 ```
 GitHub Repo (Code)
     ↕
 Lokales Projekt (dein Computer)
+    ↕
+Vue/Vite Frontend + Supabase CLI
     ↕
 Supabase Cloud (Datenbank)
 ```
@@ -217,21 +220,29 @@ Geheime Schlüssel, die deine App braucht, um mit Supabase zu kommunizieren.
 
 ### .env.local Datei
 
-Im Projekt-Root gibt es eine `.env.local` Datei:
+Für die lokale Entwicklung liegt die Datei unter `frontend/.env.local`:
 
 ```env
-NEXT_PUBLIC_SUPABASE_URL=https://yemmuitnxoyhxdsbfcfb.supabase.co
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+VITE_SUPABASE_URL=https://yemmuitnxoyhxdsbfcfb.supabase.co
+VITE_SUPABASE_ANON_KEY=sb_publishable_...
 ```
 
 **Wichtig:**
-- Diese Datei ist bereits konfiguriert
+- Als Vorlage kannst du `.env.example` oder `frontend/.env.example` verwenden
 - Sie wird NICHT in Git eingecheckt (.gitignore)
 - Jedes Teammitglied muss sie haben
 
 **Falls die Datei fehlt:**
 1. Hole dir die Werte vom Projekt-Owner
 2. Oder finde sie im Supabase Dashboard unter "Settings" → "API"
+
+### Frontend lokal starten
+
+```bash
+npm run dev
+```
+
+Der Root-Script startet das Vue/Vite-Frontend aus `frontend/`.
 
 ---
 
@@ -343,7 +354,7 @@ Gehe diese Liste durch, um sicherzustellen, dass alles funktioniert:
 - [ ] Bei Supabase angemeldet (`supabase login`)
 - [ ] Projekt verlinkt (`supabase link --project-ref yemmuitnxoyhxdsbfcfb`)
 - [ ] Migrations synchronisiert (`supabase db push`)
-- [ ] `.env.local` vorhanden
+- [ ] `frontend/.env.local` vorhanden
 - [ ] Zugriff auf Supabase Dashboard
 
 **Wenn alles abgehakt ist, bist du ready!**

@@ -1,21 +1,19 @@
 {
+	"name": "campus-app",
 	"private": true,
 	"scripts": {
-		"dev": "next dev",
-		"build": "next build",
-		"start": "next start"
-	},
-	"dependencies": {
-		"next": "^15.3.1",
-		"react": "^19.0.0",
-		"react-dom": "^19.0.0",
-		"@supabase/supabase-js": "^2.103.3"
+		"postinstall": "npm --prefix frontend install",
+		"frontend:install": "npm --prefix frontend install",
+		"dev": "npm --prefix frontend run dev",
+		"build": "npm --prefix frontend run build",
+		"preview": "npm --prefix frontend run preview",
+		"start": "npm run preview",
+		"db:start": "supabase start",
+		"db:stop": "supabase stop",
+		"db:reset": "supabase db reset --local --no-seed",
+		"db:push": "supabase db push"
 	},
 	"devDependencies": {
-		"@types/node": "^22.15.3",
-		"@types/react": "^19.0.10",
-		"@types/react-dom": "^19.0.4",
-		"typescript": "^5.8.3",
 		"supabase": "^2.93.0"
 	}
 }

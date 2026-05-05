@@ -11,6 +11,9 @@ node_modules
 dist
 dist-ssr
 *.local
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts
 
 # Generated sidecars from local tooling
 src/App.vue.js

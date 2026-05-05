@@ -1,18 +1,13 @@
-### NextJS ###
 # dependencies
-/node_modules
-/.pnp
-.pnp.js
+node_modules
 
-# testing
-/coverage
-
-# next.js
-/.next/
-/out/
-
-# production
-/build
+# testing and build output
+coverage
+build
+dist
+dist-ssr
+.next/
+out/
 
 # misc
 .DS_Store
@@ -26,13 +21,21 @@ yarn-error.log*
 
 # local env files
 .env*.local
+LOCAL_*.md
 
-# vercel
-.vercel
-
-# typescript
+# TypeScript caches
 *.tsbuildinfo
-next-env.d.ts
 
+# local Supabase state
+supabase/.temp/
+supabase/.branches/
+
+# generated frontend artifacts
+frontend/vite.config.js
+frontend/vite.config.d.ts
+frontend/src/*.js
+frontend/src/components/*.vue.js
+
+# editor settings
 .vsCode
 .idea
