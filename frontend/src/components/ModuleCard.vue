@@ -48,7 +48,21 @@ function courseTypeClassKey(courseType: string): string {
     </div>
 
     <div class="card-body">
+      <div v-if="module.categories.length" class="category-row">
+        <div class="category-list">
+          <span
+            v-for="category in module.categories"
+            :key="category.id"
+            class="tag tag-category"
+            :style="category.color ? { borderColor: category.color, color: category.color } : undefined"
+          >
+            {{ category.name }}
+          </span>
+        </div>
+      </div>
+
       <p class="module-name">{{ module.name }}</p>
+      <p class="module-coordinator">{{ module.coordinator }}</p>
 
       <div class="tags">
         <span class="tag" :class="module.is_mandatory ? 'tag-mandatory' : 'tag-optional'">
@@ -61,15 +75,6 @@ function courseTypeClassKey(courseType: string): string {
 
         <span v-if="module.language && module.language !== 'Deutsch'" class="tag tag-language">
           {{ module.language }}
-        </span>
-
-        <span
-          v-for="category in module.categories"
-          :key="category.id"
-          class="tag tag-category"
-          :style="category.color ? { borderColor: category.color, color: category.color } : undefined"
-        >
-          {{ category.name }}
         </span>
 
         <template v-if="module.courses.length">
@@ -86,11 +91,12 @@ function courseTypeClassKey(courseType: string): string {
     </div>
 
     <div class="card-right">
-      <span class="status-badge" :class="`status-${module.module_status}`">
-        {{ statusLabel(module.module_status) }}
-      </span>
-      <span class="ects-badge">{{ totalEcts }} ECTS</span>
-      <span class="coordinator">{{ module.coordinator }}</span>
+      <div class="metric-badges">
+        <span class="status-badge" :class="`status-${module.module_status}`">
+          {{ statusLabel(module.module_status) }}
+        </span>
+        <span class="ects-badge">{{ totalEcts }} ECTS</span>
+      </div>
     </div>
   </div>
 </template>
@@ -120,11 +126,11 @@ function courseTypeClassKey(courseType: string): string {
 }
 
 .module-card-belegt {
-  border-left: 3px solid var(--color-warning);
+  border-left: 3px solid var(--color-primary-light);
 }
 
 .module-card-abgeschlossen {
-  border-left: 3px solid var(--color-success);
+  border-left: 3px solid var(--color-primary);
 }
 
 .card-left {
@@ -155,7 +161,7 @@ function courseTypeClassKey(courseType: string): string {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.44em;
+  gap: 0.38em;
 }
 
 .module-name {
@@ -172,6 +178,24 @@ function courseTypeClassKey(courseType: string): string {
   overflow: hidden;
 }
 
+.module-coordinator {
+  margin: 0;
+  font-size: 0.76rem;
+  color: var(--color-text-muted);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.category-row {
+  min-width: 0;
+}
+
+.category-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3em;
+}
+
 .tags {
   display: flex;
   flex-wrap: wrap;
@@ -185,23 +209,24 @@ function courseTypeClassKey(courseType: string): string {
   font-weight: 700;
   letter-spacing: 0.04em;
   padding: 0.15em 0.5em;
-  border-radius: 99em;
+  border-radius: var(--radius-control);
   white-space: nowrap;
   border: 1px solid transparent;
   background: var(--color-surface-raised);
   color: var(--color-text-muted);
+  line-height: 1.3;
 }
 
 .tag-mandatory {
-  background: var(--color-success-bg);
-  color: var(--color-success);
-  border-color: var(--color-success-border);
+  background: var(--color-surface-raised);
+  color: var(--color-primary-dark);
+  border-color: var(--color-primary-light);
 }
 
 .tag-optional {
-  background: var(--color-warning-bg);
-  color: var(--color-warning);
-  border-color: var(--color-warning-border);
+  background: var(--color-surface-raised);
+  color: var(--color-primary-light);
+  border-color: var(--color-primary-light);
 }
 
 .tag-specialization {
@@ -250,22 +275,32 @@ function courseTypeClassKey(courseType: string): string {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 0.3em;
+  gap: 0.4em;
   flex-shrink: 0;
-  min-width: 7.25em;
+  min-width: 8.6em;
+}
+
+.metric-badges {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.28em;
+  width: 100%;
 }
 
 .status-badge {
   font-size: 70%;
   font-weight: 700;
-  padding: 0.2em 0.5em;
+  padding: 0.2em 0.55em;
   border-radius: var(--radius-control);
-  border: 1px solid transparent;
+  border: 1px solid;
   white-space: nowrap;
+  min-width: 7.6em;
+  text-align: center;
 }
 
 .status-offen {
-  background: var(--color-surface-raised);
+  background: var(--color-surface);
   border-color: var(--color-border);
   color: var(--color-text-muted);
 }
@@ -288,18 +323,11 @@ function courseTypeClassKey(courseType: string): string {
   color: var(--color-primary);
   background: var(--color-surface);
   border: 1px solid var(--color-primary-light);
-  padding: 0.12em 0.5em;
+  padding: 0.14em 0.55em;
   border-radius: var(--radius-control);
   white-space: nowrap;
-}
-
-.coordinator {
-  font-size: 72%;
-  color: var(--color-text-muted);
-  text-align: right;
-  max-width: 11em;
-  line-height: 1.35;
-  overflow-wrap: anywhere;
+  min-width: 7.6em;
+  text-align: center;
 }
 
 @media (max-width: 760px) {
@@ -312,6 +340,11 @@ function courseTypeClassKey(courseType: string): string {
     width: 6.2rem;
   }
 
+  .category-row {
+    flex-direction: column;
+    gap: 0.25em;
+  }
+
   .card-right {
     grid-column: 1 / -1;
     flex-direction: row;
@@ -321,9 +354,16 @@ function courseTypeClassKey(courseType: string): string {
     min-width: 0;
   }
 
-  .coordinator {
-    max-width: none;
-    text-align: left;
+  .metric-badges {
+    flex-direction: row;
+    align-items: center;
+    width: auto;
+    gap: 0.35em;
+  }
+
+  .status-badge,
+  .ects-badge {
+    min-width: 0;
   }
 }
 </style>
