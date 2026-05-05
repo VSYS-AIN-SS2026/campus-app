@@ -60,6 +60,7 @@ Lege lokal eine `frontend/.env.local` Datei an. Als Vorlage kannst du `.env.exam
 Benötigt werden:
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
+- `VITE_MAGIC_LINK_REDIRECT_URL` (für Magic-Link Login, z. B. `http://127.0.0.1:4173`)
 
 Beispiel:
 
@@ -68,6 +69,15 @@ cp .env.example frontend/.env.local
 ```
 
 Danach kannst du mit `npm run dev` das Frontend starten.
+
+### 8. Magic-Link Auth konfigurieren
+
+1. Supabase Dashboard → **Authentication → URL Configuration**
+2. `Site URL` setzen (lokal z. B. `http://127.0.0.1:4173`)
+3. Unter **Redirect URLs** ebenfalls `http://127.0.0.1:4173` eintragen
+4. Optional für echte Mails: **Authentication → SMTP Settings** konfigurieren (eigener Mail-Server)
+
+Hinweis: Ohne eigenes SMTP nutzt Supabase den eingebauten Mail-Versand (mit Limits).
 
 ## Datenbank-Workflow (wichtig für alle!)
 
