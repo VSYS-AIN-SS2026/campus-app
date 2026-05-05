@@ -80,11 +80,11 @@ function statusLabel(status: ModuleStatus): string {
 .module-card {
   display: flex;
   align-items: flex-start;
-  gap: 14px;
-  padding: 14px 18px;
+  gap: 0.875em;
+  padding: 0.875em 1.125em;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 10px;
+  border-radius: 0.625em;
   cursor: pointer;
   user-select: none;
   transition: border-color 0.15s, box-shadow 0.15s;
@@ -92,31 +92,31 @@ function statusLabel(status: ModuleStatus): string {
 
 .module-card:hover {
   border-color: var(--color-primary);
-  box-shadow: 0 2px 12px rgba(99, 102, 241, 0.12);
+  box-shadow: var(--shadow);
 }
 
 .module-card-offen {
-  border-left: 3px solid rgba(148, 163, 184, 0.75);
+  border-left: 3px solid var(--color-text-muted);
 }
 
 .module-card-belegt {
-  border-left: 3px solid rgba(245, 158, 11, 0.85);
+  border-left: 3px solid var(--color-warning);
 }
 
 .module-card-abgeschlossen {
-  border-left: 3px solid rgba(16, 185, 129, 0.85);
+  border-left: 3px solid var(--color-success);
 }
 
-.card-left { flex-shrink: 0; padding-top: 2px; }
+.card-left { flex-shrink: 0; padding-top: 0.125em; }
 
 .module-code {
-  font-size: 0.72rem;
+  font-size: 72%;
   font-weight: 700;
   letter-spacing: 0.04em;
   color: var(--color-primary);
-  background: var(--color-primary-subtle);
-  padding: 4px 6px;
-  border-radius: 5px;
+  background: var(--color-surface-raised);
+  padding: 0.25em 0.375em;
+  border-radius: 0.3em;
   display: inline-block;
   white-space: nowrap;
 }
@@ -126,12 +126,12 @@ function statusLabel(status: ModuleStatus): string {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 0.44em;
 }
 
 .module-name {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: 95%;
   font-weight: 600;
   color: var(--color-text);
   line-height: 1.3;
@@ -140,15 +140,15 @@ function statusLabel(status: ModuleStatus): string {
 .tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px;
+  gap: 0.3em;
 }
 
 .tag {
-  font-size: 0.68rem;
+  font-size: 68%;
   font-weight: 700;
   letter-spacing: 0.04em;
-  padding: 2px 8px;
-  border-radius: 99px;
+  padding: 0.15em 0.5em;
+  border-radius: 99em;
   white-space: nowrap;
   border: 1px solid transparent;
   background: var(--color-surface-raised);
@@ -156,103 +156,104 @@ function statusLabel(status: ModuleStatus): string {
 }
 
 .tag-mandatory {
-  background: rgba(16, 185, 129, 0.12);
-  color: #10b981;
-  border-color: rgba(16, 185, 129, 0.25);
+  background: var(--color-success-bg);
+  color: var(--color-success);
+  border-color: var(--color-success-border);
 }
 
 .tag-optional {
-  background: rgba(245, 158, 11, 0.12);
-  color: #f59e0b;
-  border-color: rgba(245, 158, 11, 0.25);
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+  border-color: var(--color-warning-border);
 }
 
 .tag-specialization {
-  background: rgba(168, 85, 247, 0.12);
-  color: #a855f7;
-  border-color: rgba(168, 85, 247, 0.25);
+  background: var(--color-surface-raised);
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
 }
 
 .tag-language {
-  background: rgba(59, 130, 246, 0.12);
-  color: #3b82f6;
-  border-color: rgba(59, 130, 246, 0.25);
+  background: var(--color-surface-raised);
+  color: var(--color-primary-light);
+  border-color: var(--color-border);
 }
 
 .tag-course-vorlesung, .tag-course-lecture {
-  background: rgba(99, 102, 241, 0.1);
   color: var(--color-primary);
-  border-color: rgba(99, 102, 241, 0.2);
+  background: var(--color-surface-raised);
+  border-color: var(--color-border);
 }
 
 .tag-course-praktikum {
-  background: rgba(16, 185, 129, 0.08);
-  color: #10b981;
-  border-color: rgba(16, 185, 129, 0.18);
+  background: var(--color-success-bg);
+  color: var(--color-success);
+  border-color: var(--color-success-border);
 }
 
 .tag-course-seminar {
-  background: rgba(245, 158, 11, 0.08);
-  color: #f59e0b;
-  border-color: rgba(245, 158, 11, 0.18);
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+  border-color: var(--color-warning-border);
 }
 
 .tag-course-übung, .tag-course-exercise, .tag-course-uebung {
-  background: rgba(236, 72, 153, 0.08);
-  color: #ec4899;
-  border-color: rgba(236, 72, 153, 0.18);
+  background: var(--color-surface-raised);
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
 }
 
 .card-right {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 5px;
+  gap: 0.3em;
   flex-shrink: 0;
 }
 
 .status-badge {
-  font-size: 0.7rem;
+  font-size: 70%;
   font-weight: 700;
-  padding: 3px 8px;
-  border-radius: 999px;
+  padding: 0.2em 0.5em;
+  border-radius: var(--radius-control);
   border: 1px solid transparent;
   white-space: nowrap;
 }
 
 .status-offen {
-  background: rgba(148, 163, 184, 0.12);
-  border-color: rgba(148, 163, 184, 0.2);
-  color: #94a3b8;
+  background: var(--color-surface-raised);
+  border-color: var(--color-border);
+  color: var(--color-text-muted);
 }
 
 .status-belegt {
-  background: rgba(245, 158, 11, 0.12);
-  border-color: rgba(245, 158, 11, 0.25);
-  color: #f59e0b;
+  background: var(--color-surface);
+  border-color: var(--color-primary-light);
+  color: var(--color-primary-light);
 }
 
 .status-abgeschlossen {
-  background: rgba(16, 185, 129, 0.12);
-  border-color: rgba(16, 185, 129, 0.25);
-  color: #10b981;
+  background: var(--color-surface);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
 }
 
 .ects-badge {
-  font-size: 0.78rem;
+  font-size: 78%;
   font-weight: 700;
-  color: var(--color-text);
-  background: var(--color-surface-raised);
-  padding: 2px 8px;
-  border-radius: 20px;
+  color: var(--color-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-primary-light);
+  padding: 0.12em 0.5em;
+  border-radius: var(--radius-control);
   white-space: nowrap;
 }
 
 .coordinator {
-  font-size: 0.72rem;
+  font-size: 72%;
   color: var(--color-text-muted);
   white-space: nowrap;
-  max-width: 120px;
+  max-width: 7.5em;
   overflow: hidden;
   text-overflow: ellipsis;
 }

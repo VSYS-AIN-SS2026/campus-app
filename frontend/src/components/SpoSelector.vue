@@ -36,11 +36,11 @@ defineEmits<{
 .dropdown {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 0.375em;
 }
 
 label {
-  font-size: 0.78rem;
+  font-size: 78%;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -56,24 +56,31 @@ label {
 select {
   appearance: none;
   width: 100%;
-  padding: 10px 40px 10px 14px;
-  font-size: 0.95rem;
+  min-height: 42px;
+  padding: 0.625em 2.5em 0.625em 0.875em;
+  font-size: 95%;
   font-family: inherit;
   color: var(--color-text);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   cursor: pointer;
   transition: border-color 0.2s, box-shadow 0.2s;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b7280' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 14px center;
+  background-position: right 0.875em center;
 }
 
 select:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px var(--color-primary-glow);
+  box-shadow: 0 0 0 0.2em var(--color-primary-glow);
+}
+
+select:focus-visible {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 0.2em var(--color-primary-glow);
 }
 
 select:disabled {
@@ -83,9 +90,9 @@ select:disabled {
 
 .select-spinner {
   position: absolute;
-  right: 36px;
-  width: 14px;
-  height: 14px;
+  right: 2.25em;
+  width: 0.875em;
+  height: 0.875em;
   border: 2px solid var(--color-border);
   border-top-color: var(--color-primary);
   border-radius: 50%;

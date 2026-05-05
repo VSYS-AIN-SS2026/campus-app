@@ -110,20 +110,6 @@ const canEditModuleStatuses = computed(() =>
   !selectionDirty.value && !!demoUserProfile.value?.spo_id
 )
 
-// --- stats ---
-const totalEcts = computed(() =>
-  modules.value.reduce((s, m) => s + m.courses.reduce((cs, c) => cs + (c.ects ?? 0), 0), 0)
-)
-const totalCourses = computed(() =>
-  modules.value.reduce((s, m) => s + m.courses.length, 0)
-)
-const completedModules = computed(() =>
-  modules.value.filter(m => m.module_status === 'abgeschlossen').length
-)
-const enrolledModules = computed(() =>
-  modules.value.filter(m => m.module_status === 'belegt').length
-)
-
 function clearSelectionMessages() {
   profileError.value = null
   profileInfo.value = null
@@ -463,7 +449,7 @@ fetchInitialData()
     <header class="app-header">
       <div class="header-inner">
         <div class="brand">
-          <span class="brand-icon">🎓</span>
+          <img src="/favicon.ico" alt="HTWG Logo" class="brand-logo" />
           <span class="brand-name">Campus App</span>
         </div>
       </div>
@@ -504,7 +490,7 @@ fetchInitialData()
           </p>
 
           <p class="helper-copy">
-            {{ selectionDirty ? 'Die aktuelle Auswahl ist noch nicht im Demo-Profil gespeichert.' : 'Die aktuelle Auswahl ist mit dem Demo-Profil synchron.' }}
+            {{ selectionDirty ? 'Du hast Änderungen, die noch nicht im Demo-Profil gespeichert sind.' : 'Auswahl und Demo-Profil sind aktuell gleich.' }}
           </p>
         </section>
       </div>
@@ -527,22 +513,27 @@ fetchInitialData()
       </div>
 
       <div class="selection-toolbar">
-        <button
-          class="save-button"
-          type="button"
-          :disabled="profileSaving || !selectedStudyProgramId || !selectionDirty"
-          @click="saveStudyProfileSelection"
-        >
-          {{ profileSaving ? 'Wird gespeichert…' : 'Im Demo-Profil speichern' }}
-        </button>
+        <div class="selection-toolbar-inner">
+          <div class="selection-toolbar-copy">
+            <p class="selection-toolbar-title">Auswahl speichern</p>
+            <p class="helper-copy">
+              Studiengang und SPO werden für den Demo-User in <code>users</code> gespeichert.
+            </p>
+          </div>
 
-        <p class="helper-copy">
-          Die aktuelle Auswahl wird fuer den Demo-User in <code>users</code> gespeichert.
-        </p>
+          <button
+            class="save-button"
+            type="button"
+            :disabled="profileSaving || !selectedStudyProgramId || !selectionDirty"
+            @click="saveStudyProfileSelection"
+          >
+            {{ profileSaving ? 'Wird gespeichert…' : 'Im Demo-Profil speichern' }}
+          </button>
+        </div>
       </div>
 
       <div v-if="profileError" class="error-banner">
-        ⚠️ {{ profileError }}
+        {{ profileError }}
       </div>
 
       <div v-if="profileInfo" class="success-banner">
@@ -550,41 +541,18 @@ fetchInitialData()
       </div>
 
       <div v-if="error" class="error-banner">
-        ⚠️ {{ error }}
+        {{ error }}
       </div>
 
       <div v-if="moduleStatusError" class="info-banner">
-        ⚠️ {{ moduleStatusError }}
+        {{ moduleStatusError }}
       </div>
 
       <div v-if="selectedSpoId && !canEditModuleStatuses" class="info-banner">
-        ⚠️ Speichere zuerst die aktuelle Studiengang- und SPO-Auswahl im Demo-Profil, damit Modulstatus persistent geändert werden kann.
+        Speichere zuerst deine Auswahl im Demo-Profil, damit Modulstatus erhalten bleibt.
       </div>
 
       <template v-if="selectedSpoId && !loading">
-        <div class="stats-bar">
-          <div class="stat">
-            <span class="stat-value">{{ modules.length }}</span>
-            <span class="stat-label">Module gesamt</span>
-          </div>
-          <div class="stat">
-            <span class="stat-value">{{ totalCourses }}</span>
-            <span class="stat-label">Lehrveranstaltungen</span>
-          </div>
-          <div class="stat">
-            <span class="stat-value">{{ totalEcts }}</span>
-            <span class="stat-label">ECTS gesamt</span>
-          </div>
-          <div class="stat">
-            <span class="stat-value">{{ enrolledModules }}</span>
-            <span class="stat-label">Belegte Module</span>
-          </div>
-          <div class="stat">
-            <span class="stat-value">{{ completedModules }}</span>
-            <span class="stat-label">Abgeschlossen</span>
-          </div>
-        </div>
-
         <ModuleList :modules="modules" @select="selectedModule = $event" />
       </template>
 
@@ -594,12 +562,12 @@ fetchInitialData()
       </div>
 
       <div v-else-if="!selectedStudyProgramId" class="empty-state">
-        <div class="empty-icon">📋</div>
+        <div class="empty-icon"></div>
         <p>Wähle einen Studiengang aus, um fortzufahren.</p>
       </div>
 
       <div v-else-if="!selectedSpoId" class="empty-state">
-        <div class="empty-icon">📑</div>
+        <div class="empty-icon"></div>
         <p>Wähle eine SPO aus, um die zugehörigen Module anzuzeigen.</p>
       </div>
     </main>
@@ -632,7 +600,7 @@ fetchInitialData()
 }
 
 .header-inner {
-  max-width: 900px;
+  max-width: 960px;
   margin: 0 auto;
   padding: 0 24px;
   height: 56px;
@@ -648,6 +616,12 @@ fetchInitialData()
 
 .brand-icon { font-size: 1.3rem; }
 
+.brand-logo {
+  height: 28px;
+  width: auto;
+  display: block;
+}
+
 .brand-name {
   font-size: 1rem;
   font-weight: 700;
@@ -656,7 +630,7 @@ fetchInitialData()
 }
 
 .app-main {
-  max-width: 900px;
+  max-width: 960px;
   margin: 0 auto;
   padding: 40px 24px 80px;
   width: 100%;
@@ -779,15 +753,37 @@ fetchInitialData()
 }
 
 .selection-toolbar {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+.selection-toolbar-inner {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 14px;
-  flex-wrap: wrap;
+}
+
+.selection-toolbar-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.selection-toolbar-title {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--color-text);
 }
 
 .save-button {
   border: none;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
+  min-height: 42px;
   padding: 11px 16px;
   font: inherit;
   font-weight: 700;
@@ -795,6 +791,7 @@ fetchInitialData()
   background: var(--color-primary);
   cursor: pointer;
   transition: opacity 0.15s, transform 0.15s;
+  flex-shrink: 0;
 }
 
 .save-button:hover:enabled {
@@ -808,62 +805,29 @@ fetchInitialData()
 
 .error-banner {
   padding: 12px 16px;
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: var(--color-error-bg);
+  border: 1px solid var(--color-error-border);
   border-radius: 8px;
-  color: #ef4444;
+  color: var(--color-error);
   font-size: 0.88rem;
 }
 
 .info-banner {
   padding: 12px 16px;
-  background: rgba(245, 158, 11, 0.1);
-  border: 1px solid rgba(245, 158, 11, 0.25);
+  background: var(--color-warning-bg);
+  border: 1px solid var(--color-warning-border);
   border-radius: 8px;
-  color: #fbbf24;
+  color: var(--color-warning);
   font-size: 0.88rem;
 }
 
 .success-banner {
   padding: 12px 16px;
-  background: rgba(16, 185, 129, 0.1);
-  border: 1px solid rgba(16, 185, 129, 0.24);
+  background: var(--color-success-bg);
+  border: 1px solid var(--color-success-border);
   border-radius: 8px;
-  color: #34d399;
+  color: var(--color-success);
   font-size: 0.88rem;
-}
-
-.stats-bar {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.stat {
-  flex: 1;
-  min-width: 100px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
-  padding: 14px 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.stat-value {
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: var(--color-primary);
-  line-height: 1;
-}
-
-.stat-label {
-  font-size: 0.72rem;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--color-text-muted);
 }
 
 .loading-state,
@@ -896,6 +860,32 @@ fetchInitialData()
 @media (max-width: 720px) {
   .profile-grid {
     grid-template-columns: 1fr;
+  }
+  .app-main {
+    padding: 24px 16px 60px;
+    gap: 20px;
+  }
+  .header-inner {
+    padding: 0 16px;
+  }
+  .controls-bar {
+    flex-direction: column;
+  }
+  .controls-bar > * {
+    min-width: unset;
+  }
+  .selection-toolbar {
+    padding: 12px;
+  }
+  .selection-toolbar-inner {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .save-button {
+    width: 100%;
+  }
+  .page-title {
+    font-size: 1.4rem;
   }
 }
 </style>

@@ -43,7 +43,10 @@ function totalEcts(mods: ModuleEntry[]): number {
     <div v-for="[sem, mods] in bySemester" :key="sem" class="semester-group">
       <div class="semester-header">
         <h2 class="semester-title">{{ semesterLabel(sem) }}</h2>
-        <span class="semester-ects">{{ totalEcts(mods) }} ECTS</span>
+        <div class="semester-meta">
+          <span class="semester-badge">{{ mods.length }} {{ mods.length === 1 ? 'Modul' : 'Module' }}</span>
+          <span class="semester-badge semester-badge-ects">{{ totalEcts(mods) }} ECTS</span>
+        </div>
       </div>
       <div class="semester-modules">
         <ModuleCard v-for="m in mods" :key="m.id" :module="m" @select="emit('select', $event)" />
@@ -56,42 +59,72 @@ function totalEcts(mods: ModuleEntry[]): number {
 .module-list {
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 1.1em;
 }
 
 .semester-group {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 0.75em;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 0.75em;
 }
 
 .semester-header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  padding-bottom: 8px;
+  gap: 0.75em;
+  padding: 0.2em 0.2em 0.6em;
   border-bottom: 1px solid var(--color-border);
 }
 
 .semester-title {
   margin: 0;
-  font-size: 1rem;
+  font-size: 0.98rem;
   font-weight: 700;
   color: var(--color-text);
 }
 
-.semester-ects {
-  font-size: 0.78rem;
+.semester-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.4em;
+}
+
+.semester-badge {
+  font-size: 75%;
   font-weight: 600;
   color: var(--color-text-muted);
   background: var(--color-surface-raised);
-  padding: 2px 10px;
-  border-radius: 20px;
+  border: 1px solid var(--color-border);
+  padding: 0.15em 0.6em;
+  border-radius: var(--radius-control);
+}
+
+.semester-badge-ects {
+  color: var(--color-primary);
+  background: var(--color-surface);
+  border-color: var(--color-primary-light);
 }
 
 .semester-modules {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0.5em;
+}
+
+@media (max-width: 640px) {
+  .semester-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .semester-meta {
+    justify-content: flex-start;
+  }
 }
 </style>
