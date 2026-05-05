@@ -22,6 +22,16 @@ function statusLabel(status: ModuleStatus): string {
       return 'Offen'
   }
 }
+
+function courseTypeClassKey(courseType: string): string {
+  return courseType
+    .toLowerCase()
+    .replace(/ä/g, 'ae')
+    .replace(/ö/g, 'oe')
+    .replace(/ü/g, 'ue')
+    .replace(/ß/g, 'ss')
+    .replace(/\s+/g, '-')
+}
 </script>
 
 <template>
@@ -53,12 +63,21 @@ function statusLabel(status: ModuleStatus): string {
           {{ module.language }}
         </span>
 
+        <span
+          v-for="category in module.categories"
+          :key="category.id"
+          class="tag tag-category"
+          :style="category.color ? { borderColor: category.color, color: category.color } : undefined"
+        >
+          {{ category.name }}
+        </span>
+
         <template v-if="module.courses.length">
           <span
             v-for="c in module.courses"
             :key="c.id"
             class="tag"
-            :class="`tag-course-${c.course_type.toLowerCase()}`"
+            :class="`tag-course-${courseTypeClassKey(c.course_type)}`"
           >
             {{ c.course_type }}
           </span>
@@ -78,8 +97,9 @@ function statusLabel(status: ModuleStatus): string {
 
 <style scoped>
 .module-card {
-  display: flex;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: 7.5rem minmax(0, 1fr) auto;
+  align-items: start;
   gap: 0.875em;
   padding: 0.875em 1.125em;
   background: var(--color-surface);
@@ -107,7 +127,11 @@ function statusLabel(status: ModuleStatus): string {
   border-left: 3px solid var(--color-success);
 }
 
-.card-left { flex-shrink: 0; padding-top: 0.125em; }
+.card-left {
+  width: 7.5rem;
+  flex-shrink: 0;
+  padding-top: 0.125em;
+}
 
 .module-code {
   font-size: 72%;
@@ -117,12 +141,17 @@ function statusLabel(status: ModuleStatus): string {
   background: var(--color-surface-raised);
   padding: 0.25em 0.375em;
   border-radius: 0.3em;
-  display: inline-block;
+  display: block;
+  width: 100%;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .card-body {
-  flex: 1;
+  width: 100%;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -135,11 +164,19 @@ function statusLabel(status: ModuleStatus): string {
   font-weight: 600;
   color: var(--color-text);
   line-height: 1.3;
+  min-height: 2.6em;
+  display: -webkit-box;
+  line-clamp: 2;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .tags {
   display: flex;
   flex-wrap: wrap;
+  align-items: flex-start;
+  align-content: flex-start;
   gap: 0.3em;
 }
 
@@ -179,6 +216,12 @@ function statusLabel(status: ModuleStatus): string {
   border-color: var(--color-border);
 }
 
+.tag-category {
+  background: var(--color-surface);
+  border-color: var(--color-primary-light);
+  color: var(--color-primary-light);
+}
+
 .tag-course-vorlesung, .tag-course-lecture {
   color: var(--color-primary);
   background: var(--color-surface-raised);
@@ -197,7 +240,7 @@ function statusLabel(status: ModuleStatus): string {
   border-color: var(--color-warning-border);
 }
 
-.tag-course-übung, .tag-course-exercise, .tag-course-uebung {
+.tag-course-exercise, .tag-course-uebung {
   background: var(--color-surface-raised);
   color: var(--color-text-muted);
   border-color: var(--color-border);
@@ -209,6 +252,7 @@ function statusLabel(status: ModuleStatus): string {
   align-items: flex-end;
   gap: 0.3em;
   flex-shrink: 0;
+  min-width: 7.25em;
 }
 
 .status-badge {
@@ -252,9 +296,34 @@ function statusLabel(status: ModuleStatus): string {
 .coordinator {
   font-size: 72%;
   color: var(--color-text-muted);
-  white-space: nowrap;
-  max-width: 7.5em;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  text-align: right;
+  max-width: 11em;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 760px) {
+  .module-card {
+    grid-template-columns: 6.2rem minmax(0, 1fr);
+    row-gap: 0.6em;
+  }
+
+  .card-left {
+    width: 6.2rem;
+  }
+
+  .card-right {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    min-width: 0;
+  }
+
+  .coordinator {
+    max-width: none;
+    text-align: left;
+  }
 }
 </style>

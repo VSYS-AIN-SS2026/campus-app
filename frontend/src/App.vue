@@ -6,6 +6,7 @@ import ModuleList from './components/ModuleList.vue'
 import ModuleDrawer from './components/ModuleDrawer.vue'
 import type {
   ModuleEntry,
+  ModuleCategory,
   ModuleHandbook,
   ModuleStatus,
   Spo,
@@ -365,6 +366,7 @@ async function fetchModules(handbookIds: string[], requestId: number) {
     const module = {
       ...row.modules,
       recommended_semester: row.recommended_semester,
+      categories: [],
       courses: row.modules?.courses ?? [],
       module_status: 'offen',
     } as ModuleEntry
@@ -378,7 +380,40 @@ async function fetchModules(handbookIds: string[], requestId: number) {
 
   modules.value = Array.from(uniqueModules.values())
 
-  await fetchModuleStatuses(modules.value.map(module => module.id), requestId)
+  const moduleIds = modules.value.map(module => module.id)
+
+  if (moduleIds.length) {
+    const { data: categoryData } = await supabase
+      .from('module_category_entries')
+      .select(`
+        module_id,
+        categories (
+          id, name, color, type
+        )
+      `)
+      .in('module_id', moduleIds)
+
+    const categoriesByModuleId = new Map<string, ModuleCategory[]>()
+
+    for (const row of (categoryData ?? []) as any[]) {
+      const category = row?.categories as ModuleCategory | null
+
+      if (!row?.module_id || !category?.id || !category?.name) {
+        continue
+      }
+
+      const existingCategories = categoriesByModuleId.get(row.module_id) ?? []
+      existingCategories.push(category)
+      categoriesByModuleId.set(row.module_id, existingCategories)
+    }
+
+    modules.value = modules.value.map(module => ({
+      ...module,
+      categories: categoriesByModuleId.get(module.id) ?? [],
+    }))
+  }
+
+  await fetchModuleStatuses(moduleIds, requestId)
 
   if (!isActiveModuleRequest(requestId)) {
     return
