@@ -39,3 +39,9 @@ frontend/src/components/*.vue.js
 # editor settings
 .vsCode
 .idea
+
+# scripts/ (Python research tools)
+/scripts/.venv/
+/scripts/data/
+__pycache__/
+*.py[cod]

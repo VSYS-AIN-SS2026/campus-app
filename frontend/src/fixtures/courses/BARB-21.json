@@ -1,0 +1,27 @@
+[
+  {
+    "id": "fixture-BARB-21-c0",
+    "module_id": "fixture-BARB-21",
+    "code": "BARB",
+    "name": "Bachelorarbeit",
+    "course_type": "P",
+    "coordinator": "Professor*innen der Fakultät IN",
+    "ects": 12,
+    "sws": 0,
+    "details": {
+      "course_types": [
+        "P"
+      ],
+      "responsible_name": "Professor*innen der Fakultät IN",
+      "responsible_login": null,
+      "additional_teachers": null,
+      "exam_graded": null,
+      "exam_ungraded": null,
+      "performance_record": null,
+      "syllabus": "Abhängig vom jeweiligen Thema",
+      "source_apex_cid": 10281
+    },
+    "created_at": null,
+    "updated_at": null
+  }
+]

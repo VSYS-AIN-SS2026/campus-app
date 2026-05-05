@@ -1,0 +1,62 @@
+{
+  "id": "fixture-BARB-21",
+  "code": "BARB/21",
+  "name": "Bachelorarbeit",
+  "start_semester": "7",
+  "coordinator": "Studiendekan*in / Studiengangsleiter*in AIN",
+  "version": 1,
+  "is_mandatory": true,
+  "is_specialization": false,
+  "specialization_name": null,
+  "language": "Deutsch",
+  "details": {
+    "coordinator_name": "Studiendekan*in / Studiengangsleiter*in AIN",
+    "coordinator_login": null,
+    "specialization_track": null,
+    "module_type": "PM",
+    "language_primary": "Deutsch",
+    "language_secondary": null,
+    "language_secondary_optional": false,
+    "start_semester_min": 7,
+    "start_semester_max": 7,
+    "contact_hours": 0,
+    "self_study_hours": 360,
+    "ects_total_computed": 12.0,
+    "semester_count": 1,
+    "start_phases": [
+      "Sommersemester",
+      "Wintersemester"
+    ],
+    "learning_formats": [
+      "Selbststudium"
+    ],
+    "learning_formats_misc": "Abschlussarbeit",
+    "exam_graded": {
+      "form": "SP",
+      "duration_min": null,
+      "components": null,
+      "raw": "SP"
+    },
+    "exam_ungraded": null,
+    "performance_record": null,
+    "grade_composition_rule": null,
+    "grade_composition_misc": "Die Modulnote errechnet sich aus dem arithmetischen Mittel der Noten der beiden Prüfer der Bachelorarbeit.",
+    "prerequisites_text": "Grundstudium, IPSS/15",
+    "prerequisites_codes": [
+      "IPSS/15"
+    ],
+    "needed_for_text": null,
+    "needed_for_codes": [],
+    "combine_with_text": "Modulen einer Vertiefungsrichtung",
+    "combine_with_codes": [],
+    "learning_objectives": "Die Studierenden sind der Lage, innerhalb einer vorgegebenen Frist eine Problemstellung aus dem Bereich der angewandten Informatik selbstständig und nach wissenschaftlichen Methoden und Erkenntnissen zu bearbeiten. Sie können den Projektablauf planen, die Lösungen methodisch erarbeiten und praktisch umsetzen und die Ergebnisse in schriftlicher Form (Bachelorarbeit) strukturiert darstellen.",
+    "personal_competencies": null,
+    "literature": "Abhängig vom jeweiligen Thema",
+    "source_apex_mhid": 183,
+    "source_apex_mid": 2064,
+    "source_handbook_label": "AIN SPO 3 (01.03.2019)",
+    "last_updated": "2018-10-30"
+  },
+  "created_at": null,
+  "updated_at": null
+}

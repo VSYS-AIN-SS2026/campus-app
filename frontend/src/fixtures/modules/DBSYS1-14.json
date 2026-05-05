@@ -1,0 +1,67 @@
+{
+  "id": "fixture-DBSYS1-14",
+  "code": "DBSYS1/14",
+  "name": "Datenbanksysteme 1",
+  "start_semester": "3",
+  "coordinator": "Eck, Oliver [eck]",
+  "version": 1,
+  "is_mandatory": true,
+  "is_specialization": false,
+  "specialization_name": null,
+  "language": "Deutsch",
+  "details": {
+    "coordinator_name": "Eck, Oliver",
+    "coordinator_login": "eck",
+    "specialization_track": null,
+    "module_type": "PM",
+    "language_primary": "Deutsch",
+    "language_secondary": null,
+    "language_secondary_optional": false,
+    "start_semester_min": 3,
+    "start_semester_max": 3,
+    "contact_hours": 60,
+    "self_study_hours": 90,
+    "ects_total_computed": 5.0,
+    "semester_count": 1,
+    "start_phases": [
+      "Sommersemester",
+      "Wintersemester"
+    ],
+    "learning_formats": [
+      "Vorlesung",
+      "Labor",
+      "Selbststudium"
+    ],
+    "learning_formats_misc": null,
+    "exam_graded": {
+      "form": "K",
+      "duration_min": 90,
+      "components": null,
+      "raw": "K90"
+    },
+    "exam_ungraded": null,
+    "performance_record": null,
+    "grade_composition_rule": "Note der benoteten Modul(teil)prüfung",
+    "grade_composition_misc": null,
+    "prerequisites_text": "SOMO/4 , PROG2/7",
+    "prerequisites_codes": [
+      "SOMO/4",
+      "PROG2/7"
+    ],
+    "needed_for_text": "DBSYS2/SE5",
+    "needed_for_codes": [
+      "DBSYS2/SE5"
+    ],
+    "combine_with_text": null,
+    "combine_with_codes": [],
+    "learning_objectives": "Die Studierenden verfügen über Kenntnisse über die grundsätzlichen Einsatzmöglichkeiten und die Verwendung von Datenbanksystemen. Sie sind in der Lage diese Kenntnisse zur Lösung konkreter Aufgabenstellungen anzuwenden. Dabei können sie im Rahmen eines Datenbankentwurfs Anforderungen an eine Datenbankanwendung erheben, eine konzeptuelle Datenbank-Modellierung durchführen und diese in ein Datenbankschema überführen. Die Studierenden können komplexere Suchanfragen an eine Datenbank stellen und Datenbankanwendungen programmieren.",
+    "personal_competencies": null,
+    "literature": "Eck, O.: Vorlesungsfolien und Übungsunterlagen Kemper, A., Eickler, A.: Datenbanksysteme – Eine Einführung, De Gruyter, 10. Auflage, 2015 Elmasri, R., Navathe, D.B.: Fundamentals of Database Systems, Pearson, 7. Aufl., 2017 Date, C.J., Darwen, H.: SQL – Der Standard. Addison-Wesley, 1998",
+    "source_apex_mhid": 183,
+    "source_apex_mid": 2075,
+    "source_handbook_label": "AIN SPO 3 (01.03.2019)",
+    "last_updated": "2018-10-30"
+  },
+  "created_at": null,
+  "updated_at": null
+}
