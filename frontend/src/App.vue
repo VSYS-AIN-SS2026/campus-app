@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
-import { supabase } from './supabase'
+import { supabase, supabaseConfigError } from './supabase'
 import SpoSelector from './components/SpoSelector.vue'
 import ModuleList from './components/ModuleList.vue'
 import ModuleDrawer from './components/ModuleDrawer.vue'
@@ -146,6 +146,11 @@ function applyModuleStatuses(statusRows: ModuleStatusRow[]) {
 async function fetchModuleStatuses(moduleIds: string[], requestId: number) {
   moduleStatusError.value = null
 
+  if (!supabase) {
+    moduleStatusError.value = supabaseConfigError
+    return
+  }
+
   if (!moduleIds.length || !isActiveModuleRequest(requestId)) {
     return
   }
@@ -167,6 +172,11 @@ async function fetchModuleStatuses(moduleIds: string[], requestId: number) {
 }
 
 async function saveModuleStatus(moduleId: string, status: ModuleStatus) {
+  if (!supabase) {
+    moduleStatusError.value = supabaseConfigError
+    return
+  }
+
   if (!canEditModuleStatuses.value) {
     moduleStatusError.value = 'Speichere zuerst Studiengang und SPO im Demo-Profil, bevor du Modulstatus änderst.'
     return
@@ -211,6 +221,11 @@ async function saveModuleStatus(moduleId: string, status: ModuleStatus) {
 async function saveStudyProfileSelection() {
   clearSelectionMessages()
 
+  if (!supabase) {
+    profileError.value = supabaseConfigError
+    return
+  }
+
   if (!selectedStudyProgramId.value) {
     profileError.value = 'Bitte wähle zuerst einen Studiengang aus.'
     return
@@ -240,6 +255,12 @@ async function fetchInitialData() {
   loading.value = true
   error.value = null
   profileError.value = null
+
+  if (!supabase) {
+    loading.value = false
+    error.value = supabaseConfigError
+    return
+  }
 
   const [spRes, spoRes, hbRes, profileRes] = await Promise.all([
     supabase.from('study_programs').select('id, faculty_id, code, name').order('name').order('code'),
@@ -322,6 +343,12 @@ async function fetchModules(handbookIds: string[], requestId: number) {
   loading.value = true
   error.value = null
   moduleStatusError.value = null
+
+  if (!supabase) {
+    loading.value = false
+    error.value = supabaseConfigError
+    return
+  }
 
   const { data, error: err } = await supabase
     .from('module_handbook_entries')

@@ -101,6 +101,9 @@ SQL schreiben → db reset (lokal) → FEHLER!
 # Einmal setup:
 npx supabase start
 
+# Frontend einmal pruefen:
+npm run build
+
 # Dann immer:
 npx supabase migration new meine_migration
 # SQL schreiben
