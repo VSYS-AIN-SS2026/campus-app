@@ -10,6 +10,7 @@ Eine Vue/Vite-Web-Anwendung für Campus-Verwaltung mit Supabase als Backend.
 git clone git@github.com:VSYS-AIN-SS2026/campus-app.git
 cd campus-app
 ```
+#test
 
 ### 2. Dependencies installieren
 
