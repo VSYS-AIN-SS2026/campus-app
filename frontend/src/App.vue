@@ -209,12 +209,6 @@ async function syncMissingAuthMetadataName(user: User) {
     return user
   }
 
-  const metadataName = getFullNameFromMetadata(user.user_metadata as Record<string, unknown> | undefined)
-
-  if (metadataName) {
-    return user
-  }
-
   const normalizedEmail = user.email?.trim().toLowerCase()
 
   if (!normalizedEmail) {
@@ -228,6 +222,12 @@ async function syncMissingAuthMetadataName(user: User) {
   }
 
   const fullName = `${pendingName.firstName} ${pendingName.lastName}`.trim()
+  const metadataName = getFullNameFromMetadata(user.user_metadata as Record<string, unknown> | undefined)
+
+  if (metadataName === fullName) {
+    return user
+  }
+
   const { data, error: updateError } = await supabase.auth.updateUser({
     data: {
       first_name: pendingName.firstName,
@@ -958,7 +958,7 @@ onUnmounted(() => {
         <div class="profile-grid">
           <section class="profile-panel">
             <span class="panel-eyebrow">Demo-Profil</span>
-            <h2 class="panel-title">Alex Beispiel</h2>
+            <h2 class="panel-title">{{ profileName }}</h2>
 
             <div class="profile-meta">
               <div class="profile-meta-item">
