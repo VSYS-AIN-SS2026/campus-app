@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import type { Category, Course, ExamCode, ModuleEntry, ModuleStatus } from '../types'
+import CourseDetail from './drawer/CourseDetail.vue'
+import ModuleHeader from './drawer/ModuleHeader.vue'
+import ModuleMeta from './drawer/ModuleMeta.vue'
+import { useModuleDetailsFormatter } from '../composables/useModuleDetailsFormatter'
+import type { Category, Course, ModuleEntry, ModuleStatus } from '../types'
 
 const props = defineProps<{
   module: ModuleEntry | null
@@ -33,16 +37,18 @@ function onKeydown(e: KeyboardEvent) {
 onMounted(() => window.addEventListener('keydown', onKeydown))
 onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 
-const TYPE_SHORT: Record<string, string> = {
-  vorlesung: 'V', lecture: 'V', praktikum: 'P',
-  seminar: 'S', übung: 'Ü', exercise: 'Ü', uebung: 'Ü',
-}
-const TYPE_FULL: Record<string, string> = {
-  vorlesung: 'Vorlesung', lecture: 'Vorlesung', praktikum: 'Praktikum',
-  seminar: 'Seminar', übung: 'Übung', exercise: 'Übung', uebung: 'Übung',
-}
-function typeShort(t: string) { return TYPE_SHORT[t.toLowerCase()] ?? t.charAt(0).toUpperCase() }
-function typeFull(t: string)  { return TYPE_FULL[t.toLowerCase()]  ?? t }
+const {
+  buildItems,
+  formatExam,
+  formatKey,
+  htmlToText,
+  moduleTypeLabel,
+  objectEntries,
+  parseWorkload,
+  splitReqs,
+  statusLabel,
+  typeShort,
+} = useModuleDetailsFormatter()
 
 const STATUS_OPTIONS: Array<{ value: ModuleStatus; label: string; description: string }> = [
   { value: 'offen', label: 'Offen', description: 'Noch nicht begonnen' },
@@ -50,139 +56,8 @@ const STATUS_OPTIONS: Array<{ value: ModuleStatus; label: string; description: s
   { value: 'abgeschlossen', label: 'Abgeschlossen', description: 'Bereits erledigt' },
 ]
 
-function statusLabel(status: ModuleStatus): string {
-  switch (status) {
-    case 'belegt':
-      return 'Belegt'
-    case 'abgeschlossen':
-      return 'Abgeschlossen'
-    default:
-      return 'Offen'
-  }
-}
-
-type DetailKind = 'workload' | 'pruefung' | 'voraussetzungen' | 'html' | 'object' | 'text'
-
-interface DetailItem {
-  key: string
-  label: string
-  kind: DetailKind
-  raw: unknown
-}
-
-const WORKLOAD_KEYS = new Set(['workload'])
-const PRUEFUNG_KEYS = new Set(['pruefung', 'prüfung', 'exam', 'pruefungsform', 'prüfungsform'])
-const VORAUSS_KEYS  = new Set(['voraussetzungen', 'prerequisites', 'voraussetzung'])
-
-const KEY_LABELS: Record<string, string> = {
-  beschreibung: 'Beschreibung',    description: 'Beschreibung',
-  lernziele: 'Lernziele',          learning_objectives: 'Lernziele',
-  voraussetzungen: 'Voraussetzungen', prerequisites: 'Voraussetzungen', voraussetzung: 'Voraussetzungen',
-  literatur: 'Literatur',          literature: 'Literatur',
-  sprache: 'Sprache',              language: 'Sprache',
-  pruefung: 'Prüfung',             prüfung: 'Prüfung',
-  exam: 'Prüfungsform',            pruefungsform: 'Prüfungsform', prüfungsform: 'Prüfungsform',
-  workload: 'Workload',            niveau: 'Niveau',
-}
-
-function formatKey(k: string): string {
-  return KEY_LABELS[k.toLowerCase()] ?? k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
-}
-
-const HTML_RE = /<[a-z][\s\S]*>/i
-
-function htmlToText(value: unknown): string {
-  return String(value ?? '')
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/p>/gi, '\n\n')
-    .replace(/<li>/gi, '• ')
-    .replace(/<\/li>/gi, '\n')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&nbsp;/gi, ' ')
-    .replace(/&amp;/gi, '&')
-    .replace(/&lt;/gi, '<')
-    .replace(/&gt;/gi, '>')
-    .trim()
-}
-
-function kindOf(k: string, v: unknown): DetailKind {
-  if (typeof v === 'object' && v !== null && !Array.isArray(v)) return 'object'
-  if (typeof v === 'string' && HTML_RE.test(v)) return 'html'
-  const l = k.toLowerCase()
-  if (WORKLOAD_KEYS.has(l)) return 'workload'
-  if (PRUEFUNG_KEYS.has(l)) return 'pruefung'
-  if (VORAUSS_KEYS.has(l))  return 'voraussetzungen'
-  return 'text'
-}
-
-// Keys we render explicitly via the structured Kurzinfo / Lernziele /
-// Kompetenzen / Literatur / Bezug sections — keep them out of the
-// fallback `buildItems` rendering to avoid double-display.
-const HANDLED_DETAIL_KEYS = new Set([
-  'coordinator_name', 'coordinator_login', 'specialization_track', 'module_type',
-  'language_primary', 'language_secondary', 'language_secondary_optional',
-  'start_semester_min', 'start_semester_max', 'semester_count', 'start_phases',
-  'contact_hours', 'self_study_hours', 'ects_total_computed',
-  'learning_formats', 'learning_formats_misc',
-  'exam_graded', 'exam_ungraded', 'performance_record',
-  'grade_composition_rule', 'grade_composition_misc',
-  'prerequisites_text', 'prerequisites_codes',
-  'needed_for_text', 'needed_for_codes',
-  'combine_with_text', 'combine_with_codes',
-  'learning_objectives', 'personal_competencies', 'literature',
-  'source_apex_mhid', 'source_apex_mid', 'source_handbook_label', 'last_updated',
-])
-
-function buildItems(details: Record<string, unknown>): DetailItem[] {
-  return Object.entries(details)
-    .filter(([k, v]) => v != null && v !== '' && !HANDLED_DETAIL_KEYS.has(k))
-    .map(([k, v]) => ({ key: k, label: formatKey(k), kind: kindOf(k, v), raw: v }))
-}
-
-const EXAM_FORM_LABELS: Record<string, string> = {
-  K: 'Klausur', M: 'mündlich', H: 'Hausarbeit', R: 'Referat',
-  SP: 'Studienprojekt', TE: 'Testate', LP: 'Laborprotokoll',
-  PR: 'Präsentation', AB: 'Ausarbeitung',
-}
-
-function formatExam(code: ExamCode | null | undefined): string | null {
-  if (!code) return null
-  if (!code.form) return code.raw
-  if (code.form === 'K' && code.duration_min) {
-    return `${code.raw} (${code.duration_min} Min Klausur)`
-  }
-  const formLabel = EXAM_FORM_LABELS[code.form]
-  if (formLabel && !code.components) {
-    return `${code.raw} (${formLabel})`
-  }
-  return code.raw
-}
-
-function moduleTypeLabel(m: ModuleEntry): string {
-  const t = m.details?.module_type
-  if (t === 'PM') return 'Pflichtmodul (PM)'
-  if (t === 'WPM') return 'Wahlpflichtmodul (WPM)'
-  return m.is_mandatory ? 'Pflichtmodul (PM)' : 'Wahlpflichtmodul (WPM)'
-}
-
-function objectEntries(raw: unknown): [string, unknown][] {
-  return Object.entries(raw as Record<string, unknown>).filter(([, v]) => v != null && v !== '')
-}
-
-function parseWorkload(v: unknown): { hours: string; note: string } {
-  const s = String(v ?? '').trim()
-  const m = s.match(/^(\d+(?:[.,]\d+)?)\s*(h|std\.?|stunden?)?\s*(.*)$/i)
-  if (m) return { hours: `${m[1]} h`, note: (m[3] ?? '').trim() }
-  return { hours: s, note: '' }
-}
-
-function splitReqs(v: unknown): string[] {
-  return String(v ?? '').split(/[,;\n]+/).map(s => s.trim()).filter(Boolean)
-}
-
 const totalEcts   = computed(() => props.module?.courses.reduce((s, c) => s + (c.ects ?? 0), 0) ?? 0)
-const moduleItems = computed(() => buildItems(props.module?.details ?? {}))
-const courseItems = computed(() => buildItems(selectedCourse.value?.details ?? {}))
+const moduleItems = computed(() => buildItems((props.module?.details ?? {}) as unknown as Record<string, unknown>))
 
 const CATEGORY_TYPE_LABELS: Record<string, string> = {
   kontext: 'Kontext',
@@ -248,15 +123,7 @@ function toggleCategory(categoryId: string) {
             </header>
 
             <div class="drawer-body">
-              <div class="hero">
-                <h2 class="big-title">{{ module.name }}</h2>
-                <div class="chip-row">
-                  <span v-if="module.recommended_semester" class="chip chip-semester">{{ module.recommended_semester }}. Semester</span>
-                  <span class="chip chip-ects">{{ totalEcts }} ECTS</span>
-                  <span class="chip chip-plain">Version {{ module.version }}</span>
-                  <span class="chip chip-status" :class="`chip-status-${module.module_status}`">{{ statusLabel(module.module_status) }}</span>
-                </div>
-              </div>
+              <ModuleHeader :module="module" :total-ects="totalEcts" :status-label="statusLabel" />
 
               <section class="section">
                 <div class="section-header">
@@ -326,48 +193,7 @@ function toggleCategory(categoryId: string) {
                 <p v-else-if="categoryError" class="status-feedback status-feedback-error">{{ categoryError }}</p>
               </section>
 
-              <div class="coordinator-row">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" class="icon-muted">
-                  <circle cx="8" cy="5" r="3" stroke="currentColor" stroke-width="1.6"/>
-                  <path d="M2 15c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-                </svg>
-                <span>{{ module.coordinator }}</span>
-                <span class="text-muted">· ab {{ module.start_semester }}</span>
-              </div>
-
-              <section class="section">
-                <div class="section-header">
-                  <h3 class="section-title">Kurzinfo</h3>
-                </div>
-                <dl class="kurzinfo-list">
-                  <div class="kurzinfo-row">
-                    <dt>Modultyp</dt>
-                    <dd>{{ moduleTypeLabel(module) }}</dd>
-                  </div>
-                  <div class="kurzinfo-row">
-                    <dt>Sprache</dt>
-                    <dd>{{ module.language || '—' }}</dd>
-                  </div>
-                  <div v-if="module.details?.start_phases?.length" class="kurzinfo-row">
-                    <dt>Start-Phase</dt>
-                    <dd>{{ module.details.start_phases.join(' / ') }}</dd>
-                  </div>
-                  <div v-if="module.details?.contact_hours != null || module.details?.self_study_hours != null" class="kurzinfo-row">
-                    <dt>Workload</dt>
-                    <dd>
-                      {{ module.details.contact_hours ?? '—' }} h Kontaktzeit + {{ module.details.self_study_hours ?? '—' }} h Selbststudium
-                      <span v-if="module.details.learning_formats_misc" class="text-muted"> · sonstiges: {{ module.details.learning_formats_misc }}</span>
-                    </dd>
-                  </div>
-                  <div class="kurzinfo-row">
-                    <dt>Prüfung</dt>
-                    <dd>
-                      {{ formatExam(module.details?.exam_graded) ?? formatExam(module.details?.exam_ungraded) ?? formatExam(module.details?.performance_record) ?? '—' }}
-                      <span v-if="module.details?.grade_composition_misc" class="text-muted"> · sonstiges: {{ module.details.grade_composition_misc }}</span>
-                    </dd>
-                  </div>
-                </dl>
-              </section>
+              <ModuleMeta :module="module" :module-type-label="moduleTypeLabel" :format-exam="formatExam" />
 
               <section v-if="module.courses.length" class="section">
                 <div class="section-header">
@@ -523,106 +349,7 @@ function toggleCategory(categoryId: string) {
             </header>
 
             <div class="drawer-body">
-              <div class="hero">
-                <span class="type-label" :class="selectedCourse.course_type.toLowerCase()">{{ typeFull(selectedCourse.course_type) }}</span>
-                <h2 class="big-title">{{ selectedCourse.name }}</h2>
-                <div class="stat-row">
-                  <div class="stat-card">
-                    <span class="stat-number">{{ selectedCourse.ects }}</span>
-                    <span class="stat-unit">ECTS</span>
-                  </div>
-                  <div class="stat-divider" />
-                  <div class="stat-card">
-                    <span class="stat-number">{{ selectedCourse.sws }}</span>
-                    <span class="stat-unit">SWS</span>
-                  </div>
-                </div>
-              </div>
-
-              <div class="info-block">
-                <div class="info-row">
-                  <span class="info-label">Kürzel</span>
-                  <span class="info-value mono">{{ selectedCourse.code }}</span>
-                </div>
-                <div v-if="selectedCourse.coordinator" class="info-row">
-                  <span class="info-label">Lehrperson</span>
-                  <span class="info-value">{{ selectedCourse.coordinator }}</span>
-                </div>
-              </div>
-
-              <section v-if="courseItems.length" class="section">
-                <div class="section-header">
-                  <h3 class="section-title">Details</h3>
-                </div>
-                <div class="details-stack">
-                  <template v-for="item in courseItems" :key="item.key">
-                    <div v-if="item.kind === 'workload'" class="dcard dcard-workload">
-                      <div class="dcard-label">
-                        <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-                          <circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.6"/>
-                          <path d="M8 5v3.5l2.5 1.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-                        </svg>
-                        {{ item.label }}
-                      </div>
-                      <div class="workload-body">
-                        <span class="workload-hours">{{ parseWorkload(item.raw).hours }}</span>
-                        <span v-if="parseWorkload(item.raw).note" class="workload-note">{{ parseWorkload(item.raw).note }}</span>
-                      </div>
-                    </div>
-
-                    <div v-else-if="item.kind === 'pruefung'" class="dcard dcard-pruefung">
-                      <div class="dcard-label">
-                        <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-                          <rect x="3" y="1" width="10" height="14" rx="2" stroke="currentColor" stroke-width="1.6"/>
-                          <path d="M6 5h4M6 8h4M6 11h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                        </svg>
-                        {{ item.label }}
-                      </div>
-                      <p class="dcard-text">{{ item.raw }}</p>
-                    </div>
-
-                    <div v-else-if="item.kind === 'voraussetzungen'" class="dcard dcard-vorauss">
-                      <div class="dcard-label">
-                        <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-                          <circle cx="4" cy="8" r="2" stroke="currentColor" stroke-width="1.5"/>
-                          <circle cx="12" cy="4" r="2" stroke="currentColor" stroke-width="1.5"/>
-                          <circle cx="12" cy="12" r="2" stroke="currentColor" stroke-width="1.5"/>
-                          <path d="M6 7.3l4-2.6M6 8.7l4 2.6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
-                        </svg>
-                        {{ item.label }}
-                      </div>
-                      <div v-if="splitReqs(item.raw).length > 1" class="req-chips">
-                        <span v-for="r in splitReqs(item.raw)" :key="r" class="req-chip">{{ r }}</span>
-                      </div>
-                      <p v-else class="dcard-text">{{ item.raw }}</p>
-                    </div>
-
-                    <div v-else-if="item.kind === 'html'" class="dcard dcard-html">
-                      <div class="dcard-label">{{ item.label }}</div>
-                      <div class="html-content html-content-text">{{ htmlToText(item.raw) }}</div>
-                    </div>
-
-                    <div v-else-if="item.kind === 'object'" class="dcard dcard-object">
-                      <div class="dcard-label">{{ item.label }}</div>
-                      <dl class="obj-list">
-                        <div v-for="[ok, ov] in objectEntries(item.raw)" :key="ok" class="obj-row">
-                          <dt>{{ formatKey(ok) }}</dt>
-                          <dd>{{ ov }}</dd>
-                        </div>
-                      </dl>
-                    </div>
-
-                    <div v-else class="dtext-item">
-                      <dt>{{ item.label }}</dt>
-                      <dd>{{ item.raw }}</dd>
-                    </div>
-                  </template>
-                </div>
-              </section>
-
-              <div v-else-if="!selectedCourse.coordinator" class="empty-hint">
-                Keine weiteren Informationen verfügbar.
-              </div>
+              <CourseDetail :course="selectedCourse" />
             </div>
           </div>
         </Transition>
@@ -631,7 +358,7 @@ function toggleCategory(categoryId: string) {
   </Teleport>
 </template>
 
-<style scoped>
+<style>
 .backdrop {
   position: fixed; inset: 0; background: #0000008c;
   z-index: 40; backdrop-filter: blur(3px);

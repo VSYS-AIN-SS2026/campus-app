@@ -4,7 +4,7 @@ Reads:
   scripts/data/fixture_sample_modules.json   (9 hand-picked modules)
   scripts/data/fixture_sample_courses.json   (their 44 child courses)
 
-Writes (under frontend/src/fixtures/):
+Writes (under frontend/dev/fixtures/):
   modules/<sanitized-code>.json     — one Module row each
   courses/<sanitized-code>.json     — Course[] for that module
   modules_list.json                 — ModuleListItem[] (mirrors view_modules_table)
@@ -25,7 +25,7 @@ HERE = Path(__file__).resolve().parent
 REPO = HERE.parent
 IN_MODULES = HERE / "data" / "fixture_sample_modules.json"
 IN_COURSES = HERE / "data" / "fixture_sample_courses.json"
-OUT_DIR = REPO / "frontend" / "src" / "fixtures"
+OUT_DIR = REPO / "frontend" / "dev" / "fixtures"
 
 
 def sanitize(code: str) -> str:

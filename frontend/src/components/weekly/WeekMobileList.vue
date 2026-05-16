@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
-import type { NormalizedWeekEvent, ScheduleDay } from '../../composables/useWeeklySchedule'
+import type { NormalizedWeekEvent, ScheduleDay } from '../../types/schedule'
 
 const props = defineProps<{
   days: ScheduleDay[]
@@ -12,6 +12,7 @@ const emit = defineEmits<{
   'reach-start-edge': []
   'reach-end-edge': []
   'selected-year-change': [year: number]
+  'hide-series': [payload: { seriesId: string; title: string }]
 }>()
 
 const activeDayIndex = ref(0)
@@ -196,6 +197,17 @@ function onDayTabsScroll() {
   emitTabEdgeEvents()
 }
 
+function requestHideSeries(event: NormalizedWeekEvent) {
+  if (!event.seriesId) {
+    return
+  }
+
+  emit('hide-series', {
+    seriesId: event.seriesId,
+    title: event.title,
+  })
+}
+
 const selectedDay = computed(() => props.days[activeDayIndex.value] ?? null)
 const selectedEvents = computed(() => props.eventsByDay[activeDayIndex.value] ?? [])
 const canGoPrevious = computed(() => props.days.length > 0)
@@ -327,6 +339,9 @@ watch(
           <strong class="event-title">{{ event.title }}</strong>
           <span class="mobile-event-range">{{ event.startTime }}–{{ event.endTime }}</span>
           <span v-if="event.subtitle" class="event-subtitle">{{ event.subtitle }}</span>
+          <button type="button" class="mobile-event-action" @click="requestHideSeries(event)">
+            Alle Termine dieser Reihe ausblenden
+          </button>
         </div>
       </div>
     </article>
@@ -362,6 +377,8 @@ watch(
 .event-abgeschlossen { background: color-mix(in srgb, var(--color-success-bg) 80%, transparent); border-color: var(--color-success-border); }
 .event-title { font-size: 0.75rem; line-height: 1.25; color: var(--color-text); }
 .event-subtitle { font-size: 0.68rem; color: var(--color-text-muted); line-height: 1.25; }
+.mobile-event-action { margin-top: 0.25rem; border: 0.0625rem solid var(--color-border); background: var(--color-surface); color: var(--color-text); border-radius: 0.5rem; font: inherit; font-size: 0.68rem; font-weight: 600; line-height: 1.2; padding: 0.25rem 0.4375rem; align-self: flex-start; }
+.mobile-event-action:hover { border-color: var(--color-primary); }
 @media (max-width: 45em) {
   .mobile-days { display: grid; grid-template-columns: 1fr; gap: 0.625rem; }
 }

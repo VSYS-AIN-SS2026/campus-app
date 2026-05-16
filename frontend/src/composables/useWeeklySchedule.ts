@@ -1,29 +1,5 @@
 import { computed, type ComputedRef } from 'vue'
-
-export type WeekEventStatus = 'offen' | 'belegt' | 'abgeschlossen'
-
-export interface WeekEvent {
-  id: string
-  dayIndex: number
-  title: string
-  subtitle?: string
-  startTime: string
-  endTime: string
-  status: WeekEventStatus
-}
-
-export interface NormalizedWeekEvent extends WeekEvent {
-  start: number
-  end: number
-}
-
-export interface ScheduleDay {
-  index: number
-  date: Date
-  weekdayLabel: string
-  dateLabel: string
-  isToday: boolean
-}
+import type { NormalizedWeekEvent, ScheduleDay, WeekEvent } from '../types/schedule'
 
 export function useWeeklySchedule(
   eventsRef: ComputedRef<WeekEvent[]>,

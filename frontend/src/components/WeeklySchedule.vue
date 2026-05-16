@@ -2,7 +2,8 @@
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import WeekDesktopGrid from './weekly/WeekDesktopGrid.vue'
 import WeekMobileList from './weekly/WeekMobileList.vue'
-import { useWeeklySchedule, type ScheduleDay, type WeekEvent } from '../composables/useWeeklySchedule'
+import { useWeeklySchedule } from '../composables/useWeeklySchedule'
+import type { ScheduleDay, WeekEvent } from '../types/schedule'
 
 type WeekDesktopGridExpose = {
   scrollToDay: (index: number) => void
@@ -23,6 +24,10 @@ const props = withDefaults(defineProps<{
   startHour: 0,
   endHour: 24,
 })
+
+const emit = defineEmits<{
+  'hide-series': [payload: { seriesId: string; title: string }]
+}>()
 
 const nowTimestamp = ref(Date.now())
 let nowTimer: number | null = null
@@ -214,6 +219,7 @@ onUnmounted(() => {
         @reach-start-edge="extendLeft"
         @reach-end-edge="extendRight"
         @selected-year-change="onSelectedYearChange"
+        @hide-series="emit('hide-series', $event)"
       />
     </template>
   </section>

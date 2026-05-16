@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
-import type { NormalizedWeekEvent, ScheduleDay } from '../../composables/useWeeklySchedule'
+import type { NormalizedWeekEvent, ScheduleDay } from '../../types/schedule'
 
 const props = defineProps<{
   days: ScheduleDay[]
