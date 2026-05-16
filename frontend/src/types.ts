@@ -198,6 +198,8 @@ export interface ModuleCategory {
   name: string
   color: string | null
   type: string | null
+}
+
 export interface Category {
   id: string
   name: string
@@ -223,7 +225,6 @@ export interface ModuleEntry {
   is_specialization: boolean
   specialization_name: string | null
   language: string
-  categories: ModuleCategory[]
   recommended_semester: number | null
   categories: Category[]
   courses: Course[]

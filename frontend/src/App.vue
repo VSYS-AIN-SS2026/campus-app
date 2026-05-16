@@ -5,10 +5,10 @@ import { magicLinkRedirectTo, supabase, supabaseConfigError } from './supabase'
 import SpoSelector from './components/SpoSelector.vue'
 import ModuleList from './components/ModuleList.vue'
 import ModuleDrawer from './components/ModuleDrawer.vue'
+import WeeklySchedule from './components/WeeklySchedule.vue'
 import type {
   Category,
   ModuleEntry,
-  ModuleCategory,
   ModuleHandbook,
   ModuleStatus,
   Spo,
@@ -28,6 +28,18 @@ type ModuleCategoryRow = {
   name: string
   color: string
   type: string
+}
+
+type PlannerView = 'week' | 'modules'
+
+type WeeklyScheduleEvent = {
+  id: string
+  dayIndex: number
+  title: string
+  subtitle?: string
+  startTime: string
+  endTime: string
+  status: ModuleStatus
 }
 
 let activeModuleRequestId = 0
@@ -136,6 +148,104 @@ const canEditModuleStatuses = computed(() =>
   !selectionDirty.value && !!demoUserProfile.value?.spo_id
 )
 const currentUserEmail = computed(() => currentUser.value?.email ?? '')
+const activePlannerView = ref<PlannerView>('week')
+
+function getStartOfCurrentWeek(referenceDate: Date) {
+  const date = new Date(referenceDate)
+  const weekday = (date.getDay() + 6) % 7
+  date.setDate(date.getDate() - weekday)
+  date.setHours(0, 0, 0, 0)
+  return date
+}
+
+function toTimeString(totalMinutes: number) {
+  const hours = Math.floor(totalMinutes / 60)
+  const minutes = totalMinutes % 60
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+}
+
+const weekStartDate = ref<Date>(getStartOfCurrentWeek(new Date()))
+
+// ===== DEV-ONLY PREVIEW (VSYS26T4-79) START =====
+const DEV_WEEKLY_PREVIEW_QUERY_KEY = 'preview'
+const DEV_WEEKLY_PREVIEW_QUERY_VALUE = 'weekly'
+
+const isWeeklyPreviewMode = ref(
+  new URLSearchParams(window.location.search).get(DEV_WEEKLY_PREVIEW_QUERY_KEY)?.toLowerCase() === DEV_WEEKLY_PREVIEW_QUERY_VALUE
+)
+
+const weeklyPreviewEvents = ref<WeeklyScheduleEvent[]>([
+  {
+    id: 'preview-1',
+    dayIndex: 0,
+    title: 'Software Engineering',
+    subtitle: 'V · Raum C203',
+    startTime: '09:15',
+    endTime: '10:45',
+    status: 'belegt',
+  },
+  {
+    id: 'preview-2',
+    dayIndex: 1,
+    title: 'Datenbanksysteme',
+    subtitle: 'Ü · Raum B112',
+    startTime: '11:00',
+    endTime: '12:30',
+    status: 'offen',
+  },
+  {
+    id: 'preview-3',
+    dayIndex: 2,
+    title: 'IT-Sicherheit',
+    subtitle: 'V · Online',
+    startTime: '13:30',
+    endTime: '15:00',
+    status: 'abgeschlossen',
+  },
+  {
+    id: 'preview-4',
+    dayIndex: 3,
+    title: 'Künstliche Intelligenz',
+    subtitle: 'Praktikum · Labor L2',
+    startTime: '10:00',
+    endTime: '12:00',
+    status: 'belegt',
+  },
+  {
+    id: 'preview-5',
+    dayIndex: 4,
+    title: 'Projektarbeit',
+    subtitle: 'Team-Slot',
+    startTime: '14:00',
+    endTime: '16:00',
+    status: 'offen',
+  },
+])
+// ===== DEV-ONLY PREVIEW (VSYS26T4-79) END =====
+
+const weeklyScheduleEvents = computed<WeeklyScheduleEvent[]>(() => {
+  const slotStarts = [8 * 60 + 15, 10 * 60, 11 * 60 + 45, 13 * 60 + 30, 15 * 60 + 15]
+
+  return modules.value.slice(0, 21).map((module, index) => {
+    const dayIndex = index % 5
+    const startMinutes = slotStarts[index % slotStarts.length]
+    const ects = module.courses.reduce((sum, course) => sum + (course.ects ?? 0), 0)
+    const duration = ects >= 6 ? 120 : 90
+    const endMinutes = Math.min(startMinutes + duration, 19 * 60 + 45)
+    const firstCourse = module.courses[0]
+
+    return {
+      id: `${module.id}-${dayIndex}-${startMinutes}`,
+      dayIndex,
+      title: module.name,
+      subtitle: firstCourse ? `${firstCourse.name} · ${module.code}` : module.code,
+      startTime: toTimeString(startMinutes),
+      endTime: toTimeString(endMinutes),
+      status: module.module_status,
+    }
+  })
+})
+
 function getTrimmedString(value: unknown) {
   return typeof value === 'string' ? value.trim() : ''
 }
@@ -243,23 +353,6 @@ async function syncMissingAuthMetadataName(user: User) {
 
   return data.user ?? user
 }
-
-const currentUserFullName = computed(() => {
-  const metadataName = getFullNameFromMetadata(currentUser.value?.user_metadata as Record<string, unknown> | undefined)
-
-  if (metadataName) {
-    return metadataName
-  }
-
-  const identityName = getFullNameFromMetadata(
-    currentUser.value?.identities?.[0]?.identity_data as Record<string, unknown> | undefined
-  )
-
-  return identityName
-})
-const profileName = computed(() =>
-  currentUserFullName.value || demoUserProfile.value?.full_name?.trim() || currentUserEmail.value || 'Student'
-)
 
 function clearSelectionMessages() {
   profileError.value = null
@@ -797,6 +890,7 @@ watch(selectedSpoId, (id) => {
   }
 
   if (id) {
+    activePlannerView.value = 'week'
     fetchModulesForSpo(id, requestId)
   }
   else {
@@ -853,6 +947,13 @@ async function initAuth() {
 }
 
 onMounted(() => {
+  // ===== DEV-ONLY PREVIEW (VSYS26T4-79) START =====
+  if (isWeeklyPreviewMode.value) {
+    authLoading.value = false
+    return
+  }
+  // ===== DEV-ONLY PREVIEW (VSYS26T4-79) END =====
+
   void initAuth()
 })
 
@@ -884,7 +985,18 @@ onUnmounted(() => {
     </header>
 
     <main class="app-main">
-      <template v-if="authLoading">
+      <!-- ===== DEV-ONLY PREVIEW (VSYS26T4-79) START ===== -->
+      <template v-if="isWeeklyPreviewMode">
+        <WeeklySchedule
+          :events="weeklyPreviewEvents"
+          :loading="false"
+          :error="null"
+          :week-start="weekStartDate"
+        />
+      </template>
+      <!-- ===== DEV-ONLY PREVIEW (VSYS26T4-79) END ===== -->
+
+      <template v-else-if="authLoading">
         <div class="loading-state">
           <div class="spinner" />
           <p>Session wird geladen…</p>
@@ -1050,8 +1162,40 @@ onUnmounted(() => {
           ⚠️ Speichere zuerst die aktuelle Studiengang- und SPO-Auswahl im Demo-Profil, damit Modulstatus und Kategorien persistent geändert werden können.
         </div>
 
-        <template v-if="selectedSpoId && !loading">
-          <ModuleList :modules="modules" @select="selectedModule = $event" />
+        <template v-if="selectedSpoId">
+          <div class="planner-view-switch" role="tablist" aria-label="Ansicht auswählen">
+            <button
+              type="button"
+              class="planner-view-button"
+              :class="activePlannerView === 'week' ? 'planner-view-button-active' : ''"
+              @click="activePlannerView = 'week'"
+            >
+              Wochenansicht
+            </button>
+            <button
+              type="button"
+              class="planner-view-button"
+              :class="activePlannerView === 'modules' ? 'planner-view-button-active' : ''"
+              @click="activePlannerView = 'modules'"
+            >
+              Modulliste
+            </button>
+          </div>
+
+          <WeeklySchedule
+            v-if="activePlannerView === 'week'"
+            :events="weeklyScheduleEvents"
+            :loading="loading"
+            :error="error"
+            :week-start="weekStartDate"
+          />
+
+          <ModuleList v-else-if="!loading" :modules="modules" @select="selectedModule = $event" />
+
+          <div v-else class="loading-state">
+            <div class="spinner" />
+            <p>Module werden geladen…</p>
+          </div>
         </template>
 
         <div v-else-if="!selectedStudyProgramId" class="empty-state">
@@ -1303,6 +1447,36 @@ onUnmounted(() => {
   min-width: 200px;
 }
 
+.planner-view-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  border-radius: 10px;
+  padding: 4px;
+  width: fit-content;
+}
+
+.planner-view-button {
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  min-height: 34px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.planner-view-button-active {
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+}
+
 .selection-toolbar {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -1424,6 +1598,13 @@ onUnmounted(() => {
   }
   .controls-bar > * {
     min-width: unset;
+  }
+  .planner-view-switch {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .planner-view-button {
+    flex: 1;
   }
   .selection-toolbar {
     padding: 12px;
