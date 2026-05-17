@@ -47,7 +47,7 @@ function select(section: SidebarSection) {
 
 <style scoped>
 .sidebar {
-  width: 280px;
+  width: 17.5rem;
   background: var(--color-surface);
   border-right: 0.0625rem solid var(--color-border);
   display: flex;
@@ -55,8 +55,8 @@ function select(section: SidebarSection) {
   gap: 1rem;
   padding: 1rem;
   position: sticky;
-  top: 56px;
-  height: calc(100vh - 56px);
+  top: 3.5rem;
+  height: calc(100vh - 3.5rem);
 }
 
 .sidebar-nav {
@@ -95,13 +95,13 @@ function select(section: SidebarSection) {
   background: var(--color-surface-raised);
 }
 
-@media (max-width: 960px) {
+@media (max-width: 60em) {
   .sidebar {
-    width: 240px;
+    width: 15rem;
   }
 }
 
-@media (max-width: 720px) {
+@media (max-width: 45em) {
   .sidebar {
     position: static;
     width: 100%;

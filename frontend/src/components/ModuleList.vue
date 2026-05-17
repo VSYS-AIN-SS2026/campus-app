@@ -64,7 +64,7 @@ function totalEcts(mods: ModuleEntry[]): number {
 
 .semester-group {
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  border: 0.0625rem solid var(--color-border);
   border-radius: 0;
   padding: 0.75em;
   display: flex;
@@ -78,7 +78,7 @@ function totalEcts(mods: ModuleEntry[]): number {
   justify-content: space-between;
   gap: 0.75em;
   padding: 0.2em 0.2em 0.6em;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 0.0625rem solid var(--color-border);
 }
 
 .semester-title {
@@ -100,7 +100,7 @@ function totalEcts(mods: ModuleEntry[]): number {
   font-weight: 600;
   color: var(--color-text-muted);
   background: var(--color-surface-raised);
-  border: 1px solid var(--color-border);
+  border: 0.0625rem solid var(--color-border);
   padding: 0.15em 0.6em;
   border-radius: var(--radius-control);
 }
@@ -117,7 +117,7 @@ function totalEcts(mods: ModuleEntry[]): number {
   gap: 0.5em;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 40em) {
   .semester-header {
     align-items: flex-start;
     flex-direction: column;
