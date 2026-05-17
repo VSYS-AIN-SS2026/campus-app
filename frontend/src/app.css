@@ -140,7 +140,7 @@
   padding: 16px 18px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .profile-flow-status {
@@ -206,6 +206,45 @@
   color: var(--color-text-muted);
 }
 
+.profile-card-divider {
+  height: 1px;
+  background: color-mix(in srgb, var(--color-border) 80%, transparent);
+  margin: 6px 0 4px;
+}
+
+.profile-saved-grid {
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.profile-saved-row {
+  display: grid;
+  grid-template-columns: 9rem minmax(0, 1fr);
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.profile-saved-row dt,
+.profile-saved-row dd {
+  margin: 0;
+}
+
+.profile-saved-row dt {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+.profile-saved-row dd {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+.profile-state-hint {
+  margin-top: 2px;
+}
+
 .profile-selection-secondary {
   font-size: 0.84rem;
 }
@@ -240,6 +279,15 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.control-step-label {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
 }
 
 .control-hint {

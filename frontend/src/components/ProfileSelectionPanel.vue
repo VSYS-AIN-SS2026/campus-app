@@ -97,15 +97,26 @@ const saveDisabledHint = computed(() => {
       <p class="profile-flow-status">{{ flowStatusText }}</p>
       <p class="helper-copy">{{ nextActionHint }}</p>
 
+      <div class="profile-card-divider" />
+
       <p class="panel-eyebrow">Aktuell gespeichert</p>
-      <p class="profile-selection" :class="savedStudyProgram ? 'profile-selection-active' : ''">
-        {{ savedStudyProgram ? `Studiengang: ${getStudyProgramLabel(savedStudyProgram)}` : 'Studiengang: noch nicht ausgewählt' }}
-      </p>
-      <p class="profile-selection profile-selection-secondary" :class="savedSpo ? 'profile-selection-active' : ''">
-        {{ savedSpo ? `SPO: ${getSpoLabel(savedSpo)}` : savedStudyProgram ? 'SPO: noch nicht ausgewählt' : 'SPO: wähle zuerst einen Studiengang' }}
-      </p>
-      <p class="helper-copy">
-        {{ selectionDirty ? 'Du hast Änderungen gemacht, die noch nicht gespeichert sind.' : 'Alles ist gespeichert. Du kannst direkt weiterarbeiten.' }}
+      <dl class="profile-saved-grid">
+        <div class="profile-saved-row">
+          <dt>Studiengang</dt>
+          <dd :class="savedStudyProgram ? 'profile-selection-active' : ''">
+            {{ savedStudyProgram ? getStudyProgramLabel(savedStudyProgram) : 'noch nicht ausgewählt' }}
+          </dd>
+        </div>
+        <div class="profile-saved-row">
+          <dt>SPO</dt>
+          <dd :class="savedSpo ? 'profile-selection-active' : ''">
+            {{ savedSpo ? getSpoLabel(savedSpo) : savedStudyProgram ? 'noch nicht ausgewählt' : 'wähle zuerst einen Studiengang' }}
+          </dd>
+        </div>
+      </dl>
+
+      <p class="helper-copy profile-state-hint">
+        {{ selectionDirty ? 'Ungespeicherte Änderungen vorhanden.' : 'Alles ist gespeichert.' }}
       </p>
     </section>
 
@@ -113,7 +124,7 @@ const saveDisabledHint = computed(() => {
       <p class="panel-eyebrow">Auswahl</p>
       <div class="controls-bar">
         <div class="control-step">
-          <p class="panel-eyebrow">Schritt 1</p>
+          <p class="control-step-label">1 · Studiengang</p>
           <SpoSelector
             :model-value="selectedStudyProgramId"
             :items="studyProgramItems"
@@ -124,7 +135,7 @@ const saveDisabledHint = computed(() => {
           />
         </div>
         <div class="control-step">
-          <p class="panel-eyebrow">Schritt 2</p>
+          <p class="control-step-label">2 · SPO</p>
           <SpoSelector
             :model-value="selectedSpoId"
             :items="spoItems"

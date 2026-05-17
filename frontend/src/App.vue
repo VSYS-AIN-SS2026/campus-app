@@ -8,7 +8,7 @@ import WeeklySchedule from './components/WeeklySchedule.vue'
 import Sidebar from './components/Sidebar.vue'
 import { useAppController } from './composables/useAppController'
 
-const { magicLinkRedirectTo, allCategories, activePlannerView, authEmail, authError, authFirstName, authInfo, authLastName, authLoading, authSending, canEditModuleStatuses, categoryError, currentUser, currentUserEmail, demoUserProfile, error, isWeeklyPreviewMode, lastHiddenSeries, loading, modules, moduleStatusError, profileError, profileInfo, profileSaving, savedSpo, savedStudyProgram, savingCategoryModuleId, savingModuleId, scheduleVisibilityError, scheduleVisibilityInfo, selectedModule, selectedSpoId, selectedStudyProgramId, selectionDirty, spoItems, studyProgramItems, visibleWeeklyPreviewEvents, visibleWeeklyScheduleEvents, weekStartDate, getSpoLabel, getStudyProgramLabel, hideScheduleSeries, saveModuleCategories, saveModuleStatus, saveStudyProfileSelection, sendMagicLink, signOut, undoHideScheduleSeries } = useAppController()
+const { magicLinkRedirectTo, allCategories, activePlannerView, authEmail, authError, authFirstName, authInfo, authLastName, authLoading, authSending, canEditModuleStatuses, categoryError, currentUser, currentUserEmail, demoUserProfile, error, hiddenSeriesItems, isWeeklyPreviewMode, lastHiddenSeries, loading, modules, moduleStatusError, profileError, profileInfo, profileSaving, savedSpo, savedStudyProgram, savingCategoryModuleId, savingModuleId, scheduleVisibilityError, scheduleVisibilityInfo, selectedModule, selectedSpoId, selectedStudyProgramId, selectionDirty, spoItems, studyProgramItems, visibleWeeklyPreviewEvents, visibleWeeklyScheduleEvents, weekStartDate, getSpoLabel, getStudyProgramLabel, hideScheduleSeries, saveModuleCategories, saveModuleStatus, saveStudyProfileSelection, sendMagicLink, showAllScheduleSeries, showScheduleSeries, signOut, undoHideScheduleSeries } = useAppController()
 // =====================
 // DEV-BYPASS-START: Demo-User für Preview ohne Login
 // Entferne diesen Block nach dem Development!
@@ -102,10 +102,13 @@ async function onSidebarNavigate(target: SidebarSection) {
             <section id="planner-section" class="content-section">
               <WeeklySchedule
                 :events="visibleWeeklyPreviewEvents"
+                :hidden-series-items="hiddenSeriesItems"
                 :loading="false"
                 :error="null"
                 :week-start="weekStartDate"
                 @hide-series="hideScheduleSeries($event.seriesId, $event.title)"
+                @show-series="showScheduleSeries"
+                @show-all-series="showAllScheduleSeries"
               />
             </section>
           </template>
@@ -171,11 +174,14 @@ async function onSidebarNavigate(target: SidebarSection) {
                 :schedule-visibility-error="scheduleVisibilityError"
                 :schedule-visibility-info="scheduleVisibilityInfo"
                 :last-hidden-series="lastHiddenSeries"
+                :hidden-series-items="hiddenSeriesItems"
                 :modules="modules"
                 :visible-weekly-schedule-events="visibleWeeklyScheduleEvents"
                 :week-start-date="weekStartDate"
                 @update:active-planner-view="activePlannerView = $event"
                 @hide-series="hideScheduleSeries($event.seriesId, $event.title)"
+                @show-series="showScheduleSeries"
+                @show-all-series="showAllScheduleSeries"
                 @undo-hide-series="undoHideScheduleSeries"
                 @select-module="selectedModule = $event"
               />

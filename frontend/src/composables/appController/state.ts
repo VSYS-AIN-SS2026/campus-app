@@ -54,6 +54,7 @@ export function createAppControllerState() {
   const loadedUserId = ref<string | null>(null)
 
   const hiddenSeriesIds = ref<Set<string>>(new Set())
+  const hiddenSeriesTitles = ref<Map<string, string>>(new Map())
   const hiddenEventIds = ref<Set<string>>(new Set())
   const lastHiddenSeries = ref<{ seriesId: string; title: string } | null>(null)
 
@@ -123,6 +124,9 @@ export function createAppControllerState() {
 
   function applyHiddenSeries(rows: HiddenSeriesRow[]) {
     hiddenSeriesIds.value = new Set(rows.map(row => row.series_id.trim()).filter(Boolean))
+    hiddenSeriesTitles.value = new Map(
+      Array.from(hiddenSeriesIds.value).map((seriesId) => [seriesId, seriesId])
+    )
   }
 
   const visibleWeeklyScheduleEvents = computed<WeeklyScheduleEvent[]>(() =>
@@ -137,6 +141,15 @@ export function createAppControllerState() {
       !hiddenSeriesIds.value.has(event.seriesId)
       && (!event.occurrenceId || !hiddenEventIds.value.has(event.occurrenceId))
     )
+  )
+
+  const hiddenSeriesItems = computed(() =>
+    Array.from(hiddenSeriesIds.value)
+      .sort((left, right) => left.localeCompare(right, 'de'))
+      .map((seriesId) => ({
+        seriesId,
+        title: hiddenSeriesTitles.value.get(seriesId) ?? seriesId,
+      }))
   )
 
   function clearSelectionMessages() {
@@ -162,6 +175,7 @@ export function createAppControllerState() {
     savingModuleId.value = null
     loadedUserId.value = null
     hiddenSeriesIds.value = new Set()
+    hiddenSeriesTitles.value = new Map()
     hiddenEventIds.value = new Set()
     lastHiddenSeries.value = null
   }
@@ -188,6 +202,8 @@ export function createAppControllerState() {
     error,
     hiddenEventIds,
     hiddenSeriesIds,
+    hiddenSeriesItems,
+    hiddenSeriesTitles,
     isWeeklyPreviewMode,
     lastHiddenSeries,
     loadedUserId,

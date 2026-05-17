@@ -212,6 +212,10 @@ function requestHideSeries(event: NormalizedWeekEvent) {
   })
 }
 
+function isSingleWordTitle(title: string) {
+  return !/\s/.test(title.trim())
+}
+
 const selectedDay = computed(() => props.days[activeDayIndex.value] ?? null)
 const selectedEvents = computed(() => props.eventsByDay[activeDayIndex.value] ?? [])
 const canGoPrevious = computed(() => props.days.length > 0)
@@ -355,11 +359,20 @@ defineExpose({
       <div v-for="event in selectedEvents" :key="`mobile-${event.id}`" class="mobile-event-row">
         <span class="mobile-event-time">{{ event.startTime }}</span>
         <div class="mobile-event" :class="`event-${event.status}`">
-          <strong class="event-title">{{ event.title }}</strong>
+          <strong class="event-title" :class="{ 'event-title-truncate': isSingleWordTitle(event.title) }">
+            {{ event.title }}
+          </strong>
           <span class="mobile-event-range">{{ event.startTime }}–{{ event.endTime }}</span>
           <span v-if="event.subtitle" class="event-subtitle">{{ event.subtitle }}</span>
-          <button type="button" class="mobile-event-action" @click="requestHideSeries(event)">
-            Alle Termine dieser Reihe ausblenden
+          <button
+            v-if="event.seriesId"
+            type="button"
+            class="mobile-event-action"
+            title="Diese Terminreihe ausblenden (alle Wiederholungen)"
+            aria-label="Diese Terminreihe ausblenden"
+            @click="requestHideSeries(event)"
+          >
+            <span aria-hidden="true" class="mobile-event-action-icon">×</span>
           </button>
         </div>
       </div>
@@ -394,14 +407,16 @@ defineExpose({
 .mobile-free { font-size: 0.82rem; color: var(--color-text-muted); border: 0.0625rem dashed var(--color-border); border-radius: 0.75rem; padding: 0.75rem; text-align: center; }
 .mobile-event-row { display: grid; grid-template-columns: 3.25rem minmax(0, 1fr); align-items: start; gap: 0.5rem; }
 .mobile-event-time { font-size: 0.72rem; color: var(--color-text-muted); padding-top: 0.5rem; font-variant-numeric: tabular-nums; }
-.mobile-event { border-radius: 0.75rem; border: 0.0625rem solid transparent; padding: 0.5625rem; display: flex; flex-direction: column; gap: 0.1875rem; }
+.mobile-event { border-radius: 0; border: 0.0625rem solid transparent; padding: 0.5625rem; display: flex; flex-direction: column; gap: 0.1875rem; }
 .mobile-event-range { font-size: 0.7rem; color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
-.event-offen { background: color-mix(in srgb, var(--color-warning-bg) 80%, transparent); border-color: var(--color-warning-border); }
-.event-belegt { background: color-mix(in srgb, var(--color-primary-glow) 65%, transparent); border-color: var(--color-primary-light); }
-.event-abgeschlossen { background: color-mix(in srgb, var(--color-success-bg) 80%, transparent); border-color: var(--color-success-border); }
-.event-title { font-size: 0.75rem; line-height: 1.25; color: var(--color-text); }
+.event-offen { background: color-mix(in srgb, var(--color-warning-bg) 80%, transparent); border-color: color-mix(in srgb, var(--color-warning-border) 58%, transparent); }
+.event-belegt { background: color-mix(in srgb, var(--color-primary-glow) 65%, transparent); border-color: color-mix(in srgb, var(--color-primary-light) 55%, transparent); }
+.event-abgeschlossen { background: color-mix(in srgb, var(--color-success-bg) 80%, transparent); border-color: color-mix(in srgb, var(--color-success-border) 58%, transparent); }
+.event-title { font-size: 0.75rem; line-height: 1.25; color: var(--color-text); white-space: normal; overflow-wrap: break-word; word-break: normal; max-width: 100%; }
+.event-title-truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .event-subtitle { font-size: 0.68rem; color: var(--color-text-muted); line-height: 1.25; }
-.mobile-event-action { margin-top: 0.25rem; border: 0.0625rem solid var(--color-border); background: var(--color-surface); color: var(--color-text); border-radius: 0.5rem; font: inherit; font-size: 0.68rem; font-weight: 600; line-height: 1.2; padding: 0.25rem 0.4375rem; align-self: flex-start; }
+.mobile-event-action { margin-top: 0.25rem; width: 1.375rem; height: 1.375rem; border: 0.0625rem solid var(--color-border); background: var(--color-surface); color: var(--color-text); border-radius: 999rem; font: inherit; font-size: 0.92rem; font-weight: 700; line-height: 1; padding: 0; display: inline-grid; place-items: center; align-self: flex-start; }
+.mobile-event-action-icon { display: block; line-height: 1; transform: translateY(-0.02em); }
 .mobile-event-action:hover { border-color: var(--color-primary); }
 @media (max-width: 45em) {
   .mobile-days { display: grid; grid-template-columns: 1fr; gap: 0.625rem; }

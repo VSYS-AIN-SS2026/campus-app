@@ -18,7 +18,23 @@ const emit = defineEmits<{
   'today-visibility-change': [isVisible: boolean]
   'reach-start-edge': []
   'reach-end-edge': []
+  'hide-series': [payload: { seriesId: string; title: string }]
 }>()
+
+function requestHideSeries(event: NormalizedWeekEvent) {
+  if (!event.seriesId) {
+    return
+  }
+
+  emit('hide-series', {
+    seriesId: event.seriesId,
+    title: event.title,
+  })
+}
+
+function isSingleWordTitle(title: string) {
+  return !/\s/.test(title.trim())
+}
 
 const gridWrapper = ref<HTMLElement | null>(null)
 const dayColumnsRef = ref<HTMLElement | null>(null)
@@ -210,8 +226,20 @@ defineExpose({
             :style="eventStyle(event.start, event.end)"
           >
             <span class="event-time">{{ event.startTime }}–{{ event.endTime }}</span>
-            <strong class="event-title">{{ event.title }}</strong>
+            <strong class="event-title" :class="{ 'event-title-truncate': isSingleWordTitle(event.title) }">
+              {{ event.title }}
+            </strong>
             <span v-if="event.subtitle" class="event-subtitle">{{ event.subtitle }}</span>
+            <button
+              v-if="event.seriesId"
+              type="button"
+              class="hide-series-btn"
+              title="Diese Terminreihe ausblenden (alle Wiederholungen)"
+              aria-label="Diese Terminreihe ausblenden"
+              @click.stop="requestHideSeries(event)"
+            >
+              <span aria-hidden="true" class="hide-series-icon">×</span>
+            </button>
           </div>
         </div>
       </article>
@@ -225,7 +253,7 @@ defineExpose({
 .time-axis { display: flex; flex-direction: column; position: sticky; left: 0; z-index: 7; min-width: clamp(2.75rem, 5vw, 3.875rem); background: var(--color-surface); box-shadow: 0.625rem 0 0.75rem -0.75rem color-mix(in srgb, var(--color-border) 85%, transparent), 0 0.625rem 0.75rem -0.75rem color-mix(in srgb, var(--color-border) 85%, transparent); overflow-y: hidden; }
 .time-axis-spacer { height: var(--day-header-height); border-bottom: 0.0625rem solid transparent; flex-shrink: 0; }
 .time-label { font-size: 0.72rem; color: var(--color-text-muted); display: flex; align-items: flex-start; padding-top: 0.125rem; box-sizing: border-box; flex-shrink: 0; }
-.day-columns { min-width: max-content; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(clamp(6rem, 14vw, 7.5rem), 1fr); gap: 0.5rem; }
+.day-columns { min-width: max-content; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(clamp(6rem, 14vw, 7.5rem), 1fr); gap: 0.375rem; }
 .day-column { border: 0.0625rem solid var(--color-border); border-radius: 0.625rem; overflow: visible; background: var(--color-surface-raised); }
 .day-column-today { border-color: color-mix(in srgb, #ef4444 55%, var(--color-border)); box-shadow: inset 0 0 0 0.0625rem color-mix(in srgb, #ef4444 45%, transparent); }
 .day-header { position: relative; min-height: var(--day-header-height); padding: 0.625rem 0.5rem; border-bottom: 0.0625rem solid var(--color-border); display: flex; flex-direction: column; justify-content: center; gap: 0.125rem; background: var(--color-surface-raised); box-sizing: border-box; }
@@ -236,13 +264,20 @@ defineExpose({
 .slot-line { position: absolute; left: 0; right: 0; border-top: 0.0625rem dashed color-mix(in srgb, var(--color-border) 75%, transparent); }
 .now-line { position: absolute; left: 0; right: 0; border-top: 0.125rem solid #ef4444; z-index: 3; pointer-events: none; }
 .now-line::before { content: ''; position: absolute; left: -0.0625rem; top: -0.3125rem; width: 0.5rem; height: 0.5rem; border-radius: 999rem; background: #ef4444; }
-.event-block { position: absolute; left: 0.375rem; right: 0.375rem; border-radius: 0.5rem; border: 0.0625rem solid transparent; padding: 0.375rem; display: flex; flex-direction: column; gap: 0.125rem; overflow: hidden; }
-.event-offen { background: color-mix(in srgb, var(--color-warning-bg) 80%, transparent); border-color: var(--color-warning-border); }
-.event-belegt { background: color-mix(in srgb, var(--color-primary-glow) 65%, transparent); border-color: var(--color-primary-light); }
-.event-abgeschlossen { background: color-mix(in srgb, var(--color-success-bg) 80%, transparent); border-color: var(--color-success-border); }
+.event-block { position: absolute; left: 0; right: 0; border-radius: 0; border: 0.0625rem solid transparent; padding: 0.4375rem 0.5rem; display: flex; flex-direction: column; gap: 0.125rem; overflow: hidden; }
+.event-offen { background: color-mix(in srgb, var(--color-warning-bg) 80%, transparent); border-color: color-mix(in srgb, var(--color-warning-border) 58%, transparent); }
+.event-belegt { background: color-mix(in srgb, var(--color-primary-glow) 65%, transparent); border-color: color-mix(in srgb, var(--color-primary-light) 55%, transparent); }
+.event-abgeschlossen { background: color-mix(in srgb, var(--color-success-bg) 80%, transparent); border-color: color-mix(in srgb, var(--color-success-border) 58%, transparent); }
 .event-time { font-size: 0.68rem; color: var(--color-text-muted); }
-.event-title { font-size: 0.75rem; line-height: 1.25; color: var(--color-text); }
+.event-title { font-size: 0.75rem; line-height: 1.25; color: var(--color-text); white-space: normal; overflow-wrap: break-word; word-break: normal; max-width: 100%; }
+.event-title-truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .event-subtitle { font-size: 0.68rem; color: var(--color-text-muted); line-height: 1.25; }
+.hide-series-btn { position: absolute; top: 0.25rem; right: 0.25rem; width: 1.25rem; height: 1.25rem; border: 0.0625rem solid color-mix(in srgb, var(--color-border) 85%, transparent); border-radius: 999rem; background: color-mix(in srgb, var(--color-surface) 92%, transparent); color: var(--color-text-muted); font: inherit; font-size: 0.9rem; font-weight: 700; line-height: 1; display: inline-grid; place-items: center; padding: 0; cursor: pointer; opacity: 0; transform: translateY(-0.0625rem); transition: opacity 0.16s ease, transform 0.16s ease, color 0.16s ease, border-color 0.16s ease; }
+.hide-series-icon { display: block; line-height: 1; transform: translateY(-0.02em); }
+.event-block:hover .hide-series-btn,
+.event-block:focus-within .hide-series-btn { opacity: 1; transform: translateY(0); }
+.hide-series-btn:hover,
+.hide-series-btn:focus-visible { color: var(--color-primary); border-color: var(--color-primary-light); outline: none; }
 @media (max-width: 56.25em) {
   .week-grid-wrapper { grid-template-columns: clamp(2.5rem, 5vw, 3rem) minmax(0, 1fr); }
   .day-columns { grid-auto-columns: minmax(clamp(5.6rem, 16vw, 6.4rem), 1fr); }

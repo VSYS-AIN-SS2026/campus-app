@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import HiddenSeriesPopover from './weekly/HiddenSeriesPopover.vue'
 import WeekDesktopGrid from './weekly/WeekDesktopGrid.vue'
 import WeekMobileList from './weekly/WeekMobileList.vue'
 import { useWeeklySchedule } from '../composables/useWeeklySchedule'
@@ -19,12 +20,14 @@ const props = withDefaults(defineProps<{
   events: WeekEvent[]
   loading?: boolean
   error?: string | null
+  hiddenSeriesItems?: Array<{ seriesId: string; title: string }>
   weekStart: Date
   startHour?: number
   endHour?: number
 }>(), {
   loading: false,
   error: null,
+  hiddenSeriesItems: () => [],
   startHour: 0,
   endHour: 24,
 })
@@ -38,6 +41,8 @@ function toLocalDateKey(value: Date): string {
 
 const emit = defineEmits<{
   'hide-series': [payload: { seriesId: string; title: string }]
+  'show-series': [seriesId: string]
+  'show-all-series': []
 }>()
 
 function getTodayStart(): Date {
@@ -227,6 +232,12 @@ onUnmounted(() => {
           </button>
           <button type="button" class="week-nav-btn app-button" @click="nextWeek">→</button>
         </div>
+        <HiddenSeriesPopover
+          v-if="props.hiddenSeriesItems.length"
+          :items="props.hiddenSeriesItems"
+          @show-series="emit('show-series', $event)"
+          @show-all-series="emit('show-all-series')"
+        />
       </div>
     </header>
 
@@ -244,6 +255,7 @@ onUnmounted(() => {
     </div>
 
     <template v-else>
+
       <WeekDesktopGrid
         ref="desktopGridRef"
         :days="continuousDays"
@@ -256,6 +268,7 @@ onUnmounted(() => {
         :current-day-index="currentDayIndex"
         :now-line-top-percent="nowLineTopPercent"
         @today-visibility-change="isTodayVisibleInViewport = $event"
+        @hide-series="emit('hide-series', $event)"
       />
 
       <WeekMobileList

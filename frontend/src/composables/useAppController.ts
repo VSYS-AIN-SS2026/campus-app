@@ -38,6 +38,7 @@ export function useAppController() {
     currentUserEmail: state.currentUserEmail,
     demoUserProfile: state.demoUserProfile,
     error: state.error,
+    hiddenSeriesItems: state.hiddenSeriesItems,
     isWeeklyPreviewMode: state.isWeeklyPreviewMode,
     lastHiddenSeries: state.lastHiddenSeries,
     loading: state.loading,
@@ -69,6 +70,8 @@ export function useAppController() {
     saveModuleStatus: modules.saveModuleStatus,
     saveStudyProfileSelection: modules.saveStudyProfileSelection,
     sendMagicLink: auth.sendMagicLink,
+    showAllScheduleSeries: schedule.showAllScheduleSeries,
+    showScheduleSeries: schedule.showScheduleSeries,
     signOut: auth.signOut,
     undoHideScheduleSeries: schedule.undoHideScheduleSeries,
   }
