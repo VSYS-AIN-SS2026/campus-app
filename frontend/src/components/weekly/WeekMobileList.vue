@@ -243,6 +243,19 @@ const nowLineTopPercent = computed<number | null>(() => {
 })
 
 watch(
+  selectedDay,
+  (day) => {
+    if (!day) {
+      return
+    }
+
+    emit('selected-year-change', day.date.getFullYear())
+    emit('selected-day-label-change', fullDateFormatter.format(day.date))
+  },
+  { immediate: true }
+)
+
+watch(
   () => [props.currentDayIndex, props.days.length],
   () => {
     if (!props.days.length) {
@@ -269,6 +282,9 @@ watch(
 
       if (matchingIndex >= 0 && matchingIndex !== activeDayIndex.value) {
         selectDay(matchingIndex, false)
+      } else if (matchingIndex < 0) {
+        const fallbackIndex = props.currentDayIndex >= 0 ? props.currentDayIndex : Math.floor(props.days.length / 2)
+        selectDay(fallbackIndex, false)
       }
 
       return
