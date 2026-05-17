@@ -76,3 +76,13 @@ Für den Anfang: **Option 2** (ohne Linking)
 3. Committe Migrations zu Git
 
 Später: **Option 1** (mit Linking) für automatisches Pushen
+
+## Hidden Schedule Modell
+
+- `user_hidden_schedule_series`: speichert pro Nutzer komplett ausgeblendete Terminreihen.
+- `user_hidden_schedule_occurrences`: speichert pro Nutzer ausgeblendete Einzeltermine.
+- Fachliche Regel: `series_id` beschreibt eine Reihe, `occurrence_id` genau ein Vorkommen.
+- Duplikate je Scope sind durch Primärschlüssel ausgeschlossen: `(user_id, series_id)` bzw. `(user_id, occurrence_id)`.
+- Ein Eintrag in beiden Scopes ist fachlich erlaubt, aber nicht doppelt: Reihe und Einzeltermin sind unterschiedliche Sichtbarkeitsgründe.
+- Sichtbarkeitsregel: Ein Termin ist sichtbar genau dann, wenn weder seine `series_id` noch seine `occurrence_id` für den Nutzer verborgen ist.
+- Zentrale SQL-Auswertung: `public.resolve_schedule_hidden_state(...)` und die kanonische Sicht `public.user_hidden_schedule_entries`.

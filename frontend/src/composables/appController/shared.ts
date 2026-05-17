@@ -43,6 +43,16 @@ export type HiddenOccurrenceRow = {
   updated_at: string
 }
 
+export type HiddenScheduleScope = 'series' | 'occurrence'
+
+export type HiddenScheduleEntryRow = {
+  hidden_scope: HiddenScheduleScope
+  reference_id: string
+  series_id: string | null
+  occurrence_id: string | null
+  updated_at: string
+}
+
 export type WeeklyScheduleRpcRow = {
   event_id: string
   occurrence_id: string
