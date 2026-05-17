@@ -300,7 +300,7 @@ onUnmounted(() => {
 
 .week-header {
   position: sticky;
-  top: 56px;
+  top: 3.5rem;
   z-index: 8;
   background: var(--color-surface);
   padding: 0.5rem 0 0.625rem;

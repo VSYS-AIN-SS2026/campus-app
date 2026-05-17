@@ -105,9 +105,9 @@ const emit = defineEmits<{
 }
 
 .auth-card-centered {
-  max-width: 420px;
-  margin: 40px auto 0 auto;
-  box-shadow: 0 2px 24px 0 color-mix(in srgb, var(--color-border) 30%, transparent);
+  max-width: clamp(20rem, 90vw, 26.25rem);
+  margin: var(--space-5xl) auto 0 auto;
+  box-shadow: 0 0.125rem 1.5rem 0 color-mix(in srgb, var(--color-border) 30%, transparent);
   width: 100%;
 }
 
@@ -171,10 +171,10 @@ const emit = defineEmits<{
   border-radius: var(--radius-control);
   background: var(--color-surface-raised);
   color: var(--color-text);
-  padding: 0.625rem 0.875rem;
+  padding: var(--button-padding-y) var(--button-padding-x-wide);
   font: inherit;
   font-size: var(--font-size-sm);
-  min-height: 2.625rem;
+  min-height: 2.5rem;
   width: 100%;
   box-sizing: border-box;
   transition: border-color 0.2s, box-shadow 0.2s;
@@ -208,12 +208,12 @@ const emit = defineEmits<{
   margin: 0;
 }
 
-@media (max-width: 720px) {
+@media (max-width: 45em) {
   .auth-card-centered {
-    margin: 24px 8px 0 8px;
+    margin: var(--space-3xl) var(--space-md) 0 var(--space-md);
     max-width: 100%;
     border-radius: var(--radius-md);
-    box-shadow: 0 1px 8px 0 color-mix(in srgb, var(--color-border) 20%, transparent);
+    box-shadow: 0 0.0625rem 0.5rem 0 color-mix(in srgb, var(--color-border) 20%, transparent);
   }
   .auth-header {
     padding: var(--space-2xl) var(--space-xl) var(--space-lg);
