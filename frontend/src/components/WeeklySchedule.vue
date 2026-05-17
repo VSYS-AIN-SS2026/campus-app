@@ -57,6 +57,7 @@ const mobileListRef = ref<WeekMobileListExpose | null>(null)
 const isTodayVisibleInViewport = ref(true)
 const pivotDate = ref(getTodayStart())
 const selectedYear = ref(getTodayStart().getFullYear())
+const mobilSelectedDayLabel = ref('')
 
 const beforeDays = ref(0)
 const afterDays = ref(7)
@@ -160,6 +161,10 @@ function onSelectedYearChange(year: number) {
   selectedYear.value = year
 }
 
+function onMobileSelectedDayLabelChange(label: string) {
+  mobilSelectedDayLabel.value = label
+}
+
 watch(
   () => props.weekStart.getTime(),
   (nextWeekStartTs) => {
@@ -218,6 +223,7 @@ onUnmounted(() => {
       <div>
         <h2 class="week-title">Kalender</h2>
         <span class="week-year">{{ currentYearLabel }}</span>
+        <span v-if="mobilSelectedDayLabel" class="week-mobile-day-label">{{ mobilSelectedDayLabel }}</span>
       </div>
       <div class="week-header-meta">
         <div class="week-nav" role="group" aria-label="Wochennavigation">
@@ -239,6 +245,7 @@ onUnmounted(() => {
           @show-all-series="emit('show-all-series')"
         />
       </div>
+      <div id="week-mobile-tabs-slot" class="week-mobile-tabs-slot" />
     </header>
 
     <div v-if="loading" class="week-state">
@@ -278,7 +285,11 @@ onUnmounted(() => {
         :hour-slots="hourSlots"
         :format-time-label="formatTimeLabel"
         :current-day-index="currentDayIndex"
+        :start-hour="props.startHour"
+        :total-minutes="totalMinutes"
+        :event-style="eventStyle"
         @selected-year-change="onSelectedYearChange"
+        @selected-day-label-change="onMobileSelectedDayLabelChange"
         @hide-series="emit('hide-series', $event)"
       />
     </template>
@@ -329,6 +340,30 @@ onUnmounted(() => {
   margin-top: 0.125rem;
   font-size: 0.82rem;
   color: var(--color-text-muted);
+}
+
+.week-mobile-day-label {
+  display: none;
+  margin-top: 0.125rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--color-text);
+  text-transform: capitalize;
+}
+
+.week-mobile-tabs-slot {
+  display: none;
+  width: 100%;
+}
+
+@media (max-width: 45em) {
+  .week-mobile-day-label {
+    display: block;
+  }
+
+  .week-mobile-tabs-slot {
+    display: block;
+  }
 }
 
 .week-nav {

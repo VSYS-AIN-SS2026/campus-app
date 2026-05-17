@@ -1,5 +1,5 @@
 <template>
-  <aside class="sidebar" aria-label="Seitenmenü">
+  <aside class="sidebar" :class="{ 'sidebar-open': isOpen }" aria-label="Seitenmenü">
     <nav class="sidebar-nav" aria-label="Hauptnavigation">
       <button
         type="button"
@@ -34,6 +34,7 @@ type SidebarSection = 'modules' | 'calendar' | 'profile'
 
 defineProps<{
   activeSection: SidebarSection
+  isOpen?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -103,11 +104,21 @@ function select(section: SidebarSection) {
 
 @media (max-width: 45em) {
   .sidebar {
-    position: static;
-    width: 100%;
-    height: auto;
-    border-right: none;
-    border-bottom: 0.0625rem solid var(--color-border);
+    position: fixed;
+    top: 3.5rem;
+    left: 0;
+    width: 16rem;
+    height: calc(100vh - 3.5rem);
+    border-right: 0.0625rem solid var(--color-border);
+    border-bottom: none;
+    z-index: 20;
+    transform: translateX(-100%);
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0.25rem 0 1.5rem color-mix(in srgb, black 15%, transparent);
+  }
+
+  .sidebar.sidebar-open {
+    transform: translateX(0);
   }
 }
 </style>

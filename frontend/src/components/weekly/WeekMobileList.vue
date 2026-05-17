@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import type { NormalizedWeekEvent, ScheduleDay } from '../../types/schedule'
 
 const props = defineProps<{
@@ -8,12 +8,16 @@ const props = defineProps<{
   hourSlots: number[]
   formatTimeLabel: (minutes: number) => string
   currentDayIndex: number
+  startHour: number
+  totalMinutes: number
+  eventStyle: (start: number, end: number) => { top: string; height: string }
 }>()
 
 const emit = defineEmits<{
   'reach-start-edge': []
   'reach-end-edge': []
   'selected-year-change': [year: number]
+  'selected-day-label-change': [label: string]
   'hide-series': [payload: { seriesId: string; title: string }]
 }>()
 
@@ -28,6 +32,8 @@ const edgeRequestPending = ref(false)
 const tabEdgeRequestPending = ref(false)
 const tabEdgeEventLocked = ref(false)
 const pendingLeftScrollRestore = ref<{ scrollLeft: number; scrollWidth: number } | null>(null)
+const nowTimestamp = ref(Date.now())
+let nowTimer: number | null = null
 const fullDateFormatter = new Intl.DateTimeFormat('de-DE', {
   weekday: 'short',
   day: '2-digit',
@@ -80,6 +86,7 @@ function selectDay(index: number, userInitiated = true) {
 
   if (activeDay) {
     emit('selected-year-change', activeDay.date.getFullYear())
+    emit('selected-day-label-change', fullDateFormatter.format(activeDay.date))
   }
 
   if (userInitiated) {
@@ -218,16 +225,35 @@ function isSingleWordTitle(title: string) {
 
 const selectedDay = computed(() => props.days[activeDayIndex.value] ?? null)
 const selectedEvents = computed(() => props.eventsByDay[activeDayIndex.value] ?? [])
-const canGoPrevious = computed(() => props.days.length > 0)
-const canGoNext = computed(() => props.days.length > 0)
-const isTodaySelected = computed(() => selectedDay.value?.isToday ?? false)
-const selectedDayLabel = computed(() => {
-  if (!selectedDay.value) {
-    return ''
+const nowLineTopPercent = computed<number | null>(() => {
+  if (!selectedDay.value?.isToday) {
+    return null
   }
 
-  return fullDateFormatter.format(selectedDay.value.date)
+  const now = new Date(nowTimestamp.value)
+  const minutes = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60
+  const startMinutes = props.startHour * 60
+  const endMinutes = startMinutes + props.totalMinutes
+
+  if (minutes < startMinutes || minutes > endMinutes) {
+    return null
+  }
+
+  return ((minutes - startMinutes) / props.totalMinutes) * 100
 })
+
+watch(
+  selectedDay,
+  (day) => {
+    if (!day) {
+      return
+    }
+
+    emit('selected-year-change', day.date.getFullYear())
+    emit('selected-day-label-change', fullDateFormatter.format(day.date))
+  },
+  { immediate: true }
+)
 
 watch(
   () => [props.currentDayIndex, props.days.length],
@@ -256,6 +282,9 @@ watch(
 
       if (matchingIndex >= 0 && matchingIndex !== activeDayIndex.value) {
         selectDay(matchingIndex, false)
+      } else if (matchingIndex < 0) {
+        const fallbackIndex = props.currentDayIndex >= 0 ? props.currentDayIndex : Math.floor(props.days.length / 2)
+        selectDay(fallbackIndex, false)
       }
 
       return
@@ -299,42 +328,54 @@ watch(
 defineExpose({
   jumpToToday,
 })
+
+const isMobile = ref(false)
+let mobileQuery: MediaQueryList | null = null
+
+onMounted(() => {
+  nowTimer = window.setInterval(() => {
+    nowTimestamp.value = Date.now()
+  }, 1000)
+
+  mobileQuery = window.matchMedia('(max-width: 45em)')
+  isMobile.value = mobileQuery.matches
+  mobileQuery.addEventListener('change', (e) => { isMobile.value = e.matches })
+})
+
+onUnmounted(() => {
+  if (nowTimer != null) {
+    window.clearInterval(nowTimer)
+  }
+
+  mobileQuery?.removeEventListener('change', () => {})
+})
 </script>
 
 <template>
   <div class="mobile-days">
-    <div class="mobile-topbar">
-      <div class="mobile-topbar-meta">
-        <strong class="mobile-topbar-date">{{ selectedDayLabel }}</strong>
-      </div>
+    <div class="mobile-topbar" />
 
-      <div class="mobile-toolbar" role="group" aria-label="Tagesnavigation">
-        <button type="button" class="mobile-nav-btn" :disabled="!canGoPrevious" @click="goPreviousDay">←</button>
-        <button type="button" class="mobile-nav-btn" :disabled="!canGoNext" @click="goNextDay">→</button>
-        <button type="button" class="mobile-nav-btn mobile-nav-btn-today" :disabled="isTodaySelected" @click="jumpToToday">
-          Heute
+    <Teleport to="#week-mobile-tabs-slot" :disabled="!isMobile">
+      <div ref="dayTabsRef" class="mobile-day-tabs" aria-label="Tage wählen" @scroll.passive="onDayTabsScroll">
+        <button
+          v-for="(day, dayIndex) in days"
+          :key="`mobile-tab-${day.date.toISOString()}`"
+          :ref="(element) => setDayTabRef(element as Element | null, dayIndex)"
+          type="button"
+          class="mobile-day-tab"
+          :class="{ 'mobile-day-tab-active': dayIndex === activeDayIndex, 'mobile-day-tab-today': day.isToday }"
+          @click="selectDay(dayIndex)"
+        >
+          <span class="mobile-day-tab-weekday">{{ day.weekdayLabel.slice(0, 2) }}</span>
+          <span class="mobile-day-tab-date">{{ day.dateLabel.slice(0, 2) }}</span>
         </button>
       </div>
-    </div>
-
-    <div ref="dayTabsRef" class="mobile-day-tabs" aria-label="Tage wählen" @scroll.passive="onDayTabsScroll">
-      <button
-        v-for="(day, dayIndex) in days"
-        :key="`mobile-tab-${day.date.toISOString()}`"
-        :ref="(element) => setDayTabRef(element as Element | null, dayIndex)"
-        type="button"
-        class="mobile-day-tab"
-        :class="{ 'mobile-day-tab-active': dayIndex === activeDayIndex, 'mobile-day-tab-today': day.isToday }"
-        @click="selectDay(dayIndex)"
-      >
-        <span class="mobile-day-tab-weekday">{{ day.weekdayLabel.slice(0, 2) }}</span>
-        <span class="mobile-day-tab-date">{{ day.dateLabel.slice(0, 2) }}</span>
-      </button>
-    </div>
+    </Teleport>
 
     <article
       v-if="selectedDay"
       class="mobile-day-card"
+      :class="selectedDay.isToday ? 'mobile-day-card-today' : ''"
       @touchstart.passive="onAgendaTouchStart"
       @touchend.passive="onAgendaTouchEnd"
     >
@@ -343,39 +384,45 @@ defineExpose({
         <span>{{ selectedDay.dateLabel }}</span>
       </header>
 
-      <section class="mobile-time-grid" aria-label="Zeitachse">
+      <section class="mobile-time-grid" :class="selectedDay.isToday ? 'mobile-time-grid-today' : ''" aria-label="Zeitachse">
         <div class="mobile-time-axis">
           <span v-for="slot in props.hourSlots" :key="`mobile-time-${slot}`" class="mobile-time-label">
             {{ props.formatTimeLabel(slot) }}
           </span>
         </div>
-        <div class="mobile-time-slots" aria-hidden="true">
+        <div class="mobile-time-body">
+          <div
+            v-if="nowLineTopPercent !== null"
+            class="now-line"
+            :style="{ top: `${nowLineTopPercent}%` }"
+          />
           <span v-for="slot in props.hourSlots" :key="`mobile-slot-${slot}`" class="mobile-slot-line" />
+          <div v-if="!selectedEvents.length" class="mobile-free">Keine Termine · Tag ist frei</div>
+          <div
+            v-for="event in selectedEvents"
+            :key="`mobile-evt-${event.id}`"
+            class="mobile-event"
+            :class="`event-${event.status}`"
+            :style="{ ...props.eventStyle(event.start, event.end), position: 'absolute', left: '0.25rem', right: '0.25rem' }"
+          >
+            <strong class="event-title" :class="{ 'event-title-truncate': isSingleWordTitle(event.title) }">
+              {{ event.title }}
+            </strong>
+            <span class="mobile-event-range">{{ event.startTime }}–{{ event.endTime }}</span>
+            <span v-if="event.subtitle" class="event-subtitle">{{ event.subtitle }}</span>
+            <button
+              v-if="event.seriesId"
+              type="button"
+              class="mobile-event-action"
+              title="Diese Terminreihe ausblenden"
+              aria-label="Diese Terminreihe ausblenden"
+              @click="requestHideSeries(event)"
+            >
+              <span aria-hidden="true" class="mobile-event-action-icon">×</span>
+            </button>
+          </div>
         </div>
       </section>
-
-      <div v-if="!selectedEvents.length" class="mobile-free">Keine Termine · Tag ist frei</div>
-
-      <div v-for="event in selectedEvents" :key="`mobile-${event.id}`" class="mobile-event-row">
-        <span class="mobile-event-time">{{ event.startTime }}</span>
-        <div class="mobile-event" :class="`event-${event.status}`">
-          <strong class="event-title" :class="{ 'event-title-truncate': isSingleWordTitle(event.title) }">
-            {{ event.title }}
-          </strong>
-          <span class="mobile-event-range">{{ event.startTime }}–{{ event.endTime }}</span>
-          <span v-if="event.subtitle" class="event-subtitle">{{ event.subtitle }}</span>
-          <button
-            v-if="event.seriesId"
-            type="button"
-            class="mobile-event-action"
-            title="Diese Terminreihe ausblenden (alle Wiederholungen)"
-            aria-label="Diese Terminreihe ausblenden"
-            @click="requestHideSeries(event)"
-          >
-            <span aria-hidden="true" class="mobile-event-action-icon">×</span>
-          </button>
-        </div>
-      </div>
     </article>
   </div>
 </template>
@@ -389,25 +436,30 @@ defineExpose({
 .mobile-nav-btn { border: 0.0625rem solid var(--color-border); background: var(--color-surface-raised); color: var(--color-text); border-radius: 999rem; min-height: 2rem; min-width: 2rem; padding: 0.375rem 0.625rem; font: inherit; font-size: 0.82rem; font-weight: 700; touch-action: manipulation; }
 .mobile-nav-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .mobile-nav-btn-today { min-width: 4rem; }
-.mobile-day-tabs { display: flex; align-items: stretch; gap: 0.375rem; overflow-x: auto; padding: 0.125rem 0.0625rem; scrollbar-width: none; -ms-overflow-style: none; scroll-snap-type: x proximity; }
+.mobile-day-tabs { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.25rem; padding: 0.125rem 0.0625rem; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; }
 .mobile-day-tabs::-webkit-scrollbar { width: 0; height: 0; display: none; }
-.mobile-day-tab { border: 0.0625rem solid var(--color-border); border-radius: 999rem; background: var(--color-surface-raised); color: var(--color-text); min-width: 2.75rem; padding: 0.375rem 0.5rem; display: flex; flex-direction: column; align-items: center; gap: 0.0625rem; font: inherit; scroll-snap-align: center; }
+.mobile-day-tab { border: 0.0625rem solid var(--color-border); border-radius: 999rem; background: var(--color-surface-raised); color: var(--color-text); padding: 0.375rem 0.25rem; display: flex; flex-direction: column; align-items: center; gap: 0.0625rem; font: inherit; width: 100%; }
 .mobile-day-tab-weekday { font-size: 0.62rem; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
 .mobile-day-tab-date { font-size: 0.82rem; font-weight: 700; line-height: 1; }
 .mobile-day-tab-today { border-color: color-mix(in srgb, #ef4444 50%, var(--color-border)); }
 .mobile-day-tab-active { border-color: var(--color-primary); background: var(--color-primary-glow); }
 .mobile-day-card { border: 0.0625rem solid var(--color-border); border-radius: 0.875rem; padding: 0.75rem; background: var(--color-surface-raised); display: flex; flex-direction: column; gap: 0.625rem; }
+.mobile-day-card-today {
+  border-color: color-mix(in srgb, #ef4444 55%, var(--color-border));
+  box-shadow: inset 0 0 0 0.0625rem color-mix(in srgb, #ef4444 45%, transparent);
+}
 .mobile-day-header { display: flex; align-items: center; justify-content: space-between; font-size: 0.85rem; font-weight: 600; color: var(--color-text); padding-bottom: 0.375rem; border-bottom: 0.0625rem solid var(--color-border); }
 .day-header-today { background: var(--color-primary-glow); border-radius: 0.375rem; padding: 0.25rem 0.375rem; margin: -0.25rem -0.375rem 0; }
-.mobile-time-grid { display: grid; grid-template-columns: 3.125rem minmax(0, 1fr); gap: 0.5rem; border: 0.0625rem solid var(--color-border); border-radius: 0.625rem; padding: 0.375rem; background: var(--color-surface); }
-.mobile-time-axis { display: flex; flex-direction: column; }
-.mobile-time-label { height: 1.4rem; display: flex; align-items: flex-start; justify-content: flex-end; font-size: 0.68rem; color: var(--color-text-muted); line-height: 1; font-variant-numeric: tabular-nums; }
-.mobile-time-slots { display: flex; flex-direction: column; }
-.mobile-slot-line { height: 1.4rem; border-top: 0.0625rem dashed color-mix(in srgb, var(--color-border) 75%, transparent); }
-.mobile-free { font-size: 0.82rem; color: var(--color-text-muted); border: 0.0625rem dashed var(--color-border); border-radius: 0.75rem; padding: 0.75rem; text-align: center; }
-.mobile-event-row { display: grid; grid-template-columns: 3.25rem minmax(0, 1fr); align-items: start; gap: 0.5rem; }
-.mobile-event-time { font-size: 0.72rem; color: var(--color-text-muted); padding-top: 0.5rem; font-variant-numeric: tabular-nums; }
-.mobile-event { border-radius: 0; border: 0.0625rem solid transparent; padding: 0.5625rem; display: flex; flex-direction: column; gap: 0.1875rem; }
+.mobile-time-grid { display: grid; grid-template-columns: 2.75rem minmax(0, 1fr); gap: 0; border: 0.0625rem solid var(--color-border); border-radius: 0.625rem; overflow: hidden; background: var(--color-surface); }
+.mobile-time-grid-today { border-color: color-mix(in srgb, #ef4444 55%, var(--color-border)); }
+.mobile-time-axis { display: flex; flex-direction: column; padding: 0.25rem 0; }
+.mobile-time-label { height: 2.5rem; display: flex; align-items: flex-start; justify-content: flex-end; padding-right: 0.375rem; font-size: 0.62rem; color: var(--color-text-muted); line-height: 1; font-variant-numeric: tabular-nums; }
+.mobile-time-body { position: relative; display: flex; flex-direction: column; padding: 0.25rem 0; }
+.mobile-slot-line { height: 2.5rem; border-top: 0.0625rem dashed color-mix(in srgb, var(--color-border) 75%, transparent); }
+.now-line { position: absolute; left: 0; right: 0; border-top: 0.125rem solid #ef4444; z-index: 3; pointer-events: none; }
+.now-line::before { content: ''; position: absolute; left: -0.0625rem; top: -0.3125rem; width: 0.5rem; height: 0.5rem; border-radius: 999rem; background: #ef4444; }
+.mobile-free { position: absolute; inset: 0.5rem; font-size: 0.82rem; color: var(--color-text-muted); border: 0.0625rem dashed var(--color-border); border-radius: 0.75rem; padding: 0.75rem; text-align: center; display: flex; align-items: center; justify-content: center; }
+.mobile-event { border-radius: 0.375rem; border: 0.0625rem solid transparent; padding: 0.25rem 0.375rem; display: flex; flex-direction: column; gap: 0.125rem; overflow: hidden; }
 .mobile-event-range { font-size: 0.7rem; color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
 .event-offen { background: color-mix(in srgb, var(--color-warning-bg) 80%, transparent); border-color: color-mix(in srgb, var(--color-warning-border) 58%, transparent); }
 .event-belegt { background: color-mix(in srgb, var(--color-primary-glow) 65%, transparent); border-color: color-mix(in srgb, var(--color-primary-light) 55%, transparent); }
