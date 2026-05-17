@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import WeekDesktopGrid from './weekly/WeekDesktopGrid.vue'
 import WeekMobileList from './weekly/WeekMobileList.vue'
 import { useWeeklySchedule } from '../composables/useWeeklySchedule'
@@ -9,6 +9,10 @@ type WeekDesktopGridExpose = {
   scrollToDay: (index: number) => void
   isDayVisible: (index: number) => boolean
   scrollByDays: (days: number, behavior?: ScrollBehavior) => void
+}
+
+type WeekMobileListExpose = {
+  jumpToToday: () => void
 }
 
 const props = withDefaults(defineProps<{
@@ -25,20 +29,32 @@ const props = withDefaults(defineProps<{
   endHour: 24,
 })
 
+const localTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+const localDateKeyFormatter = new Intl.DateTimeFormat('sv-SE', { timeZone: localTimeZone })
+
+function toLocalDateKey(value: Date): string {
+  return localDateKeyFormatter.format(value)
+}
+
 const emit = defineEmits<{
   'hide-series': [payload: { seriesId: string; title: string }]
 }>()
 
+function getTodayStart(): Date {
+  const now = new Date()
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate())
+}
+
 const nowTimestamp = ref(Date.now())
 let nowTimer: number | null = null
 const desktopGridRef = ref<WeekDesktopGridExpose | null>(null)
+const mobileListRef = ref<WeekMobileListExpose | null>(null)
 const isTodayVisibleInViewport = ref(true)
-const pivotDate = ref(new Date())
-const selectedYear = ref(new Date().getFullYear())
+const pivotDate = ref(getTodayStart())
+const selectedYear = ref(getTodayStart().getFullYear())
 
-const extensionStepDays = 28
-const beforeDays = ref(14)
-const afterDays = ref(28)
+const beforeDays = ref(0)
+const afterDays = ref(7)
 const dayFormatter = new Intl.DateTimeFormat('de-DE', { weekday: 'short' })
 const dateFormatter = new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit' })
 
@@ -48,30 +64,44 @@ const displayedWeekStart = computed(() => {
   return start
 })
 
-const canJumpToToday = computed(() => !isTodayVisibleInViewport.value)
+const canJumpToToday = computed(() => currentDayIndex.value < 0 || !isTodayVisibleInViewport.value)
+
+function shiftVisibleWindow(days: number) {
+  const shiftedStart = new Date(pivotDate.value)
+  shiftedStart.setDate(shiftedStart.getDate() + days)
+  pivotDate.value = shiftedStart
+  selectedYear.value = shiftedStart.getFullYear()
+  beforeDays.value = 0
+  afterDays.value = 7
+
+  void nextTick(() => {
+    desktopGridRef.value?.scrollToDay(0)
+  })
+}
 
 function previousWeek() {
-  desktopGridRef.value?.scrollByDays(-7, 'smooth')
+  shiftVisibleWindow(-7)
 }
 
 function nextWeek() {
-  desktopGridRef.value?.scrollByDays(7, 'smooth')
+  shiftVisibleWindow(7)
 }
 
 function jumpToToday() {
+  const today = getTodayStart()
+  nowTimestamp.value = today.getTime()
+  pivotDate.value = new Date(today)
+  selectedYear.value = today.getFullYear()
+  beforeDays.value = 0
+  afterDays.value = 7
+
   void nextTick(() => {
     if (currentDayIndex.value >= 0) {
       desktopGridRef.value?.scrollToDay(currentDayIndex.value)
     }
+
+    mobileListRef.value?.jumpToToday()
   })
-}
-
-function extendRight() {
-  afterDays.value += extensionStepDays
-}
-
-function extendLeft() {
-  beforeDays.value += extensionStepDays
 }
 
 const schedule = useWeeklySchedule(
@@ -91,6 +121,8 @@ const {
 } = schedule
 
 const continuousDays = computed<ScheduleDay[]>(() => {
+  const todayKey = toLocalDateKey(new Date(nowTimestamp.value))
+
   return Array.from({ length: beforeDays.value + afterDays.value }, (_, index) => {
     const date = new Date(displayedWeekStart.value)
     date.setDate(displayedWeekStart.value.getDate() + index)
@@ -100,7 +132,7 @@ const continuousDays = computed<ScheduleDay[]>(() => {
       date,
       weekdayLabel: dayFormatter.format(date),
       dateLabel: dateFormatter.format(date),
-      isToday: date.toDateString() === new Date(nowTimestamp.value).toDateString(),
+      isToday: toLocalDateKey(date) === todayKey,
     }
   })
 })
@@ -113,8 +145,8 @@ const continuousEventsByDay = computed(() => {
 })
 
 const currentDayIndex = computed(() => {
-  const today = new Date(nowTimestamp.value)
-  return continuousDays.value.findIndex((day) => day.date.toDateString() === today.toDateString())
+  const todayKey = toLocalDateKey(new Date(nowTimestamp.value))
+  return continuousDays.value.findIndex((day) => toLocalDateKey(day.date) === todayKey)
 })
 
 const currentYearLabel = computed(() => String(selectedYear.value))
@@ -122,6 +154,15 @@ const currentYearLabel = computed(() => String(selectedYear.value))
 function onSelectedYearChange(year: number) {
   selectedYear.value = year
 }
+
+watch(
+  () => props.weekStart.getTime(),
+  (nextWeekStartTs) => {
+    const nextWeekStart = new Date(nextWeekStartTs)
+    pivotDate.value = new Date(nextWeekStart)
+    selectedYear.value = nextWeekStart.getFullYear()
+  }
+)
 
 const nowLineTopPercent = computed<number | null>(() => {
   if (currentDayIndex.value < 0) {
@@ -141,6 +182,13 @@ const nowLineTopPercent = computed<number | null>(() => {
 })
 
 onMounted(() => {
+  const today = getTodayStart()
+  nowTimestamp.value = today.getTime()
+  pivotDate.value = new Date(today)
+  selectedYear.value = today.getFullYear()
+  beforeDays.value = 0
+  afterDays.value = 7
+
   nowTimer = window.setInterval(() => {
     nowTimestamp.value = Date.now()
   }, 1000)
@@ -168,16 +216,16 @@ onUnmounted(() => {
       </div>
       <div class="week-header-meta">
         <div class="week-nav" role="group" aria-label="Wochennavigation">
-          <button type="button" class="week-nav-btn" @click="previousWeek">←</button>
+          <button type="button" class="week-nav-btn app-button" @click="previousWeek">←</button>
           <button
             type="button"
-            class="week-nav-btn week-nav-btn-today"
+            class="week-nav-btn week-nav-btn-today app-button"
             :disabled="!canJumpToToday"
             @click="jumpToToday"
           >
             Heute
           </button>
-          <button type="button" class="week-nav-btn" @click="nextWeek">→</button>
+          <button type="button" class="week-nav-btn app-button" @click="nextWeek">→</button>
         </div>
       </div>
     </header>
@@ -208,16 +256,15 @@ onUnmounted(() => {
         :current-day-index="currentDayIndex"
         :now-line-top-percent="nowLineTopPercent"
         @today-visibility-change="isTodayVisibleInViewport = $event"
-        @reach-start-edge="extendLeft"
-        @reach-end-edge="extendRight"
       />
 
       <WeekMobileList
+        ref="mobileListRef"
         :days="continuousDays"
         :events-by-day="continuousEventsByDay"
+        :hour-slots="hourSlots"
+        :format-time-label="formatTimeLabel"
         :current-day-index="currentDayIndex"
-        @reach-start-edge="extendLeft"
-        @reach-end-edge="extendRight"
         @selected-year-change="onSelectedYearChange"
         @hide-series="emit('hide-series', $event)"
       />
@@ -229,14 +276,23 @@ onUnmounted(() => {
 .week-view {
   background: var(--color-surface);
   border: 0.0625rem solid var(--color-border);
-  border-radius: 0.875rem;
+  border-radius: 0;
   padding: clamp(0.875rem, 2vw, 1rem);
   display: flex;
+  flex: 1;
+  min-height: 0;
   flex-direction: column;
   gap: 1rem;
 }
 
 .week-header {
+  position: sticky;
+  top: 56px;
+  z-index: 8;
+  background: var(--color-surface);
+  padding: 0.5rem 0 0.625rem;
+  border-bottom: 0.0625rem solid var(--color-border);
+  box-shadow: 0 0.375rem 0.5rem -0.5rem color-mix(in srgb, var(--color-border) 80%, transparent);
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -269,30 +325,11 @@ onUnmounted(() => {
 }
 
 .week-nav-btn {
-  border: 0.0625rem solid var(--color-border);
-  background: var(--color-surface-raised);
-  color: var(--color-text);
-  border-radius: 0.5rem;
-  min-height: 2rem;
-  min-width: 2rem;
-  padding: 0.375rem 0.625rem;
-  font: inherit;
-  font-size: 0.82rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.week-nav-btn:hover:enabled {
-  border-color: var(--color-primary);
-}
-
-.week-nav-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+  min-width: var(--button-min-width);
 }
 
 .week-nav-btn-today {
-  min-width: 4.25rem;
+  min-width: var(--button-today-min-width);
 }
 
 .week-state {
@@ -341,7 +378,8 @@ onUnmounted(() => {
   }
 
   .week-nav {
-    display: none;
+    display: inline-flex;
+    flex-wrap: wrap;
   }
 }
 </style>

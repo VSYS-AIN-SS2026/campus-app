@@ -42,11 +42,7 @@ function getDayColumnsInset() {
 }
 
 function setDayColumnRef(element: Element | null, index: number) {
-  if (!(element instanceof HTMLElement)) {
-    return
-  }
-
-  dayColumnRefs.value[index] = element
+  dayColumnRefs.value[index] = element instanceof HTMLElement ? element : null
 }
 
 function scrollToDay(index: number) {
@@ -54,18 +50,14 @@ function scrollToDay(index: number) {
     return
   }
 
-  const targetColumn = dayColumnRefs.value[index]
+  const liveColumn = dayColumnsRef.value?.children[index]
+  const targetColumn = (liveColumn instanceof HTMLElement ? liveColumn : dayColumnRefs.value[index])
 
   if (!targetColumn) {
     return
   }
 
-  const containerRect = gridWrapper.value.getBoundingClientRect()
-  const targetRect = targetColumn.getBoundingClientRect()
-  const leftInset = getDayColumnsInset()
-  const delta = targetRect.left - containerRect.left - leftInset
-
-  gridWrapper.value.scrollBy({ left: delta, behavior: 'smooth' })
+  gridWrapper.value.scrollTo({ left: targetColumn.offsetLeft, behavior: 'smooth' })
 }
 
 function getDayStepPx() {
@@ -160,7 +152,6 @@ onMounted(() => {
   window.addEventListener('resize', emitTodayVisibility)
   void nextTick(() => {
     emitTodayVisibility()
-    emitEdgeEvents()
   })
 })
 
@@ -229,15 +220,15 @@ defineExpose({
 </template>
 
 <style scoped>
-.week-grid-wrapper { --day-header-height: clamp(2.875rem, 4.8vh, 3.25rem); display: grid; grid-template-columns: clamp(2.75rem, 5vw, 3.875rem) minmax(0, 1fr); gap: 0.625rem; overflow-x: auto; overflow-y: auto; padding-bottom: 0.25rem; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; position: relative; height: min(68vh, 47.5rem); max-height: min(68vh, 47.5rem); scrollbar-width: none; -ms-overflow-style: none; }
+.week-grid-wrapper { --day-header-height: clamp(2.875rem, 4.8vh, 3.25rem); display: grid; grid-template-columns: clamp(2.75rem, 5vw, 3.875rem) minmax(0, 1fr); gap: 0.625rem; overflow-x: auto; overflow-y: auto; padding-bottom: 0.25rem; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; position: relative; flex: 1; min-height: 0; scrollbar-width: none; -ms-overflow-style: none; align-content: start; }
 .week-grid-wrapper::-webkit-scrollbar { width: 0; height: 0; display: none; }
 .time-axis { display: flex; flex-direction: column; position: sticky; left: 0; z-index: 7; min-width: clamp(2.75rem, 5vw, 3.875rem); background: var(--color-surface); box-shadow: 0.625rem 0 0.75rem -0.75rem color-mix(in srgb, var(--color-border) 85%, transparent), 0 0.625rem 0.75rem -0.75rem color-mix(in srgb, var(--color-border) 85%, transparent); overflow-y: hidden; }
 .time-axis-spacer { height: var(--day-header-height); border-bottom: 0.0625rem solid transparent; flex-shrink: 0; }
 .time-label { font-size: 0.72rem; color: var(--color-text-muted); display: flex; align-items: flex-start; padding-top: 0.125rem; box-sizing: border-box; flex-shrink: 0; }
 .day-columns { min-width: max-content; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(clamp(6rem, 14vw, 7.5rem), 1fr); gap: 0.5rem; }
-.day-column { border: 0.0625rem solid var(--color-border); border-radius: 0.625rem; overflow: hidden; background: var(--color-surface-raised); }
+.day-column { border: 0.0625rem solid var(--color-border); border-radius: 0.625rem; overflow: visible; background: var(--color-surface-raised); }
 .day-column-today { border-color: color-mix(in srgb, #ef4444 55%, var(--color-border)); box-shadow: inset 0 0 0 0.0625rem color-mix(in srgb, #ef4444 45%, transparent); }
-.day-header { position: sticky; top: 0; z-index: 4; min-height: var(--day-header-height); padding: 0.625rem 0.5rem; border-bottom: 0.0625rem solid var(--color-border); display: flex; flex-direction: column; justify-content: center; gap: 0.125rem; background: var(--color-surface-raised); box-sizing: border-box; }
+.day-header { position: relative; min-height: var(--day-header-height); padding: 0.625rem 0.5rem; border-bottom: 0.0625rem solid var(--color-border); display: flex; flex-direction: column; justify-content: center; gap: 0.125rem; background: var(--color-surface-raised); box-sizing: border-box; }
 .day-header-today { background: var(--color-primary-glow); }
 .day-name { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-muted); }
 .day-date { font-size: 0.84rem; font-weight: 600; color: var(--color-text); }

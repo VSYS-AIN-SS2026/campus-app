@@ -64,11 +64,11 @@ const emit = defineEmits<{
   </div>
 
   <div v-if="categoryError" class="info-banner">
-    ⚠️ {{ categoryError }}
+    {{ categoryError }}
   </div>
 
   <div v-if="selectedSpoId && !canEditModuleStatuses" class="info-banner">
-    ⚠️ Speichere zuerst die aktuelle Studiengang- und SPO-Auswahl im Demo-Profil, damit Modulstatus und Kategorien persistent geändert werden können.
+    Speichere zuerst die aktuelle Studiengang- und SPO-Auswahl im Demo-Profil, damit Modulstatus und Kategorien persistent geändert werden können.
   </div>
 
   <template v-if="selectedSpoId">

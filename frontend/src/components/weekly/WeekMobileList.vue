@@ -5,6 +5,8 @@ import type { NormalizedWeekEvent, ScheduleDay } from '../../types/schedule'
 const props = defineProps<{
   days: ScheduleDay[]
   eventsByDay: NormalizedWeekEvent[][]
+  hourSlots: number[]
+  formatTimeLabel: (minutes: number) => string
   currentDayIndex: number
 }>()
 
@@ -32,15 +34,17 @@ const fullDateFormatter = new Intl.DateTimeFormat('de-DE', {
   month: 'long',
   year: 'numeric',
 })
+const localTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+const localDayKeyFormatter = new Intl.DateTimeFormat('sv-SE', { timeZone: localTimeZone })
 
 function dayKey(day: ScheduleDay | null | undefined) {
-  return day?.date.toDateString() ?? null
+  return day ? localDayKeyFormatter.format(day.date) : null
 }
 
 function shiftDayKey(day: ScheduleDay, deltaDays: number) {
   const shiftedDate = new Date(day.date)
   shiftedDate.setDate(shiftedDate.getDate() + deltaDays)
-  return shiftedDate.toDateString()
+  return localDayKeyFormatter.format(shiftedDate)
 }
 
 function setDayTabRef(element: Element | null, index: number) {
@@ -287,6 +291,10 @@ watch(
     })
   }
 )
+
+defineExpose({
+  jumpToToday,
+})
 </script>
 
 <template>
@@ -331,6 +339,17 @@ watch(
         <span>{{ selectedDay.dateLabel }}</span>
       </header>
 
+      <section class="mobile-time-grid" aria-label="Zeitachse">
+        <div class="mobile-time-axis">
+          <span v-for="slot in props.hourSlots" :key="`mobile-time-${slot}`" class="mobile-time-label">
+            {{ props.formatTimeLabel(slot) }}
+          </span>
+        </div>
+        <div class="mobile-time-slots" aria-hidden="true">
+          <span v-for="slot in props.hourSlots" :key="`mobile-slot-${slot}`" class="mobile-slot-line" />
+        </div>
+      </section>
+
       <div v-if="!selectedEvents.length" class="mobile-free">Keine Termine · Tag ist frei</div>
 
       <div v-for="event in selectedEvents" :key="`mobile-${event.id}`" class="mobile-event-row">
@@ -367,6 +386,11 @@ watch(
 .mobile-day-card { border: 0.0625rem solid var(--color-border); border-radius: 0.875rem; padding: 0.75rem; background: var(--color-surface-raised); display: flex; flex-direction: column; gap: 0.625rem; }
 .mobile-day-header { display: flex; align-items: center; justify-content: space-between; font-size: 0.85rem; font-weight: 600; color: var(--color-text); padding-bottom: 0.375rem; border-bottom: 0.0625rem solid var(--color-border); }
 .day-header-today { background: var(--color-primary-glow); border-radius: 0.375rem; padding: 0.25rem 0.375rem; margin: -0.25rem -0.375rem 0; }
+.mobile-time-grid { display: grid; grid-template-columns: 3.125rem minmax(0, 1fr); gap: 0.5rem; border: 0.0625rem solid var(--color-border); border-radius: 0.625rem; padding: 0.375rem; background: var(--color-surface); }
+.mobile-time-axis { display: flex; flex-direction: column; }
+.mobile-time-label { height: 1.4rem; display: flex; align-items: flex-start; justify-content: flex-end; font-size: 0.68rem; color: var(--color-text-muted); line-height: 1; font-variant-numeric: tabular-nums; }
+.mobile-time-slots { display: flex; flex-direction: column; }
+.mobile-slot-line { height: 1.4rem; border-top: 0.0625rem dashed color-mix(in srgb, var(--color-border) 75%, transparent); }
 .mobile-free { font-size: 0.82rem; color: var(--color-text-muted); border: 0.0625rem dashed var(--color-border); border-radius: 0.75rem; padding: 0.75rem; text-align: center; }
 .mobile-event-row { display: grid; grid-template-columns: 3.25rem minmax(0, 1fr); align-items: start; gap: 0.5rem; }
 .mobile-event-time { font-size: 0.72rem; color: var(--color-text-muted); padding-top: 0.5rem; font-variant-numeric: tabular-nums; }
