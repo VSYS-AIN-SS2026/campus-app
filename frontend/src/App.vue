@@ -19,6 +19,7 @@ const isDevBypass = typeof window !== 'undefined' && window.location.search.incl
 type SidebarSection = 'modules' | 'calendar' | 'profile'
 
 const sidebarActiveSection = ref<SidebarSection>('modules')
+const sidebarOpen = ref(false)
 
 const derivedSidebarSection = computed<SidebarSection>(() => {
   if (isWeeklyPreviewMode.value || activePlannerView.value === 'week') {
@@ -47,6 +48,7 @@ function scrollToSection(sectionId: string) {
 
 async function onSidebarNavigate(target: SidebarSection) {
   sidebarActiveSection.value = target
+  sidebarOpen.value = false
 
   if (target === 'calendar') {
     activePlannerView.value = 'week'
@@ -77,6 +79,17 @@ async function onSidebarNavigate(target: SidebarSection) {
           <span class="brand-name">Campus App</span>
         </div>
         <div class="header-actions">
+          <button
+            v-if="currentUser || isDevBypass || isWeeklyPreviewMode"
+            type="button"
+            class="sidebar-toggle ghost-button"
+            :aria-expanded="sidebarOpen"
+            aria-controls="app-sidebar"
+            aria-label="Navigation ein-/ausblenden"
+            @click="sidebarOpen = !sidebarOpen"
+          >
+            <span class="sidebar-toggle-icon" :class="{ open: sidebarOpen }">☰</span>
+          </button>
           <span v-if="currentUser" class="session-email">{{ currentUserEmail }}</span>
           <button
             v-if="currentUser"
@@ -91,9 +104,19 @@ async function onSidebarNavigate(target: SidebarSection) {
     </header>
 
     <div class="app-layout">
+      <transition name="sidebar-overlay">
+        <div
+          v-if="(currentUser || isDevBypass || isWeeklyPreviewMode) && sidebarOpen"
+          class="sidebar-overlay"
+          aria-hidden="true"
+          @click="sidebarOpen = false"
+        />
+      </transition>
       <Sidebar
         v-if="currentUser || isDevBypass || isWeeklyPreviewMode"
+        id="app-sidebar"
         :active-section="sidebarActiveSection"
+        :is-open="sidebarOpen"
         @navigate="onSidebarNavigate"
       />
       <div class="app-content">
@@ -220,7 +243,57 @@ async function onSidebarNavigate(target: SidebarSection) {
 
 .app-layout {
   display: flex;
-  min-height: calc(100vh - 56px);
+  min-height: calc(100vh - 3.5rem);
+  position: relative;
+}
+
+.sidebar-overlay {
+  display: none;
+}
+
+.sidebar-toggle {
+  display: none;
+  padding: 0.375rem 0.5rem;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.sidebar-toggle-icon {
+  display: inline-block;
+  transition: transform 0.2s;
+}
+
+.sidebar-toggle-icon.open {
+  transform: rotate(90deg);
+}
+
+.sidebar-overlay-enter-active,
+.sidebar-overlay-leave-active {
+  transition: opacity 0.2s;
+}
+
+.sidebar-overlay-enter-from,
+.sidebar-overlay-leave-to {
+  opacity: 0;
+}
+
+@media (max-width: 45em) {
+  .sidebar-toggle {
+    display: inline-flex;
+    align-items: center;
+    order: -1;
+  }
+
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    top: 3.5rem;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: color-mix(in srgb, black 40%, transparent);
+    z-index: 19;
+  }
 }
 
 .app-content {
