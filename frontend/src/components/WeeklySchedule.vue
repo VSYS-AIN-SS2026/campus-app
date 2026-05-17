@@ -21,6 +21,7 @@ const props = withDefaults(defineProps<{
   loading?: boolean
   error?: string | null
   hiddenSeriesItems?: Array<{ seriesId: string; title: string }>
+  hiddenOccurrenceItems?: Array<{ occurrenceId: string; title: string }>
   weekStart: Date
   startHour?: number
   endHour?: number
@@ -28,6 +29,7 @@ const props = withDefaults(defineProps<{
   loading: false,
   error: null,
   hiddenSeriesItems: () => [],
+  hiddenOccurrenceItems: () => [],
   startHour: 0,
   endHour: 24,
 })
@@ -41,7 +43,10 @@ function toLocalDateKey(value: Date): string {
 
 const emit = defineEmits<{
   'hide-series': [payload: { seriesId: string; title: string }]
+  'hide-occurrence': [occurrenceId: string]
   'show-series': [seriesId: string]
+  'show-occurrence': [occurrenceId: string]
+  'show-all-occurrences': []
   'show-all-series': []
 }>()
 
@@ -239,9 +244,12 @@ onUnmounted(() => {
           <button type="button" class="week-nav-btn app-button" @click="nextWeek">→</button>
         </div>
         <HiddenSeriesPopover
-          v-if="props.hiddenSeriesItems.length"
+          v-if="props.hiddenSeriesItems.length || props.hiddenOccurrenceItems.length"
           :items="props.hiddenSeriesItems"
+          :occurrence-items="props.hiddenOccurrenceItems"
           @show-series="emit('show-series', $event)"
+          @show-occurrence="emit('show-occurrence', $event)"
+          @show-all-occurrences="emit('show-all-occurrences')"
           @show-all-series="emit('show-all-series')"
         />
       </div>
@@ -276,6 +284,7 @@ onUnmounted(() => {
         :now-line-top-percent="nowLineTopPercent"
         @today-visibility-change="isTodayVisibleInViewport = $event"
         @hide-series="emit('hide-series', $event)"
+        @hide-occurrence="emit('hide-occurrence', $event)"
       />
 
       <WeekMobileList
@@ -291,6 +300,7 @@ onUnmounted(() => {
         @selected-year-change="onSelectedYearChange"
         @selected-day-label-change="onMobileSelectedDayLabelChange"
         @hide-series="emit('hide-series', $event)"
+        @hide-occurrence="emit('hide-occurrence', $event)"
       />
     </template>
   </section>

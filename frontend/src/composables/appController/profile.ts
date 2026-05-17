@@ -8,7 +8,7 @@ import type {
   UserProfile,
 } from '../../types'
 import type { AppControllerState } from './state'
-import type { HiddenSeriesRow } from './shared'
+import type { HiddenOccurrenceRow, HiddenSeriesRow } from './shared'
 
 export function createProfileController(
   state: AppControllerState,
@@ -36,7 +36,7 @@ export function createProfileController(
       return
     }
 
-    const [spRes, spoRes, hbRes, categoryRes, profileRes, hiddenSeriesRes] = await Promise.all([
+    const [spRes, spoRes, hbRes, categoryRes, profileRes, hiddenSeriesRes, hiddenOccurrencesRes] = await Promise.all([
       supabase.from('study_programs').select('id, faculty_id, code, name').order('name').order('code'),
       supabase
         .from('spos')
@@ -48,6 +48,7 @@ export function createProfileController(
       supabase.from('categories').select('id, name, color, type').order('type').order('name'),
       supabase.rpc('get_demo_user_profile').maybeSingle(),
       supabase.rpc('get_demo_user_hidden_schedule_series_ids'),
+      supabase.rpc('get_demo_user_hidden_schedule_occurrence_ids'),
     ])
 
     state.loading.value = false
@@ -62,6 +63,13 @@ export function createProfileController(
     }
     else {
       state.applyHiddenSeries((hiddenSeriesRes.data ?? []) as HiddenSeriesRow[])
+    }
+
+    if (hiddenOccurrencesRes.error) {
+      state.scheduleVisibilityError.value = 'Verborgene Einzeltermine konnten nicht geladen werden.'
+    }
+    else {
+      state.applyHiddenOccurrences((hiddenOccurrencesRes.data ?? []) as HiddenOccurrenceRow[])
     }
 
     state.studyPrograms.value = (spRes.data ?? []) as StudyProgram[]

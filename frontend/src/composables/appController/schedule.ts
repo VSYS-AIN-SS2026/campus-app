@@ -5,6 +5,10 @@ function normalizeSeriesId(seriesId: string) {
   return seriesId.trim()
 }
 
+function normalizeOccurrenceId(occurrenceId: string) {
+  return occurrenceId.trim()
+}
+
 export function createScheduleController(state: AppControllerState) {
   async function hideScheduleSeries(seriesId: string, title: string) {
     const normalizedSeriesId = normalizeSeriesId(seriesId)
@@ -141,9 +145,86 @@ export function createScheduleController(state: AppControllerState) {
     }
   }
 
+  async function hideScheduleOccurrence(occurrenceId: string) {
+    const normalizedOccurrenceId = normalizeOccurrenceId(occurrenceId)
+
+    if (!normalizedOccurrenceId || state.hiddenEventIds.value.has(normalizedOccurrenceId)) {
+      return
+    }
+
+    const previousHiddenOccurrenceIds = state.hiddenEventIds.value
+    const nextHiddenOccurrenceIds = new Set(previousHiddenOccurrenceIds)
+    nextHiddenOccurrenceIds.add(normalizedOccurrenceId)
+    state.hiddenEventIds.value = nextHiddenOccurrenceIds
+    state.scheduleVisibilityError.value = null
+
+    if (state.isWeeklyPreviewMode.value) {
+      return
+    }
+
+    if (!supabase) {
+      state.hiddenEventIds.value = previousHiddenOccurrenceIds
+      state.scheduleVisibilityError.value = supabaseConfigError
+      return
+    }
+
+    const { error } = await supabase.rpc('hide_demo_user_schedule_occurrence', {
+      selected_occurrence_id: normalizedOccurrenceId,
+    })
+
+    if (error) {
+      state.hiddenEventIds.value = previousHiddenOccurrenceIds
+      state.scheduleVisibilityError.value = 'Einzeltermin konnte nicht ausgeblendet werden.'
+    }
+  }
+
+  async function showScheduleOccurrence(occurrenceId: string) {
+    const normalizedOccurrenceId = normalizeOccurrenceId(occurrenceId)
+
+    if (!normalizedOccurrenceId || !state.hiddenEventIds.value.has(normalizedOccurrenceId)) {
+      return
+    }
+
+    const previousHiddenOccurrenceIds = state.hiddenEventIds.value
+    const nextHiddenOccurrenceIds = new Set(previousHiddenOccurrenceIds)
+    nextHiddenOccurrenceIds.delete(normalizedOccurrenceId)
+    state.hiddenEventIds.value = nextHiddenOccurrenceIds
+    state.scheduleVisibilityError.value = null
+
+    if (state.isWeeklyPreviewMode.value) {
+      return
+    }
+
+    if (!supabase) {
+      state.hiddenEventIds.value = previousHiddenOccurrenceIds
+      state.scheduleVisibilityError.value = supabaseConfigError
+      return
+    }
+
+    const { error } = await supabase.rpc('show_demo_user_schedule_occurrence', {
+      selected_occurrence_id: normalizedOccurrenceId,
+    })
+
+    if (error) {
+      state.hiddenEventIds.value = previousHiddenOccurrenceIds
+      state.scheduleVisibilityError.value = 'Einzeltermin konnte nicht eingeblendet werden.'
+    }
+  }
+
+  async function showAllScheduleOccurrences() {
+    const occurrenceIds = Array.from(state.hiddenEventIds.value)
+
+    for (const occurrenceId of occurrenceIds) {
+      await showScheduleOccurrence(occurrenceId)
+    }
+  }
+
   return {
+    hideScheduleOccurrence,
     hideScheduleSeries,
+    showAllScheduleOccurrences,
     showAllScheduleSeries,
+    showScheduleOccurrence,
     showScheduleSeries,
     undoHideScheduleSeries,
   }

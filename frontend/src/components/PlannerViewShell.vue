@@ -16,6 +16,7 @@ const props = defineProps<{
   scheduleVisibilityInfo: string | null
   lastHiddenSeries: { seriesId: string; title: string } | null
   hiddenSeriesItems: Array<{ seriesId: string; title: string }>
+  hiddenOccurrenceItems: Array<{ occurrenceId: string; title: string }>
   modules: ModuleEntry[]
   visibleWeeklyScheduleEvents: {
     id: string
@@ -34,7 +35,10 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:activePlannerView': [value: 'week' | 'modules']
   'hide-series': [payload: { seriesId: string; title: string }]
+  'hide-occurrence': [occurrenceId: string]
   'show-series': [seriesId: string]
+  'show-occurrence': [occurrenceId: string]
+  'show-all-occurrences': []
   'show-all-series': []
   'undo-hide-series': []
   'select-module': [module: ModuleEntry]
@@ -98,11 +102,15 @@ const emit = defineEmits<{
       v-if="activePlannerView === 'week'"
       :events="visibleWeeklyScheduleEvents"
       :hidden-series-items="hiddenSeriesItems"
+      :hidden-occurrence-items="hiddenOccurrenceItems"
       :loading="loading"
       :error="error"
       :week-start="weekStartDate"
       @hide-series="emit('hide-series', $event)"
+      @hide-occurrence="emit('hide-occurrence', $event)"
       @show-series="emit('show-series', $event)"
+      @show-occurrence="emit('show-occurrence', $event)"
+      @show-all-occurrences="emit('show-all-occurrences')"
       @show-all-series="emit('show-all-series')"
     />
 

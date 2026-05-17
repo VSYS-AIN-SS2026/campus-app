@@ -19,6 +19,7 @@ const emit = defineEmits<{
   'reach-start-edge': []
   'reach-end-edge': []
   'hide-series': [payload: { seriesId: string; title: string }]
+  'hide-occurrence': [occurrenceId: string]
 }>()
 
 function requestHideSeries(event: NormalizedWeekEvent) {
@@ -30,6 +31,14 @@ function requestHideSeries(event: NormalizedWeekEvent) {
     seriesId: event.seriesId,
     title: event.title,
   })
+}
+
+function requestHideOccurrence(event: NormalizedWeekEvent) {
+  if (!event.occurrenceId) {
+    return
+  }
+
+  emit('hide-occurrence', event.occurrenceId)
 }
 
 function isSingleWordTitle(title: string) {
@@ -234,11 +243,28 @@ defineExpose({
               v-if="event.seriesId"
               type="button"
               class="hide-series-btn"
-              title="Diese Terminreihe ausblenden (alle Wiederholungen)"
-              aria-label="Diese Terminreihe ausblenden"
+              title="Terminreihe ausblenden (alle Termine dieser Reihe)"
+              aria-label="Terminreihe ausblenden (alle Termine dieser Reihe)"
               @click.stop="requestHideSeries(event)"
             >
-              <span aria-hidden="true" class="hide-series-icon">×</span>
+              <svg aria-hidden="true" class="hide-action-icon" viewBox="0 0 16 16" fill="none">
+                <rect x="2.5" y="3" width="11" height="4" rx="1.25" stroke="currentColor" stroke-width="1.25" />
+                <rect x="2.5" y="9" width="11" height="4" rx="1.25" stroke="currentColor" stroke-width="1.25" />
+                <path d="M5.25 5L10.75 5" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" />
+              </svg>
+            </button>
+            <button
+              v-if="event.occurrenceId"
+              type="button"
+              class="hide-occurrence-btn"
+              title="Einzeltermin ausblenden (nur diesen Termin)"
+              aria-label="Einzeltermin ausblenden (nur diesen Termin)"
+              @click.stop="requestHideOccurrence(event)"
+            >
+              <svg aria-hidden="true" class="hide-action-icon" viewBox="0 0 16 16" fill="none">
+                <rect x="2.5" y="4" width="11" height="8" rx="1.25" stroke="currentColor" stroke-width="1.25" />
+                <path d="M5 8H11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+              </svg>
             </button>
           </div>
         </div>
@@ -273,11 +299,16 @@ defineExpose({
 .event-title-truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .event-subtitle { font-size: 0.68rem; color: var(--color-text-muted); line-height: 1.25; }
 .hide-series-btn { position: absolute; top: 0.25rem; right: 0.25rem; width: 1.25rem; height: 1.25rem; border: 0.0625rem solid color-mix(in srgb, var(--color-border) 85%, transparent); border-radius: 999rem; background: color-mix(in srgb, var(--color-surface) 92%, transparent); color: var(--color-text-muted); font: inherit; font-size: 0.9rem; font-weight: 700; line-height: 1; display: inline-grid; place-items: center; padding: 0; cursor: pointer; opacity: 0; transform: translateY(-0.0625rem); transition: opacity 0.16s ease, transform 0.16s ease, color 0.16s ease, border-color 0.16s ease; }
-.hide-series-icon { display: block; line-height: 1; transform: translateY(-0.02em); }
+.hide-occurrence-btn { position: absolute; top: 0.25rem; right: 1.75rem; width: 1.25rem; height: 1.25rem; border: 0.0625rem solid color-mix(in srgb, var(--color-border) 85%, transparent); border-radius: 999rem; background: color-mix(in srgb, var(--color-surface) 92%, transparent); color: var(--color-text-muted); font: inherit; font-size: 0.95rem; font-weight: 700; line-height: 1; display: inline-grid; place-items: center; padding: 0; cursor: pointer; opacity: 0; transform: translateY(-0.0625rem); transition: opacity 0.16s ease, transform 0.16s ease, color 0.16s ease, border-color 0.16s ease; }
+.hide-action-icon { display: block; width: 0.875rem; height: 0.875rem; }
 .event-block:hover .hide-series-btn,
-.event-block:focus-within .hide-series-btn { opacity: 1; transform: translateY(0); }
+.event-block:focus-within .hide-series-btn,
+.event-block:hover .hide-occurrence-btn,
+.event-block:focus-within .hide-occurrence-btn { opacity: 1; transform: translateY(0); }
 .hide-series-btn:hover,
-.hide-series-btn:focus-visible { color: var(--color-primary); border-color: var(--color-primary-light); outline: none; }
+.hide-series-btn:focus-visible,
+.hide-occurrence-btn:hover,
+.hide-occurrence-btn:focus-visible { color: var(--color-primary); border-color: var(--color-primary-light); outline: none; }
 @media (max-width: 56.25em) {
   .week-grid-wrapper { grid-template-columns: clamp(2.5rem, 5vw, 3rem) minmax(0, 1fr); }
   .day-columns { grid-auto-columns: minmax(clamp(5.6rem, 16vw, 6.4rem), 1fr); }

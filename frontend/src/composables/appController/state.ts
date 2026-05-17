@@ -11,10 +11,11 @@ import {
   getSpoLabel,
   getStartOfCurrentWeek,
   getStudyProgramLabel,
+  type HiddenOccurrenceRow,
   getUniqueSposForStudyProgram,
   type HiddenSeriesRow,
   type PlannerView,
-  toTimeString,
+  type WeeklyScheduleRpcRow,
   type WeeklyScheduleEvent,
 } from './shared'
 
@@ -97,36 +98,33 @@ export function createAppControllerState() {
     { id: 'preview-5', seriesId: 'preview-series-prj', dayIndex: 4, title: 'Projektarbeit', subtitle: 'Team-Slot', startTime: '14:00', endTime: '16:00', status: 'offen' },
   ])
 
-  const weeklyScheduleEvents = computed<WeeklyScheduleEvent[]>(() => {
-    const slotStarts = [8 * 60 + 15, 10 * 60, 11 * 60 + 45, 13 * 60 + 30, 15 * 60 + 15]
-
-    return modules.value.slice(0, 21).map((module, index) => {
-      const dayIndex = index % 5
-      const startMinutes = slotStarts[index % slotStarts.length]
-      const ects = module.courses.reduce((sum, course) => sum + (course.ects ?? 0), 0)
-      const duration = ects >= 6 ? 120 : 90
-      const endMinutes = Math.min(startMinutes + duration, 19 * 60 + 45)
-      const firstCourse = module.courses[0]
-
-      return {
-        id: `${module.id}-${dayIndex}-${startMinutes}`,
-        seriesId: `module:${module.id}`,
-        occurrenceId: `${module.id}-${dayIndex}-${startMinutes}`,
-        dayIndex,
-        title: module.name,
-        subtitle: firstCourse ? `${firstCourse.name} · ${module.code}` : module.code,
-        startTime: toTimeString(startMinutes),
-        endTime: toTimeString(endMinutes),
-        status: module.module_status,
-      }
-    })
-  })
+  const weeklyScheduleEvents = ref<WeeklyScheduleEvent[]>([])
 
   function applyHiddenSeries(rows: HiddenSeriesRow[]) {
     hiddenSeriesIds.value = new Set(rows.map(row => row.series_id.trim()).filter(Boolean))
     hiddenSeriesTitles.value = new Map(
       Array.from(hiddenSeriesIds.value).map((seriesId) => [seriesId, seriesId])
     )
+  }
+
+  function applyHiddenOccurrences(rows: HiddenOccurrenceRow[]) {
+    hiddenEventIds.value = new Set(rows.map(row => row.occurrence_id.trim()).filter(Boolean))
+  }
+
+  function applyWeeklyScheduleRows(rows: WeeklyScheduleRpcRow[]) {
+    weeklyScheduleEvents.value = rows
+      .filter(row => row.weekday_index >= 0 && row.weekday_index <= 6)
+      .map(row => ({
+        id: row.event_id,
+        seriesId: row.series_id,
+        occurrenceId: row.occurrence_id,
+        dayIndex: row.weekday_index,
+        title: row.title,
+        subtitle: row.subtitle ?? undefined,
+        startTime: row.start_time,
+        endTime: row.end_time,
+        status: row.module_status,
+      }))
   }
 
   const visibleWeeklyScheduleEvents = computed<WeeklyScheduleEvent[]>(() =>
@@ -152,6 +150,29 @@ export function createAppControllerState() {
       }))
   )
 
+  const hiddenOccurrenceItems = computed(() => {
+    const allEvents = [...weeklyScheduleEvents.value, ...weeklyPreviewEvents.value]
+    const byOccurrenceId = new Map(
+      allEvents
+        .filter(event => !!event.occurrenceId)
+        .map(event => [event.occurrenceId as string, event])
+    )
+
+    return Array.from(hiddenEventIds.value)
+      .sort((left, right) => left.localeCompare(right, 'de'))
+      .map((occurrenceId) => {
+        const event = byOccurrenceId.get(occurrenceId)
+        const title = event
+          ? `${event.startTime}–${event.endTime} · ${event.title}`
+          : occurrenceId
+
+        return {
+          occurrenceId,
+          title,
+        }
+      })
+  })
+
   function clearSelectionMessages() {
     profileError.value = null
     profileInfo.value = null
@@ -163,6 +184,7 @@ export function createAppControllerState() {
     allHandbooks.value = []
     demoUserProfile.value = null
     modules.value = []
+    weeklyScheduleEvents.value = []
     selectedModule.value = null
     loading.value = false
     error.value = null
@@ -185,7 +207,9 @@ export function createAppControllerState() {
     allCategories,
     allHandbooks,
     allSpos,
+    applyHiddenOccurrences,
     applyHiddenSeries,
+    applyWeeklyScheduleRows,
     authEmail,
     authError,
     authFirstName,
@@ -201,6 +225,7 @@ export function createAppControllerState() {
     demoUserProfile,
     error,
     hiddenEventIds,
+    hiddenOccurrenceItems,
     hiddenSeriesIds,
     hiddenSeriesItems,
     hiddenSeriesTitles,

@@ -19,6 +19,7 @@ const emit = defineEmits<{
   'selected-year-change': [year: number]
   'selected-day-label-change': [label: string]
   'hide-series': [payload: { seriesId: string; title: string }]
+  'hide-occurrence': [occurrenceId: string]
 }>()
 
 const activeDayIndex = ref(0)
@@ -219,6 +220,14 @@ function requestHideSeries(event: NormalizedWeekEvent) {
   })
 }
 
+function requestHideOccurrence(event: NormalizedWeekEvent) {
+  if (!event.occurrenceId) {
+    return
+  }
+
+  emit('hide-occurrence', event.occurrenceId)
+}
+
 function isSingleWordTitle(title: string) {
   return !/\s/.test(title.trim())
 }
@@ -413,12 +422,29 @@ onUnmounted(() => {
             <button
               v-if="event.seriesId"
               type="button"
-              class="mobile-event-action"
-              title="Diese Terminreihe ausblenden"
-              aria-label="Diese Terminreihe ausblenden"
+              class="mobile-event-action mobile-event-action-series"
+              title="Terminreihe ausblenden (alle Termine dieser Reihe)"
+              aria-label="Terminreihe ausblenden (alle Termine dieser Reihe)"
               @click="requestHideSeries(event)"
             >
-              <span aria-hidden="true" class="mobile-event-action-icon">×</span>
+              <svg aria-hidden="true" class="mobile-event-action-icon" viewBox="0 0 16 16" fill="none">
+                <rect x="2.5" y="3" width="11" height="4" rx="1.25" stroke="currentColor" stroke-width="1.25" />
+                <rect x="2.5" y="9" width="11" height="4" rx="1.25" stroke="currentColor" stroke-width="1.25" />
+                <path d="M5.25 5L10.75 5" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" />
+              </svg>
+            </button>
+            <button
+              v-if="event.occurrenceId"
+              type="button"
+              class="mobile-event-action mobile-event-action-occurrence"
+              title="Einzeltermin ausblenden (nur diesen Termin)"
+              aria-label="Einzeltermin ausblenden (nur diesen Termin)"
+              @click="requestHideOccurrence(event)"
+            >
+              <svg aria-hidden="true" class="mobile-event-action-icon" viewBox="0 0 16 16" fill="none">
+                <rect x="2.5" y="4" width="11" height="8" rx="1.25" stroke="currentColor" stroke-width="1.25" />
+                <path d="M5 8H11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+              </svg>
             </button>
           </div>
         </div>
@@ -459,7 +485,7 @@ onUnmounted(() => {
 .now-line { position: absolute; left: 0; right: 0; border-top: 0.125rem solid #ef4444; z-index: 3; pointer-events: none; }
 .now-line::before { content: ''; position: absolute; left: -0.0625rem; top: -0.3125rem; width: 0.5rem; height: 0.5rem; border-radius: 999rem; background: #ef4444; }
 .mobile-free { position: absolute; inset: 0.5rem; font-size: 0.82rem; color: var(--color-text-muted); border: 0.0625rem dashed var(--color-border); border-radius: 0.75rem; padding: 0.75rem; text-align: center; display: flex; align-items: center; justify-content: center; }
-.mobile-event { border-radius: 0.375rem; border: 0.0625rem solid transparent; padding: 0.25rem 0.375rem; display: flex; flex-direction: column; gap: 0.125rem; overflow: hidden; }
+.mobile-event { position: relative; border-radius: 0.375rem; border: 0.0625rem solid transparent; padding: 0.25rem 3.5rem 0.25rem 0.375rem; display: flex; flex-direction: column; gap: 0.125rem; overflow: hidden; }
 .mobile-event-range { font-size: 0.7rem; color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
 .event-offen { background: color-mix(in srgb, var(--color-warning-bg) 80%, transparent); border-color: color-mix(in srgb, var(--color-warning-border) 58%, transparent); }
 .event-belegt { background: color-mix(in srgb, var(--color-primary-glow) 65%, transparent); border-color: color-mix(in srgb, var(--color-primary-light) 55%, transparent); }
@@ -467,8 +493,10 @@ onUnmounted(() => {
 .event-title { font-size: 0.75rem; line-height: 1.25; color: var(--color-text); white-space: normal; overflow-wrap: break-word; word-break: normal; max-width: 100%; }
 .event-title-truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .event-subtitle { font-size: 0.68rem; color: var(--color-text-muted); line-height: 1.25; }
-.mobile-event-action { margin-top: 0.25rem; width: 1.375rem; height: 1.375rem; border: 0.0625rem solid var(--color-border); background: var(--color-surface); color: var(--color-text); border-radius: 999rem; font: inherit; font-size: 0.92rem; font-weight: 700; line-height: 1; padding: 0; display: inline-grid; place-items: center; align-self: flex-start; }
-.mobile-event-action-icon { display: block; line-height: 1; transform: translateY(-0.02em); }
+.mobile-event-action { position: absolute; top: 0.25rem; width: 1.375rem; height: 1.375rem; border: 0.0625rem solid var(--color-border); background: var(--color-surface); color: var(--color-text); border-radius: 999rem; font: inherit; font-size: 0.92rem; font-weight: 700; line-height: 1; padding: 0; display: inline-grid; place-items: center; }
+.mobile-event-action-series { right: 0.25rem; }
+.mobile-event-action-occurrence { right: 1.875rem; }
+.mobile-event-action-icon { display: block; width: 0.875rem; height: 0.875rem; }
 .mobile-event-action:hover { border-color: var(--color-primary); }
 @media (max-width: 45em) {
   .mobile-days { display: grid; grid-template-columns: 1fr; gap: 0.625rem; }
