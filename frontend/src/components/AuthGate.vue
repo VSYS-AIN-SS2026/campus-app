@@ -18,7 +18,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <section class="auth-card">
+  <section class="auth-card auth-card-centered">
     <header class="auth-header">
       <span class="panel-eyebrow">Anmeldung</span>
       <h1 class="auth-title">Willkommen in der Campus App</h1>
@@ -94,6 +94,7 @@ const emit = defineEmits<{
 </template>
 
 <style scoped>
+
 .auth-card {
   background: var(--color-surface);
   border: 0.0625rem solid var(--color-border);
@@ -103,8 +104,15 @@ const emit = defineEmits<{
   flex-direction: column;
 }
 
+.auth-card-centered {
+  max-width: 420px;
+  margin: 40px auto 0 auto;
+  box-shadow: 0 2px 24px 0 color-mix(in srgb, var(--color-border) 30%, transparent);
+  width: 100%;
+}
+
 .auth-header {
-  padding: var(--space-3xl);
+  padding: var(--space-3xl) var(--space-3xl) var(--space-xl);
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
@@ -138,12 +146,13 @@ const emit = defineEmits<{
 }
 
 .field-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
   gap: var(--space-2xl);
 }
 
 .field-group {
+  flex: 1 1 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
@@ -166,6 +175,8 @@ const emit = defineEmits<{
   font: inherit;
   font-size: var(--font-size-sm);
   min-height: 2.625rem;
+  width: 100%;
+  box-sizing: border-box;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
@@ -197,14 +208,27 @@ const emit = defineEmits<{
   margin: 0;
 }
 
-@media (max-width: 480px) {
-  .field-row {
-    grid-template-columns: 1fr;
+@media (max-width: 720px) {
+  .auth-card-centered {
+    margin: 24px 8px 0 8px;
+    max-width: 100%;
+    border-radius: var(--radius-md);
+    box-shadow: 0 1px 8px 0 color-mix(in srgb, var(--color-border) 20%, transparent);
   }
-
+  .auth-header {
+    padding: var(--space-2xl) var(--space-xl) var(--space-lg);
+  }
+  .auth-form {
+    padding: var(--space-2xl) var(--space-xl) var(--space-xl);
+  }
+  .field-row {
+    flex-direction: column;
+    gap: var(--space-xl);
+  }
   .auth-actions {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
+    gap: var(--space-lg);
   }
 }
 </style>
