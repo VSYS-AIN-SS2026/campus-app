@@ -17,9 +17,27 @@ const isDevBypass = typeof window !== 'undefined' && window.location.search.incl
 // DEV-BYPASS-END
 
 type SidebarSection = 'modules' | 'calendar' | 'profile'
+type ThemeMode = 'light' | 'dark'
+
+const THEME_STORAGE_KEY = 'themeMode'
+
+function getInitialThemeMode(): ThemeMode {
+  const savedTheme = localStorage.getItem(THEME_STORAGE_KEY)
+
+  if (savedTheme === 'light' || savedTheme === 'dark') {
+    return savedTheme
+  }
+
+  return 'light'
+}
+
+function applyThemeMode(mode: ThemeMode) {
+  document.documentElement.setAttribute('data-theme', mode)
+}
 
 const sidebarActiveSection = ref<SidebarSection>('modules')
 const sidebarOpen = ref(false)
+const themeMode = ref<ThemeMode>(getInitialThemeMode())
 
 const derivedSidebarSection = computed<SidebarSection>(() => {
   if (isWeeklyPreviewMode.value || activePlannerView.value === 'week') {
@@ -33,6 +51,11 @@ watch(derivedSidebarSection, (section) => {
   if (sidebarActiveSection.value !== 'profile') {
     sidebarActiveSection.value = section
   }
+}, { immediate: true })
+
+watch(themeMode, (mode) => {
+  localStorage.setItem(THEME_STORAGE_KEY, mode)
+  applyThemeMode(mode)
 }, { immediate: true })
 
 function scrollToSection(sectionId: string) {
@@ -91,6 +114,13 @@ async function onSidebarNavigate(target: SidebarSection) {
             <span class="sidebar-toggle-icon" :class="{ open: sidebarOpen }">☰</span>
           </button>
           <span v-if="currentUser" class="session-email">{{ currentUserEmail }}</span>
+          <button
+            type="button"
+            class="theme-toggle"
+            @click="themeMode = themeMode === 'light' ? 'dark' : 'light'"
+          >
+            {{ themeMode === 'light' ? 'Dark mode' : 'Light mode' }}
+          </button>
           <button
             v-if="currentUser"
             type="button"
@@ -277,6 +307,24 @@ async function onSidebarNavigate(target: SidebarSection) {
   opacity: 0;
 }
 
+.theme-toggle {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.15s;
+}
+
+.theme-toggle:hover {
+  border-color: var(--color-primary-light);
+  transform: translateY(-1px);
+}
+
 @media (max-width: 45em) {
   .sidebar-toggle {
     display: inline-flex;
@@ -293,6 +341,11 @@ async function onSidebarNavigate(target: SidebarSection) {
     bottom: 0;
     background: color-mix(in srgb, black 40%, transparent);
     z-index: 19;
+  }
+
+  .theme-toggle {
+    padding: 7px 12px;
+    font-size: 0.76rem;
   }
 }
 
