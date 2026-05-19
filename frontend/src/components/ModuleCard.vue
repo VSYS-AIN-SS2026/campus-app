@@ -126,7 +126,7 @@ function courseTypeClassKey(courseType: string): string {
   gap: 0.875em;
   padding: 0.875em 1.125em;
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  border: 0.0625rem solid var(--color-border);
   border-radius: 0.625em;
   cursor: pointer;
   user-select: none;
@@ -135,19 +135,19 @@ function courseTypeClassKey(courseType: string): string {
 
 .module-card:hover {
   border-color: var(--color-primary);
-  box-shadow: 0 2px 12px var(--color-primary-glow);
+  box-shadow: 0 0.125rem 0.75rem var(--color-primary-glow);
 }
 
 .module-card-offen {
-  border-left: 3px solid var(--color-border);
+  border-left: 0.1875rem solid var(--color-border);
 }
 
 .module-card-belegt {
-  border-left: 3px solid var(--color-primary);
+  border-left: 0.1875rem solid var(--color-primary);
 }
 
 .module-card-abgeschlossen {
-  border-left: 3px solid var(--color-primary);
+  border-left: 0.1875rem solid var(--color-primary);
 }
 
 .card-left {
@@ -228,7 +228,7 @@ function courseTypeClassKey(courseType: string): string {
   padding: 0.15em 0.5em;
   border-radius: var(--radius-control);
   white-space: nowrap;
-  border: 1px solid transparent;
+  border: 0.0625rem solid transparent;
   background: var(--color-surface-raised);
   color: var(--color-text-muted);
   line-height: 1.3;
@@ -317,7 +317,7 @@ function courseTypeClassKey(courseType: string): string {
   font-weight: 700;
   padding: 0.2em 0.55em;
   border-radius: var(--radius-control);
-  border: 1px solid;
+  border: 0.0625rem solid;
   white-space: nowrap;
   min-width: 7.6em;
   text-align: center;
@@ -346,7 +346,7 @@ function courseTypeClassKey(courseType: string): string {
   font-weight: 700;
   color: var(--color-primary);
   background: var(--color-surface);
-  border: 1px solid var(--color-primary-light);
+  border: 0.0625rem solid var(--color-primary-light);
   padding: 0.14em 0.55em;
   border-radius: var(--radius-control);
   white-space: nowrap;
@@ -354,7 +354,7 @@ function courseTypeClassKey(courseType: string): string {
   text-align: center;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 47.5em) {
   .module-card {
     grid-template-columns: 6.2rem minmax(0, 1fr);
     row-gap: 0.6em;
