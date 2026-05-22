@@ -216,25 +216,51 @@ Jetzt haben alle die neue Tabelle!
 
 ### Was sind Environment Variables?
 
-Geheime Schlüssel, die deine App braucht, um mit Supabase zu kommunizieren.
+Geheime Schlüssel, die deine App braucht, um mit Supabase zu kommunizieren. Sie sind auch spezifisch für dein lokales Setup (z.B. Port, Domain).
 
-### .env.local Datei
+### .env.local Datei erstellen
 
-Für die lokale Entwicklung liegt die Datei unter `frontend/.env.local`:
+Für die lokale Entwicklung brauchst du eine `frontend/.env.local` Datei:
 
+**1. Datei aus Vorlage kopieren:**
+```bash
+cp frontend/.env.example frontend/.env.local
+```
+
+**2. Deine Werte eintragen:**
 ```env
 VITE_SUPABASE_URL=https://yemmuitnxoyhxdsbfcfb.supabase.co
 VITE_SUPABASE_ANON_KEY=sb_publishable_...
+VITE_MAGIC_LINK_REDIRECT_URL=http://localhost:4173
 ```
 
-**Wichtig:**
-- Als Vorlage kannst du `.env.example` oder `frontend/.env.example` verwenden
-- Sie wird NICHT in Git eingecheckt (.gitignore)
-- Jedes Teammitglied muss sie haben
+**Wo sind die Werte?**
+- Gehe zu https://app.supabase.com → Dein Projekt → Settings → API
+- Dort findest du `Project URL` und `Anon Key`
 
-**Falls die Datei fehlt:**
-1. Hole dir die Werte vom Projekt-Owner
-2. Oder finde sie im Supabase Dashboard unter "Settings" → "API"
+**Wichtig:**
+- `.env.local` wird NICHT in Git eingecheckt (.gitignore schützt sie)
+- Jedes Teammitglied muss seine eigene `.env.local` haben
+- Geheime Werte (Keys) dürfen NICHT ins Repository!
+
+### Magic Link Setup (für Authentication)
+
+Der Magic Link ist ein Login-System per Email. Dafür muss Supabase wissen, wohin der Link zurück navigieren soll.
+
+**Automatisch konfiguriert:**
+- Der Dev-Server läuft auf `http://localhost:4173`
+- Diese URL ist in `frontend/.env.example` vorgesetzt
+- Aber: Sie muss auch in der Supabase-Konsole registriert sein!
+
+**In Supabase eintragen (einmalig):**
+
+1. Gehe zu https://app.supabase.com → Dein Projekt
+2. Authentication → URL Configuration
+3. Unter "Redirect URLs" diese URLs hinzufügen:
+   - `http://localhost:4173`
+   - `http://127.0.0.1:4173` (falls auch mit IP getestet)
+
+Danach funktioniert Magic Link lokal!
 
 ### Frontend lokal starten
 
