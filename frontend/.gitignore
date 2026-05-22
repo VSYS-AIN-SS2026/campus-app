@@ -32,3 +32,4 @@ src/components/*.vue.js
 *.njsproj
 *.sln
 *.sw?
+.env
