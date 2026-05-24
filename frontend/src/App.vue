@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import AuthGate from './components/AuthGate.vue'
 import ModuleDrawer from './components/ModuleDrawer.vue'
 import PlannerViewShell from './components/PlannerViewShell.vue'
@@ -7,6 +8,10 @@ import ProfileSelectionPanel from './components/ProfileSelectionPanel.vue'
 import WeeklySchedule from './components/WeeklySchedule.vue'
 import Sidebar from './components/Sidebar.vue'
 import { useAppController } from './composables/useAppController'
+
+const route = useRoute()
+const router = useRouter()
+const isTeamsRoute = computed(() => route.path.startsWith('/teams'))
 
 const { magicLinkRedirectTo, allCategories, activePlannerView, authEmail, authError, authFirstName, authInfo, authLastName, authLoading, authSending, canEditModuleStatuses, categoryError, currentUser, currentUserEmail, demoUserProfile, error, hiddenSeriesItems, isWeeklyPreviewMode, lastHiddenSeries, loading, modules, moduleStatusError, profileError, profileInfo, profileSaving, savedSpo, savedStudyProgram, savingCategoryModuleId, savingModuleId, scheduleVisibilityError, scheduleVisibilityInfo, selectedModule, selectedSpoId, selectedStudyProgramId, selectionDirty, spoItems, studyProgramItems, visibleWeeklyPreviewEvents, visibleWeeklyScheduleEvents, weekStartDate, getSpoLabel, getStudyProgramLabel, hideScheduleSeries, saveModuleCategories, saveModuleStatus, saveStudyProfileSelection, sendMagicLink, showAllScheduleSeries, showScheduleSeries, signOut, undoHideScheduleSeries } = useAppController()
 // =====================
@@ -16,7 +21,7 @@ const isDevBypass = typeof window !== 'undefined' && window.location.search.incl
 // =====================
 // DEV-BYPASS-END
 
-type SidebarSection = 'modules' | 'calendar' | 'profile'
+type SidebarSection = 'modules' | 'calendar' | 'profile' | 'teams'
 type ThemeMode = 'light' | 'dark'
 
 const THEME_STORAGE_KEY = 'themeMode'
@@ -48,9 +53,13 @@ const derivedSidebarSection = computed<SidebarSection>(() => {
 })
 
 watch(derivedSidebarSection, (section) => {
-  if (sidebarActiveSection.value !== 'profile') {
+  if (sidebarActiveSection.value !== 'profile' && !isTeamsRoute.value) {
     sidebarActiveSection.value = section
   }
+}, { immediate: true })
+
+watch(isTeamsRoute, (onTeams) => {
+  if (onTeams) sidebarActiveSection.value = 'teams'
 }, { immediate: true })
 
 watch(themeMode, (mode) => {
@@ -72,6 +81,15 @@ function scrollToSection(sectionId: string) {
 async function onSidebarNavigate(target: SidebarSection) {
   sidebarActiveSection.value = target
   sidebarOpen.value = false
+
+  if (target === 'teams') {
+    router.push('/teams')
+    return
+  }
+
+  if (isTeamsRoute.value) {
+    router.push('/')
+  }
 
   if (target === 'calendar') {
     activePlannerView.value = 'week'
@@ -190,6 +208,9 @@ async function onSidebarNavigate(target: SidebarSection) {
             />
           </template>
           <!-- ===================== DEV-BYPASS-END ===================== -->
+          <template v-else-if="isTeamsRoute">
+            <RouterView />
+          </template>
           <template v-else>
             <section id="module-header-section" class="content-section">
               <section id="profile-section" class="content-subsection">
