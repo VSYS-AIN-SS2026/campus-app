@@ -1,53 +1,72 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getTeamDetails, type TeamDetails } from '../services/teamService'
+import { supabase } from '../supabase'
+import type { TeamDetail } from '../types/team'
 
 const route = useRoute()
 const router = useRouter()
-const team = ref<TeamDetails | null>(null)
-const loading = ref(false)
+const team = ref<TeamDetail | null>(null)
+const loading = ref(true)
 const error = ref<string | null>(null)
 
 onMounted(async () => {
-  loading.value = true
-  try {
-    team.value = await getTeamDetails(Number(route.params.id))
-  } catch (e: any) {
-    error.value = e.message
-  } finally {
+  const teamId = route.params.id as string
+
+  if (!supabase) {
+    error.value = 'Supabase nicht konfiguriert.'
     loading.value = false
+    return
   }
+
+  const { data, error: rpcError } = await supabase
+    .rpc('get_team_details', { p_team_id: teamId })
+    .maybeSingle()
+
+  loading.value = false
+
+  if (rpcError) {
+    error.value = rpcError.message
+    return
+  }
+
+  if (!data) {
+    error.value = 'Team nicht gefunden.'
+    return
+  }
+
+  team.value = data as TeamDetail
 })
 </script>
 
 <template>
-  <div class="team-detail-view">
-    <button class="back-button" @click="router.push('/teams')">← Zurück zur Übersicht</button>
+  <div class="detail-page">
+    <button class="back-button ghost-button" type="button" @click="router.push('/teams')">
+      ← Zurück zur Übersicht
+    </button>
 
-    <div v-if="error" class="error-banner">⚠️ {{ error }}</div>
-
-    <div v-if="loading" class="loading-state">
+    <div v-if="loading" class="detail-loading">
       <div class="spinner" />
       <p>Team wird geladen…</p>
     </div>
 
-    <div v-else-if="!team && !loading" class="empty-state">
-      <div class="empty-icon">🔍</div>
-      <p>Team nicht gefunden.</p>
+    <div v-else-if="error" class="error-banner">
+      {{ error }}
     </div>
 
     <template v-else-if="team">
-      <div class="team-header">
-        <h1 class="team-name">{{ team.name }}</h1>
-        <p v-if="team.description" class="team-description">{{ team.description }}</p>
-      </div>
+      <header class="detail-header">
+        <h1 class="detail-title">{{ team.name }}</h1>
+        <p v-if="team.description" class="detail-description">{{ team.description }}</p>
+      </header>
 
-      <div class="members-section">
-        <h2 class="members-title">Mitglieder</h2>
-        <p v-if="team.members.length === 0" class="empty-members">
-          Keine Mitglieder vorhanden.
+      <section class="detail-members">
+        <h2 class="members-heading">Mitglieder</h2>
+
+        <p v-if="team.members.length === 0" class="members-empty">
+          Keine Mitglieder eingetragen.
         </p>
+
         <table v-else class="members-table">
           <thead>
             <tr>
@@ -57,125 +76,109 @@ onMounted(async () => {
           </thead>
           <tbody>
             <tr v-for="member in team.members" :key="member.email">
-              <td>{{ member.full_name ?? '—' }}</td>
+              <td>{{ member.name }}</td>
               <td>{{ member.email }}</td>
             </tr>
           </tbody>
         </table>
-      </div>
+      </section>
     </template>
   </div>
 </template>
 
 <style scoped>
-.team-detail-view {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 40px 24px 80px;
+.detail-page {
+  padding: var(--space-4xl) var(--space-3xl);
+  max-width: 48rem;
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: var(--space-4xl);
 }
 
 .back-button {
   align-self: flex-start;
-  border: 0.0625rem solid var(--color-border);
-  background: transparent;
+  font-size: var(--font-size-sm);
   color: var(--color-text-muted);
-  font: inherit;
-  font-size: 0.86rem;
-  padding: 0.5rem 0.875rem;
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: border-color 0.15s, color 0.15s;
+  padding: 0;
 }
 
 .back-button:hover {
-  border-color: var(--color-primary);
   color: var(--color-primary);
 }
 
-.team-header { display: flex; flex-direction: column; gap: 8px; }
+.detail-loading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xl);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
 
-.team-name {
-  margin: 0;
-  font-size: 1.8rem;
+.detail-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.detail-title {
+  font-size: var(--font-size-xl);
   font-weight: 800;
   letter-spacing: -0.02em;
   color: var(--color-text);
+  margin: 0;
 }
 
-.team-description {
-  margin: 0;
-  font-size: 0.95rem;
+.detail-description {
+  font-size: var(--font-size-sm);
   color: var(--color-text-muted);
+  line-height: 1.6;
+  margin: 0;
 }
 
-.members-section { display: flex; flex-direction: column; gap: 12px; }
+.detail-members {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xl);
+}
 
-.members-title {
-  margin: 0;
-  font-size: 1rem;
+.members-heading {
+  font-size: var(--font-size-md);
   font-weight: 700;
   color: var(--color-text);
+  margin: 0;
 }
 
-.empty-members {
-  font-size: 0.88rem;
+.members-empty {
+  font-size: var(--font-size-sm);
   color: var(--color-text-muted);
 }
 
 .members-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.88rem;
+  font-size: var(--font-size-sm);
+}
+
+.members-table th,
+.members-table td {
+  text-align: left;
+  padding: var(--space-lg) var(--space-xl);
+  border-bottom: 0.0625rem solid var(--color-border);
 }
 
 .members-table th {
-  text-align: left;
-  padding: 8px 12px;
-  border-bottom: 0.0625rem solid var(--color-border);
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.06em;
   color: var(--color-text-muted);
-  font-weight: 600;
 }
 
 .members-table td {
-  padding: 10px 12px;
-  border-bottom: 0.0625rem solid var(--color-border);
   color: var(--color-text);
 }
 
-.members-table tr:last-child td { border-bottom: none; }
-
-.error-banner {
-  padding: 12px 16px;
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  border-radius: 8px;
-  color: #ef4444;
-  font-size: 0.88rem;
+.members-table tbody tr:hover td {
+  background: var(--color-surface-raised);
 }
-
-.loading-state,
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  padding: 40px;
-  color: var(--color-text-muted);
-}
-
-.empty-icon { font-size: 2.5rem; }
-
-.spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid var(--color-border);
-  border-top-color: var(--color-primary);
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-}
-
-@keyframes spin { to { transform: rotate(360deg); } }
 </style>
