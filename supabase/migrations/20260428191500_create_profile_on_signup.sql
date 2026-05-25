@@ -1,4 +1,4 @@
--- Funktion: Erstellt automatisch ein Profil, sobald ein neuer Auth-User angelegt wird
+-- Funktion: Erstellt automatisch ein Profil, sobald ein neuer Auth-User angelegt wir
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER
 LANGUAGE plpgsql
