@@ -219,7 +219,8 @@ async function onSidebarNavigate(target: SidebarSection) {
             </template>
 
             <!-- ===================== DEV-BYPASS-START ===================== -->
-            <template v-else-if="!currentUser && !isDevBypass">
+            <!-- TEMP: auth disabled for development -->
+            <template v-else-if="false && !currentUser && !isDevBypass">
               <AuthGate
                 :magic-link-redirect-to="magicLinkRedirectTo"
                 :auth-first-name="authFirstName"
