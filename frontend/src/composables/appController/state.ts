@@ -143,12 +143,37 @@ export function createAppControllerState() {
     )
   )
 
+  const EVENT_TYPE_LABELS: Record<string, string> = {
+    lecture: 'Vorlesung',
+    exercise: 'Übung',
+    lab: 'Labor',
+    seminar: 'Seminar',
+  }
+
+  function resolveHiddenSeriesTitle(seriesId: string, fallback: string): string {
+    if (seriesId.startsWith('module:')) {
+      const moduleId = seriesId.slice('module:'.length)
+      const mod = modules.value.find(m => m.id === moduleId)
+      if (mod) return mod.name
+    }
+    if (seriesId.startsWith('lsf:')) {
+      const parts = seriesId.split(':')
+      if (parts.length >= 3) {
+        const courseCode = parts[1]
+        const eventType = parts.slice(2).join(':')
+        const typeLabel = EVENT_TYPE_LABELS[eventType] ?? eventType
+        return `${courseCode} — ${typeLabel}`
+      }
+    }
+    return fallback
+  }
+
   const hiddenSeriesItems = computed(() =>
     Array.from(hiddenSeriesIds.value)
       .sort((left, right) => left.localeCompare(right, 'de'))
       .map((seriesId) => ({
         seriesId,
-        title: hiddenSeriesTitles.value.get(seriesId) ?? seriesId,
+        title: resolveHiddenSeriesTitle(seriesId, hiddenSeriesTitles.value.get(seriesId) ?? seriesId),
       }))
   )
 
