@@ -21,6 +21,7 @@ const props = withDefaults(defineProps<{
   loading?: boolean
   error?: string | null
   hiddenSeriesItems?: Array<{ seriesId: string; title: string }>
+  showHiddenEvents?: boolean
   weekStart: Date
   startHour?: number
   endHour?: number
@@ -43,6 +44,7 @@ const emit = defineEmits<{
   'hide-series': [payload: { seriesId: string; title: string }]
   'show-series': [seriesId: string]
   'show-all-series': []
+  'toggle-show-hidden': []
 }>()
 
 function getTodayStart(): Date {
@@ -238,12 +240,22 @@ onUnmounted(() => {
           </button>
           <button type="button" class="week-nav-btn app-button" @click="nextWeek">→</button>
         </div>
-        <HiddenSeriesPopover
-          v-if="props.hiddenSeriesItems.length"
-          :items="props.hiddenSeriesItems"
-          @show-series="emit('show-series', $event)"
-          @show-all-series="emit('show-all-series')"
-        />
+        <div v-if="props.hiddenSeriesItems.length" class="week-hidden-controls">
+          <button
+            type="button"
+            class="show-hidden-btn app-button"
+            :class="{ 'show-hidden-btn-active': props.showHiddenEvents }"
+            :aria-pressed="props.showHiddenEvents"
+            @click="emit('toggle-show-hidden')"
+          >
+            {{ props.showHiddenEvents ? 'Ausgeblendete verbergen' : 'Ausgeblendete anzeigen' }}
+          </button>
+          <HiddenSeriesPopover
+            :items="props.hiddenSeriesItems"
+            @show-series="emit('show-series', $event)"
+            @show-all-series="emit('show-all-series')"
+          />
+        </div>
       </div>
       <div id="week-mobile-tabs-slot" class="week-mobile-tabs-slot" />
     </header>
@@ -328,6 +340,24 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: flex-end;
   gap: 0.5rem;
+}
+
+.week-hidden-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.show-hidden-btn {
+  font-size: 0.78rem;
+  opacity: 0.8;
+}
+
+.show-hidden-btn-active {
+  opacity: 1;
+  background: var(--color-primary-glow);
+  border-color: var(--color-primary-light);
+  color: var(--color-primary);
 }
 
 .week-title {

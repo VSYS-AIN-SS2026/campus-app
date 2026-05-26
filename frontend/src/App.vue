@@ -8,7 +8,11 @@ import WeeklySchedule from './components/WeeklySchedule.vue'
 import Sidebar from './components/Sidebar.vue'
 import { useAppController } from './composables/useAppController'
 
-const { magicLinkRedirectTo, allCategories, activePlannerView, authEmail, authError, authFirstName, authInfo, authLastName, authLoading, authSending, canEditModuleStatuses, categoryError, currentUser, currentUserEmail, demoUserProfile, error, hiddenSeriesItems, isWeeklyPreviewMode, lastHiddenSeries, loading, modules, moduleStatusError, profileError, profileInfo, profileSaving, savedSpo, savedStudyProgram, savingCategoryModuleId, savingModuleId, scheduleVisibilityError, scheduleVisibilityInfo, selectedModule, selectedSpoId, selectedStudyProgramId, selectionDirty, spoItems, studyProgramItems, visibleWeeklyPreviewEvents, visibleWeeklyScheduleEvents, weekStartDate, getSpoLabel, getStudyProgramLabel, hideScheduleSeries, saveModuleCategories, saveModuleStatus, saveStudyProfileSelection, sendMagicLink, showAllScheduleSeries, showScheduleSeries, signOut, undoHideScheduleSeries } = useAppController()
+const { magicLinkRedirectTo, allCategories, activePlannerView, authEmail, authError, authFirstName, authInfo, authLastName, authLoading, authSending, canEditModuleStatuses, categoryError, currentUser, currentUserEmail, demoUserProfile, displayedWeeklyPreviewEvents, displayedWeeklyScheduleEvents, error, hiddenSeriesItems, isWeeklyPreviewMode, lastHiddenSeries, loading, modules, moduleStatusError, profileError, profileInfo, profileSaving, savedSpo, savedStudyProgram, savingCategoryModuleId, savingModuleId, scheduleVisibilityError, scheduleVisibilityInfo, selectedModule, selectedSpoId, selectedStudyProgramId, selectionDirty, showHiddenEvents, spoItems, studyProgramItems, weekStartDate, getSpoLabel, getStudyProgramLabel, hideScheduleSeries, saveModuleCategories, saveModuleStatus, saveStudyProfileSelection, sendMagicLink, showAllScheduleSeries, showScheduleSeries, signOut, undoHideScheduleSeries } = useAppController()
+
+function toggleShowHiddenEvents() {
+  showHiddenEvents.value = !showHiddenEvents.value
+}
 
 // ===================== AUTH-BYPASS-START =====================
 // Skip login screen in dev with VITE_AUTH_BYPASS=true
@@ -167,14 +171,16 @@ async function onSidebarNavigate(target: SidebarSection) {
           <template v-if="isWeeklyPreviewMode">
             <section id="planner-section" class="content-section">
               <WeeklySchedule
-                :events="visibleWeeklyPreviewEvents"
+                :events="displayedWeeklyPreviewEvents"
                 :hidden-series-items="hiddenSeriesItems"
+                :show-hidden-events="showHiddenEvents"
                 :loading="false"
                 :error="null"
                 :week-start="weekStartDate"
                 @hide-series="hideScheduleSeries($event.seriesId, $event.title)"
                 @show-series="showScheduleSeries"
                 @show-all-series="showAllScheduleSeries"
+                @toggle-show-hidden="toggleShowHiddenEvents"
               />
             </section>
           </template>
@@ -242,12 +248,14 @@ async function onSidebarNavigate(target: SidebarSection) {
                 :last-hidden-series="lastHiddenSeries"
                 :hidden-series-items="hiddenSeriesItems"
                 :modules="modules"
-                :visible-weekly-schedule-events="visibleWeeklyScheduleEvents"
+                :visible-weekly-schedule-events="displayedWeeklyScheduleEvents"
+                :show-hidden-events="showHiddenEvents"
                 :week-start-date="weekStartDate"
                 @update:active-planner-view="activePlannerView = $event"
                 @hide-series="hideScheduleSeries($event.seriesId, $event.title)"
                 @show-series="showScheduleSeries"
                 @show-all-series="showAllScheduleSeries"
+                @toggle-show-hidden="toggleShowHiddenEvents"
                 @undo-hide-series="undoHideScheduleSeries"
                 @select-module="selectedModule = $event"
               />

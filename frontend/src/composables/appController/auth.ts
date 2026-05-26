@@ -6,6 +6,35 @@ function getTrimmedString(value: unknown) {
   return typeof value === 'string' ? value.trim() : ''
 }
 
+function isAuthBypassEnabled(): boolean {
+  if (!import.meta.env.DEV) return false
+  return import.meta.env.VITE_AUTH_BYPASS === 'true'
+}
+
+function bypassLog(message: string, ...args: unknown[]) {
+  if (isAuthBypassEnabled()) {
+    console.log(`[Auth-Bypass] ${message}`, ...args)
+  }
+}
+
+function createDemoUser(): any {
+  return {
+    id: 'demo-user-local-dev',
+    email: 'alex.beispiel@htwg-konstanz.de',
+    user_metadata: {
+      first_name: 'Demo',
+      last_name: 'User',
+      full_name: 'Demo User',
+    },
+    app_metadata: {},
+    aud: 'authenticated',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    last_sign_in_at: new Date().toISOString(),
+    email_confirmed_at: new Date().toISOString(),
+  }
+}
+
 export function createAuthController(
   state: AppControllerState,
   deps: { fetchInitialData: () => Promise<void> }
@@ -121,6 +150,43 @@ export function createAuthController(
     state.authError.value = null
     state.authInfo.value = null
 
+    if (isAuthBypassEnabled()) {
+      const normalizedFirstName = state.authFirstName.value.trim()
+      const normalizedLastName = state.authLastName.value.trim()
+
+      if (!normalizedFirstName) {
+        state.authError.value = 'Bitte gib deinen Vornamen ein.'
+        return
+      }
+
+      if (!normalizedLastName) {
+        state.authError.value = 'Bitte gib deinen Nachnamen ein.'
+        return
+      }
+
+      state.authSending.value = true
+
+      const demoUser = createDemoUser()
+      demoUser.user_metadata.first_name = normalizedFirstName
+      demoUser.user_metadata.last_name = normalizedLastName
+      demoUser.user_metadata.full_name = `${normalizedFirstName} ${normalizedLastName}`
+
+      state.currentUser.value = demoUser
+
+      bypassLog('Demo user logged in:', normalizedFirstName, normalizedLastName)
+
+      state.authSending.value = false
+      state.authInfo.value = `Demo-User "${normalizedFirstName} ${normalizedLastName}" geladen (Entwicklungsmodus).`
+
+      try {
+        await deps.fetchInitialData()
+      }
+      catch (error) {
+        console.error('[Auth-Bypass] fetchInitialData error (non-critical):', error)
+      }
+      return
+    }
+
     if (!supabase) {
       state.authError.value = supabaseConfigError
       return
@@ -197,6 +263,22 @@ export function createAuthController(
   async function initAuth() {
     state.authError.value = null
     state.authInfo.value = null
+
+    if (isAuthBypassEnabled()) {
+      console.log('Auth bypass enabled, initializing demo user...');
+      const demoUser = createDemoUser();
+      state.currentUser.value = demoUser;
+      state.authLoading.value = false;
+      deps.fetchInitialData()
+        .then(() => {
+          console.log('Initial data loaded for demo user.');
+        })
+        .catch((error) => {
+          console.error('[Auth-Bypass] fetchInitialData error (non-critical):', error);
+          state.authLoading.value = false;
+        });
+      return;
+    }
 
     if (!supabase) {
       state.authLoading.value = false

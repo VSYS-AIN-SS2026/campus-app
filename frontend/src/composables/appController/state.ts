@@ -58,6 +58,7 @@ export function createAppControllerState() {
   const hiddenSeriesTitles = ref<Map<string, string>>(new Map())
   const hiddenEventIds = ref<Set<string>>(new Set())
   const lastHiddenSeries = ref<{ seriesId: string; title: string } | null>(null)
+  const showHiddenEvents = ref(false)
 
   const currentUserEmail = computed(() => currentUser.value?.email ?? '')
   const activePlannerView = ref<PlannerView>('week')
@@ -144,6 +145,21 @@ export function createAppControllerState() {
     )
   )
 
+  function isEventHidden(event: WeeklyScheduleEvent): boolean {
+    return hiddenSeriesIds.value.has(event.seriesId)
+      || (!!event.occurrenceId && hiddenEventIds.value.has(event.occurrenceId))
+  }
+
+  const displayedWeeklyScheduleEvents = computed<WeeklyScheduleEvent[]>(() => {
+    if (!showHiddenEvents.value) return visibleWeeklyScheduleEvents.value
+    return weeklyScheduleEvents.value.map(event => ({ ...event, isHidden: isEventHidden(event) }))
+  })
+
+  const displayedWeeklyPreviewEvents = computed<WeeklyScheduleEvent[]>(() => {
+    if (!showHiddenEvents.value) return visibleWeeklyPreviewEvents.value
+    return weeklyPreviewEvents.value.map(event => ({ ...event, isHidden: isEventHidden(event) }))
+  })
+
   const EVENT_TYPE_LABELS: Record<string, string> = {
     lecture: 'Vorlesung',
     exercise: 'Übung',
@@ -220,6 +236,7 @@ export function createAppControllerState() {
     hiddenSeriesTitles.value = new Map()
     hiddenEventIds.value = new Set()
     lastHiddenSeries.value = null
+    showHiddenEvents.value = false
   }
 
   return {
@@ -270,6 +287,9 @@ export function createAppControllerState() {
     spoItems,
     studyProgramItems,
     studyPrograms,
+    displayedWeeklyPreviewEvents,
+    displayedWeeklyScheduleEvents,
+    showHiddenEvents,
     visibleWeeklyPreviewEvents,
     visibleWeeklyScheduleEvents,
     weekStartDate,

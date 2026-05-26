@@ -12,6 +12,7 @@ export interface WeekEvent {
   startTime: string
   endTime: string
   status: WeekEventStatus
+  isHidden?: boolean
 }
 
 export interface NormalizedWeekEvent extends WeekEvent {
