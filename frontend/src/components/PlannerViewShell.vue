@@ -36,6 +36,7 @@ const emit = defineEmits<{
   'hide-series': [payload: { seriesId: string; title: string }]
   'show-series': [seriesId: string]
   'show-all-series': []
+  'navigate-to-hidden-page': []
   'undo-hide-series': []
   'select-module': [module: ModuleEntry]
 }>()
@@ -104,6 +105,7 @@ const emit = defineEmits<{
       @hide-series="emit('hide-series', $event)"
       @show-series="emit('show-series', $event)"
       @show-all-series="emit('show-all-series')"
+      @navigate-to-hidden-page="emit('navigate-to-hidden-page')"
     />
 
     <ModuleList v-else-if="!loading" :modules="modules" @select="emit('select-module', $event)" />

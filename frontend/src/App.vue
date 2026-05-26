@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import AuthGate from './components/AuthGate.vue'
+import HiddenPage from './components/HiddenPage.vue'
 import ModuleDrawer from './components/ModuleDrawer.vue'
 import PlannerViewShell from './components/PlannerViewShell.vue'
 import ProfileSelectionPanel from './components/ProfileSelectionPanel.vue'
@@ -8,7 +9,7 @@ import WeeklySchedule from './components/WeeklySchedule.vue'
 import Sidebar from './components/Sidebar.vue'
 import { useAppController } from './composables/useAppController'
 
-const { magicLinkRedirectTo, allCategories, activePlannerView, authEmail, authError, authFirstName, authInfo, authLastName, authLoading, authSending, canEditModuleStatuses, categoryError, currentUser, currentUserEmail, demoUserProfile, error, hiddenSeriesItems, isWeeklyPreviewMode, lastHiddenSeries, loading, modules, moduleStatusError, profileError, profileInfo, profileSaving, savedSpo, savedStudyProgram, savingCategoryModuleId, savingModuleId, scheduleVisibilityError, scheduleVisibilityInfo, selectedModule, selectedSpoId, selectedStudyProgramId, selectionDirty, spoItems, studyProgramItems, visibleWeeklyPreviewEvents, visibleWeeklyScheduleEvents, weekStartDate, getSpoLabel, getStudyProgramLabel, hideScheduleSeries, saveModuleCategories, saveModuleStatus, saveStudyProfileSelection, sendMagicLink, showAllScheduleSeries, showScheduleSeries, signOut, undoHideScheduleSeries } = useAppController()
+const { magicLinkRedirectTo, allCategories, activePlannerView, authEmail, authError, authFirstName, authInfo, authLastName, authLoading, authSending, canEditModuleStatuses, categoryError, currentUser, currentUserEmail, demoUserProfile, error, hiddenPageEntries, hiddenPageError, hiddenPageLoading, hiddenSeriesItems, isWeeklyPreviewMode, lastHiddenSeries, loading, modules, moduleStatusError, profileError, profileInfo, profileSaving, savedSpo, savedStudyProgram, savingCategoryModuleId, savingModuleId, scheduleVisibilityError, scheduleVisibilityInfo, selectedModule, selectedSpoId, selectedStudyProgramId, selectionDirty, spoItems, studyProgramItems, visibleWeeklyPreviewEvents, visibleWeeklyScheduleEvents, weekStartDate, getSpoLabel, getStudyProgramLabel, hideScheduleSeries, saveModuleCategories, saveModuleStatus, saveStudyProfileSelection, sendMagicLink, showAllScheduleSeries, showScheduleSeries, signOut, undoHideScheduleSeries } = useAppController()
 // =====================
 // DEV-BYPASS-START: Demo-User für Preview ohne Login
 // Entferne diesen Block nach dem Development!
@@ -57,6 +58,38 @@ watch(themeMode, (mode) => {
   localStorage.setItem(THEME_STORAGE_KEY, mode)
   applyThemeMode(mode)
 }, { immediate: true })
+
+const activeView = ref<'main' | 'hidden'>('main')
+
+function updateActiveView() {
+  const hash = window.location.hash
+  activeView.value = hash === '#/schedule/hidden' ? 'hidden' : 'main'
+}
+
+let hashInterval: ReturnType<typeof setInterval> | null = null
+
+onMounted(() => {
+  window.addEventListener('hashchange', updateActiveView)
+  updateActiveView()
+  hashInterval = setInterval(updateActiveView, 500)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('hashchange', updateActiveView)
+  if (hashInterval) clearInterval(hashInterval)
+})
+
+function navigateToHiddenPage() {
+  window.location.hash = '#/schedule/hidden'
+}
+
+function navigateToMain() {
+  if (window.location.hash === '#/schedule/hidden') {
+    window.history.back()
+  } else {
+    window.location.hash = '#/'
+  }
+}
 
 function scrollToSection(sectionId: string) {
   const targetElement = document.getElementById(sectionId)
@@ -133,117 +166,131 @@ async function onSidebarNavigate(target: SidebarSection) {
       </div>
     </header>
 
-    <div class="app-layout">
-      <transition name="sidebar-overlay">
-        <div
-          v-if="(currentUser || isDevBypass || isWeeklyPreviewMode) && sidebarOpen"
-          class="sidebar-overlay"
-          aria-hidden="true"
-          @click="sidebarOpen = false"
-        />
-      </transition>
-      <Sidebar
-        v-if="currentUser || isDevBypass || isWeeklyPreviewMode"
-        id="app-sidebar"
-        :active-section="sidebarActiveSection"
-        :is-open="sidebarOpen"
-        @navigate="onSidebarNavigate"
+    <template v-if="activeView === 'hidden'">
+      <HiddenPage
+        :entries="hiddenPageEntries"
+        :loading="hiddenPageLoading"
+        :error="hiddenPageError"
+        @back="navigateToMain"
+        @show-series="showScheduleSeries"
       />
-      <div class="app-content">
-        <main class="app-main">
-          <template v-if="isWeeklyPreviewMode">
-            <section id="planner-section" class="content-section">
-              <WeeklySchedule
-                :events="visibleWeeklyPreviewEvents"
-                :hidden-series-items="hiddenSeriesItems"
-                :loading="false"
-                :error="null"
-                :week-start="weekStartDate"
-                @hide-series="hideScheduleSeries($event.seriesId, $event.title)"
-                @show-series="showScheduleSeries"
-                @show-all-series="showAllScheduleSeries"
-              />
-            </section>
-          </template>
+    </template>
 
-          <template v-else-if="authLoading">
-            <div class="loading-state">
-              <div class="spinner" />
-              <p>Session wird geladen…</p>
-            </div>
-          </template>
-
-          <!-- ===================== DEV-BYPASS-START ===================== -->
-          <template v-else-if="!currentUser && !isDevBypass">
-            <AuthGate
-              :magic-link-redirect-to="magicLinkRedirectTo"
-              :auth-first-name="authFirstName"
-              :auth-last-name="authLastName"
-              :auth-email="authEmail"
-              :auth-sending="authSending"
-              :auth-error="authError"
-              :auth-info="authInfo"
-              @update:auth-first-name="authFirstName = $event"
-              @update:auth-last-name="authLastName = $event"
-              @update:auth-email="authEmail = $event"
-              @submit="sendMagicLink"
-            />
-          </template>
-          <!-- ===================== DEV-BYPASS-END ===================== -->
-          <template v-else>
-            <section id="module-header-section" class="content-section">
-              <section id="profile-section" class="content-subsection">
-              <ProfileSelectionPanel
-                :demo-user-profile="demoUserProfile"
-                :saved-study-program="savedStudyProgram"
-                :saved-spo="savedSpo"
-                :selection-dirty="selectionDirty"
-                :selected-study-program-id="selectedStudyProgramId"
-                :selected-spo-id="selectedSpoId"
-                :study-program-items="studyProgramItems"
-                :spo-items="spoItems"
-                :loading="loading"
-                :profile-saving="profileSaving"
-                :profile-error="profileError"
-                :profile-info="profileInfo"
-                :get-study-program-label="getStudyProgramLabel"
-                :get-spo-label="getSpoLabel"
-                @update:selected-study-program-id="selectedStudyProgramId = $event"
-                @update:selected-spo-id="selectedSpoId = $event"
-                @save="saveStudyProfileSelection"
-              />
+    <template v-else>
+      <div class="app-layout">
+        <transition name="sidebar-overlay">
+          <div
+            v-if="(currentUser || isDevBypass || isWeeklyPreviewMode) && sidebarOpen"
+            class="sidebar-overlay"
+            aria-hidden="true"
+            @click="sidebarOpen = false"
+          />
+        </transition>
+        <Sidebar
+          v-if="currentUser || isDevBypass || isWeeklyPreviewMode"
+          id="app-sidebar"
+          :active-section="sidebarActiveSection"
+          :is-open="sidebarOpen"
+          @navigate="onSidebarNavigate"
+        />
+        <div class="app-content">
+          <main class="app-main">
+            <template v-if="isWeeklyPreviewMode">
+              <section id="planner-section" class="content-section">
+                <WeeklySchedule
+                  :events="visibleWeeklyPreviewEvents"
+                  :hidden-series-items="hiddenSeriesItems"
+                  :loading="false"
+                  :error="null"
+                  :week-start="weekStartDate"
+                  @hide-series="hideScheduleSeries($event.seriesId, $event.title)"
+                  @show-series="showScheduleSeries"
+                  @show-all-series="showAllScheduleSeries"
+                  @navigate-to-hidden-page="navigateToHiddenPage"
+                />
               </section>
+            </template>
 
-              <section id="planner-section" class="content-subsection">
-              <PlannerViewShell
-                :selected-study-program-id="selectedStudyProgramId"
-                :selected-spo-id="selectedSpoId"
-                :active-planner-view="activePlannerView"
-                :can-edit-module-statuses="canEditModuleStatuses"
-                :loading="loading"
-                :error="error"
-                :module-status-error="moduleStatusError"
-                :category-error="categoryError"
-                :schedule-visibility-error="scheduleVisibilityError"
-                :schedule-visibility-info="scheduleVisibilityInfo"
-                :last-hidden-series="lastHiddenSeries"
-                :hidden-series-items="hiddenSeriesItems"
-                :modules="modules"
-                :visible-weekly-schedule-events="visibleWeeklyScheduleEvents"
-                :week-start-date="weekStartDate"
-                @update:active-planner-view="activePlannerView = $event"
-                @hide-series="hideScheduleSeries($event.seriesId, $event.title)"
-                @show-series="showScheduleSeries"
-                @show-all-series="showAllScheduleSeries"
-                @undo-hide-series="undoHideScheduleSeries"
-                @select-module="selectedModule = $event"
+            <template v-else-if="authLoading">
+              <div class="loading-state">
+                <div class="spinner" />
+                <p>Session wird geladen…</p>
+              </div>
+            </template>
+
+            <!-- ===================== DEV-BYPASS-START ===================== -->
+            <template v-else-if="!currentUser && !isDevBypass">
+              <AuthGate
+                :magic-link-redirect-to="magicLinkRedirectTo"
+                :auth-first-name="authFirstName"
+                :auth-last-name="authLastName"
+                :auth-email="authEmail"
+                :auth-sending="authSending"
+                :auth-error="authError"
+                :auth-info="authInfo"
+                @update:auth-first-name="authFirstName = $event"
+                @update:auth-last-name="authLastName = $event"
+                @update:auth-email="authEmail = $event"
+                @submit="sendMagicLink"
               />
+            </template>
+            <!-- ===================== DEV-BYPASS-END ===================== -->
+            <template v-else>
+              <section id="module-header-section" class="content-section">
+                <section id="profile-section" class="content-subsection">
+                <ProfileSelectionPanel
+                  :demo-user-profile="demoUserProfile"
+                  :saved-study-program="savedStudyProgram"
+                  :saved-spo="savedSpo"
+                  :selection-dirty="selectionDirty"
+                  :selected-study-program-id="selectedStudyProgramId"
+                  :selected-spo-id="selectedSpoId"
+                  :study-program-items="studyProgramItems"
+                  :spo-items="spoItems"
+                  :loading="loading"
+                  :profile-saving="profileSaving"
+                  :profile-error="profileError"
+                  :profile-info="profileInfo"
+                  :get-study-program-label="getStudyProgramLabel"
+                  :get-spo-label="getSpoLabel"
+                  @update:selected-study-program-id="selectedStudyProgramId = $event"
+                  @update:selected-spo-id="selectedSpoId = $event"
+                  @save="saveStudyProfileSelection"
+                />
+                </section>
+
+                <section id="planner-section" class="content-subsection">
+                <PlannerViewShell
+                  :selected-study-program-id="selectedStudyProgramId"
+                  :selected-spo-id="selectedSpoId"
+                  :active-planner-view="activePlannerView"
+                  :can-edit-module-statuses="canEditModuleStatuses"
+                  :loading="loading"
+                  :error="error"
+                  :module-status-error="moduleStatusError"
+                  :category-error="categoryError"
+                  :schedule-visibility-error="scheduleVisibilityError"
+                  :schedule-visibility-info="scheduleVisibilityInfo"
+                  :last-hidden-series="lastHiddenSeries"
+                  :hidden-series-items="hiddenSeriesItems"
+                  :modules="modules"
+                  :visible-weekly-schedule-events="visibleWeeklyScheduleEvents"
+                  :week-start-date="weekStartDate"
+                  @update:active-planner-view="activePlannerView = $event"
+                  @hide-series="hideScheduleSeries($event.seriesId, $event.title)"
+                  @show-series="showScheduleSeries"
+                  @show-all-series="showAllScheduleSeries"
+                  @navigate-to-hidden-page="navigateToHiddenPage"
+                  @undo-hide-series="undoHideScheduleSeries"
+                  @select-module="selectedModule = $event"
+                />
+                </section>
               </section>
-            </section>
-          </template>
-        </main>
+            </template>
+          </main>
+        </div>
       </div>
-    </div>
+    </template>
   </div>
 
   <!-- ===================== DEV-BYPASS-START ===================== -->

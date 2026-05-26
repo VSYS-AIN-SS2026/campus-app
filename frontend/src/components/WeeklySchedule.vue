@@ -43,6 +43,7 @@ const emit = defineEmits<{
   'hide-series': [payload: { seriesId: string; title: string }]
   'show-series': [seriesId: string]
   'show-all-series': []
+  'navigate-to-hidden-page': []
 }>()
 
 function getTodayStart(): Date {
@@ -243,6 +244,7 @@ onUnmounted(() => {
           :items="props.hiddenSeriesItems"
           @show-series="emit('show-series', $event)"
           @show-all-series="emit('show-all-series')"
+          @navigate-to-hidden-page="emit('navigate-to-hidden-page')"
         />
       </div>
       <div id="week-mobile-tabs-slot" class="week-mobile-tabs-slot" />
