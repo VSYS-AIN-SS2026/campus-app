@@ -88,11 +88,43 @@ Für Entwicklung ohne Magic-Link-Login kannst du den Auth-Bypass aktivieren:
 VITE_AUTH_BYPASS=true
 ```
 
-Setzt `VITE_AUTH_BYPASS=true` überspringt den Login-Screen im dev mode (`npm run dev`)
-und zeigt die App direkt mit dem aktuellen Supabase-Session-User (falls vorhanden) an.
-Ein Banner "Development Mode: Auth-Bypass aktiv" erscheint zur Bestätigung.
+Mit `VITE_AUTH_BYPASS=true` wird beim App-Start automatisch ein synthetischer Demo-User
+eingeloggt (kein echtes Supabase-Konto, keine E-Mail). Im Login-Formular kannst du Vor-
+und Nachname eingeben, um den Demo-User umzubenennen. Ein gelbes Banner
+"Development Mode: Auth-Bypass aktiv" bestätigt, dass der Bypass aktiv ist.
 
-**Wichtig:** Nicht in Produktion verwenden!
+Wie es intern funktioniert (implementiert in `frontend/src/composables/appController/auth.ts`):
+
+```typescript
+// Prüft ob Bypass aktiv ist (nur in DEV-Build wirksam)
+function isAuthBypassEnabled(): boolean {
+  if (!import.meta.env.DEV) return false
+  return import.meta.env.VITE_AUTH_BYPASS === 'true'
+}
+
+// Erstellt synthetischen User-Stub (Demo-E-Mail für RPC-Kompatibilität)
+function createDemoUser(): any {
+  return {
+    id: 'demo-user-local-dev',
+    email: 'alex.beispiel@htwg-konstanz.de',
+    user_metadata: { first_name: 'Demo', last_name: 'User', full_name: 'Demo User' },
+    // ... restliche Pflichtfelder
+  }
+}
+
+// Logging — nur wenn Bypass aktiv
+function bypassLog(message: string, ...args: unknown[]) {
+  if (isAuthBypassEnabled()) {
+    console.log(`[Auth-Bypass] ${message}`, ...args)
+  }
+}
+```
+
+`initAuth()` setzt den Demo-User sofort beim App-Start (kein Login-Screen).
+`sendMagicLink()` überschreibt den Namen mit dem eingegebenen Vor-/Nachnamen.
+`App.vue` zeigt das Banner via `v-if="isAuthBypassEnabled && currentUser"`.
+
+**Wichtig:** Bypass ist nur im Vite-Dev-Build aktiv (`import.meta.env.DEV`). In Production-Builds wird er vom Compiler wegoptimiert.
 
 ## Datenbank-Workflow (wichtig für alle!)
 
@@ -217,6 +249,104 @@ campus-app/
 - `module_handbooks`, `modules`, `courses` - Modulkatalog und Lehrveranstaltungen
 
 Siehe `supabase/migrations/` für Details.
+
+---
+
+## LSF-Scraper (Stundenplandaten)
+
+Der Scraper importiert Lehrveranstaltungstermine aus dem [HTWG-LSF](https://lsf.htwg-konstanz.de)
+in die Supabase-Datenbank. Er läuft auf einem Self-hosted GitHub Actions Runner im HTWG-Netz
+und wird automatisch zu Semesterbeginn getriggert.
+
+### Voraussetzungen
+
+- Node.js 22+
+- VPN-Verbindung ins HTWG-Netz (LSF ist nicht öffentlich erreichbar)
+- Supabase-Zugangsdaten (`SUPABASE_SERVICE_ROLE_KEY`)
+
+### Setup
+
+```bash
+# Dependencies installieren (falls noch nicht geschehen)
+npm install
+
+# Umgebungsvariablen anlegen
+cp .env.lsf.example .env
+# Dann .env bearbeiten und Werte eintragen
+```
+
+Pflichtfelder in `.env`:
+
+| Variable | Beschreibung |
+|---|---|
+| `SUPABASE_URL` | z. B. `https://xyz.supabase.co` oder `http://127.0.0.1:54321` lokal |
+| `SUPABASE_SERVICE_ROLE_KEY` | Service Role Key aus dem Supabase Dashboard |
+| `LSF_STUDY_PROGRAM` | Studiengang-Kürzel, z. B. `AIN` |
+| `LSF_ABSTGVNR` | Numerische LSF-Studiengangs-ID (ABSTGVNR) |
+
+`LSF_ABSTGVNR` steht in der LSF-URL unter Lehrveranstaltungen → Studiengangspläne:
+`...&ABSTGVNR=4511` → `4511` für AIN.
+
+#### Auth: eine der beiden Optionen
+
+**Option A — Session-Cookie** (einfacher, für Tests):
+1. Browser öffnen, via VPN ins LSF einloggen
+2. DevTools → Network → beliebigen LSF-Request → Request-Header `Cookie` kopieren
+3. In `.env` eintragen: `LSF_SESSION_COOKIE=<cookie-string>`
+
+**Option B — Automatischer Login mit TOTP**:
+```env
+LSF_USERNAME=vorname.nachname
+LSF_PASSWORD=dein-passwort
+LSF_TOTP_SECRET=BASE32SECRET    # Base32-Secret aus der Authenticator-App-Einrichtung
+```
+
+### Scraper starten
+
+```bash
+# Normaler Import
+npm run lsf:import
+
+# Nur die ersten 3 Module (Smoke-Test)
+LSF_LIMIT=3 npm run lsf:import
+
+# Import erzwingen, auch wenn Semester schon importiert wurde
+LSF_FORCE=true npm run lsf:import
+
+# HTML-Dateien für Debugging speichern (scripts/data/)
+LSF_DEBUG=true npm run lsf:import
+```
+
+Wenn `LSF_STUDY_PROGRAM` nicht gesetzt ist, liest der Scraper alle Studiengänge
+aus `study_programs.lsf_abstgvnr` in der DB und importiert sie nacheinander.
+
+### Verhalten bei Re-Imports
+
+- Bereits vorhandene Events (`series_id` + `start_date` gleich) werden **nicht überschrieben** —
+  so bleiben `user_events`-Verknüpfungen erhalten.
+- Neue Events werden eingefügt.
+- Abgesagte Termine (`fällt aus`, `entfällt` o. ä. im Status-Feld) werden als
+  `cancelled = true` gespeichert, aber nicht gelöscht.
+
+### GitHub Actions Workflow
+
+Der Workflow [`.github/workflows/lsf-import.yml`](.github/workflows/lsf-import.yml) läuft:
+
+- **Automatisch** am 1. März (Sommersemester) und 1. Oktober (Wintersemester)
+- **Manuell** über GitHub → Actions → "LSF Import" → "Run workflow"
+
+Benötigte Repository Secrets (Settings → Secrets and variables → Actions):
+
+| Secret | Beschreibung |
+|---|---|
+| `SUPABASE_URL` | Supabase Projekt-URL |
+| `SUPABASE_SERVICE_ROLE_KEY` | Service Role Key |
+| `LSF_SESSION_COOKIE` | Cookie-Auth (Option A) |
+| `LSF_USERNAME` / `LSF_PASSWORD` / `LSF_TOTP_SECRET` | Login-Auth (Option B) |
+
+Um einen weiteren Studiengang hinzuzufügen:
+1. `lsf_abstgvnr` in der `study_programs`-Tabelle eintragen
+2. Eintrag zur Matrix in `.github/workflows/lsf-import.yml` hinzufügen (für Parallel-Ausführung)
 
 ---
 

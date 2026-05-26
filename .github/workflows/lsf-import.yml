@@ -56,9 +56,9 @@ jobs:
           EOF
           )
           else
-            # Automatisch: alle bekannten Studiengänge
-            # ABSTGVNR-Werte im LSF unter:
-            # Lehrveranstaltungen → Studiengangspläne → URL-Parameter ABSTGVNR
+            # Alle bekannten Studiengänge — hier pflegen oder Matrix dynamisch aus
+            # study_programs.lsf_abstgvnr befüllen (Supabase REST + jq).
+            # ABSTGVNR im LSF: Lehrveranstaltungen → Studiengangspläne → URL-Param ABSTGVNR
             MATRIX=$(cat <<'EOF'
           {
             "include": [

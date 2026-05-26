@@ -2,13 +2,11 @@
 /**
  * LSF Import Script
  *
- * Discovers all Lehrveranstaltungen for a study program from the LSF HTWG
- * study plan list, scrapes each module page, and imports events into Supabase.
+ * Discovers all Lehrveranstaltungen for one or more study programs from the
+ * HTWG LSF study plan list, scrapes each module page, and imports events
+ * into Supabase.
  *
  * Required env:
- *   LSF_SEMESTER              SS2026 or WS2026/27
- *   LSF_STUDY_PROGRAM         AIN, MIB, etc.
- *   LSF_ABSTGVNR              Numeric study program version ID from LSF
  *   SUPABASE_URL
  *   SUPABASE_SERVICE_ROLE_KEY  (or SUPABASE_ANON_KEY)
  *
@@ -16,9 +14,17 @@
  *   LSF_SESSION_COOKIE        Pre-authenticated cookie string (simplest for self-hosted runner)
  *   LSF_USERNAME + LSF_PASSWORD + LSF_TOTP_SECRET   Automatic login with TOTP
  *
+ * Program selection — pick one:
+ *   LSF_STUDY_PROGRAM + LSF_ABSTGVNR   Single program via env vars
+ *   (neither set)                       Auto-discover all programs from
+ *                                       study_programs.lsf_abstgvnr in DB
+ *
  * Optional:
- *   LSF_FORCE=true            Skip the already-scraped-this-semester check
- *   LSF_THROTTLE_MS=500       Delay between module page requests (default 500ms)
+ *   LSF_SEMESTER=SS2026        Override semester (auto-derived if absent)
+ *   LSF_FORCE=true             Skip the already-scraped-this-semester check
+ *   LSF_THROTTLE_MS=500        Delay between module page requests (default 500ms)
+ *   LSF_LIMIT=N                Cap modules per program (for testing)
+ *   LSF_DEBUG=true             Save HTML to scripts/data/ for inspection
  */
 
 import * as cheerio from 'cheerio';
@@ -28,7 +34,7 @@ import { writeFileSync, mkdirSync } from 'fs';
 
 function deriveCurrentSemester() {
   const now = new Date();
-  const month = now.getMonth() + 1; // 1-12
+  const month = now.getMonth() + 1;
   const year = now.getFullYear();
   if (month >= 3 && month <= 9) return `SS${year}`;
   const wsYear = month >= 10 ? year : year - 1;
@@ -36,22 +42,21 @@ function deriveCurrentSemester() {
 }
 
 // --- ENV ---
-const LSF_SEMESTER = process.env.LSF_SEMESTER || deriveCurrentSemester();
-const LSF_STUDY_PROGRAM = process.env.LSF_STUDY_PROGRAM;
-const LSF_ABSTGVNR = process.env.LSF_ABSTGVNR;
-const LSF_FORCE = process.env.LSF_FORCE === 'true';
+const LSF_SEMESTER       = process.env.LSF_SEMESTER || deriveCurrentSemester();
+const LSF_STUDY_PROGRAM  = process.env.LSF_STUDY_PROGRAM  || null;  // optional
+const LSF_ABSTGVNR       = process.env.LSF_ABSTGVNR       || null;
+const LSF_FORCE          = process.env.LSF_FORCE === 'true';
 const LSF_SESSION_COOKIE = process.env.LSF_SESSION_COOKIE || null;
-const LSF_USERNAME = process.env.LSF_USERNAME || null;
-const LSF_PASSWORD = process.env.LSF_PASSWORD || null;
-const LSF_TOTP_SECRET = process.env.LSF_TOTP_SECRET || null;
-const THROTTLE_MS = parseInt(process.env.LSF_THROTTLE_MS || '500', 10);
-const LSF_LIMIT = process.env.LSF_LIMIT ? parseInt(process.env.LSF_LIMIT, 10) : null;
-const LSF_DEBUG = process.env.LSF_DEBUG === 'true';
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+const LSF_USERNAME       = process.env.LSF_USERNAME       || null;
+const LSF_PASSWORD       = process.env.LSF_PASSWORD       || null;
+const LSF_TOTP_SECRET    = process.env.LSF_TOTP_SECRET    || null;
+const THROTTLE_MS        = parseInt(process.env.LSF_THROTTLE_MS || '500', 10);
+const LSF_LIMIT          = process.env.LSF_LIMIT ? parseInt(process.env.LSF_LIMIT, 10) : null;
+const LSF_DEBUG          = process.env.LSF_DEBUG === 'true';
+const SUPABASE_URL       = process.env.SUPABASE_URL;
+const SUPABASE_KEY       = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 
 for (const [name, val] of [
-  ['LSF_STUDY_PROGRAM', LSF_STUDY_PROGRAM],
   ['SUPABASE_URL', SUPABASE_URL],
   ['SUPABASE_KEY', SUPABASE_KEY],
 ]) {
@@ -60,13 +65,17 @@ for (const [name, val] of [
 console.log(`Semester: ${LSF_SEMESTER} (${process.env.LSF_SEMESTER ? 'explicit' : 'auto-derived'})`);
 
 // --- LSF URLs ---
-const LSF_BASE = 'https://lsf.htwg-konstanz.de';
+const LSF_BASE      = 'https://lsf.htwg-konstanz.de';
 const LSF_LOGIN_URL = `${LSF_BASE}/qisserver/rds?state=user&type=1&category=auth.login&startpage=portal.vm`;
-const LSF_LIST_URL =
-  `${LSF_BASE}/qisserver/rds?state=verpublish&publishContainer=stgPlanList` +
-  `&navigationPosition=lectures%2CcurriculaschedulesList&breadcrumb=curriculaschedules` +
-  `&topitem=lectures&subitem=curriculaschedulesList` +
-  (LSF_ABSTGVNR ? `&ABSTGVNR=${encodeURIComponent(LSF_ABSTGVNR)}` : '');
+
+function buildListUrl(abstgvnr) {
+  return (
+    `${LSF_BASE}/qisserver/rds?state=verpublish&publishContainer=stgPlanList` +
+    `&navigationPosition=lectures%2CcurriculaschedulesList&breadcrumb=curriculaschedules` +
+    `&topitem=lectures&subitem=curriculaschedulesList` +
+    (abstgvnr ? `&ABSTGVNR=${encodeURIComponent(abstgvnr)}` : '')
+  );
+}
 
 // --- Mappings ---
 const EVENT_TYPE_MAP = {
@@ -89,6 +98,7 @@ const RHYTHM_MAP = {
   'Woche': 1, 'wöch': 1, 'Wöch': 1, 'Woch': 1, 'woch': 1,
   '14tägl': 2, '14-tägl': 2, '14-tägig': 2,
 };
+const CANCELLED_PATTERNS = ['fällt aus', 'ausfall', 'entfällt', 'abgesagt', 'cancelled'];
 
 // --- Supabase client ---
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
@@ -159,7 +169,6 @@ async function loginToLSF(username, password, totpSecret) {
 
   // Step 2: POST credentials
   // QIS standard field names: asdf=username, fdsa=password
-  // Adjust if HTWG uses a Shibboleth/SAML wrapper with different field names
   const credBody = new URLSearchParams({ ...hidden, asdf: username, fdsa: password, submit: 'Anmelden' });
   const credRes = await fetch(LSF_LOGIN_URL, {
     method: 'POST',
@@ -290,7 +299,7 @@ function deriveSemesterDates(semester) {
 
 function cleanCell($cell) {
   const text = $cell.text().replace(/\s+/g, ' ').trim();
-  return !text || text === ' ' ? '' : text;
+  return !text || text === ' ' ? '' : text;
 }
 
 function stripHeadingSuffix(text) {
@@ -305,36 +314,50 @@ function buildSeriesId(courseId, weekday, startTime) {
   return `${courseId ?? 'none'}::${weekday ?? '?'}::${startTime}`;
 }
 
+function isCancelled(status) {
+  if (!status) return false;
+  const lower = status.toLowerCase();
+  return CANCELLED_PATTERNS.some(p => lower.includes(p));
+}
+
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 // ─────────────────────────────────────────────
 // Database helpers
 // ─────────────────────────────────────────────
-let runId = null;
 
-async function createRun() {
+async function fetchStudyPrograms() {
+  const { data, error } = await supabase
+    .from('study_programs')
+    .select('code, lsf_abstgvnr')
+    .not('lsf_abstgvnr', 'is', null);
+  if (error) throw new Error(`Failed to fetch study programs: ${error.message}`);
+  return data ?? [];
+}
+
+async function createRun(studyProgram, abstgvnr, semester) {
   const { data, error } = await supabase
     .from('lsf_import_runs')
     .insert({
-      study_program_code: LSF_STUDY_PROGRAM,
-      lsf_abstgvnr: LSF_ABSTGVNR ?? '',
-      term: LSF_SEMESTER,
+      study_program_code: studyProgram,
+      lsf_abstgvnr: abstgvnr ?? '',
+      term: semester,
       status: 'running',
     })
     .select('id')
     .single();
   if (error) { console.error('Failed to create import run:', error); process.exit(1); }
-  runId = data.id;
-  console.log(`Import run ${runId} started (${LSF_STUDY_PROGRAM} / ${LSF_SEMESTER}).`);
+  console.log(`Import run ${data.id} started (${studyProgram} / ${semester}).`);
+  return data.id;
 }
 
-async function finishRun(success, stats, errorMsg) {
+async function finishRun(runId, success, stats, errorMsg) {
   if (!runId) return;
   const upd = { finished_at: new Date().toISOString(), status: success ? 'success' : 'error' };
   if (success) {
-    upd.events_found = stats.found;
-    upd.events_inserted = stats.inserted;
-    upd.events_updated = stats.updated;
+    upd.events_found       = stats.found;
+    upd.events_inserted    = stats.inserted;
+    upd.events_updated     = 0;
     upd.events_deactivated = 0;
   } else {
     upd.error_msg = errorMsg;
@@ -343,18 +366,18 @@ async function finishRun(success, stats, errorMsg) {
   if (error) console.error('Failed to update import run:', error);
 }
 
-async function checkRecentRun() {
+async function checkRecentRun(studyProgram, semester) {
   const { data, error } = await supabase
     .from('lsf_import_runs')
     .select('id, started_at')
-    .eq('study_program_code', LSF_STUDY_PROGRAM)
-    .eq('term', LSF_SEMESTER)
+    .eq('study_program_code', studyProgram)
+    .eq('term', semester)
     .eq('status', 'success')
     .limit(1);
   if (error) { console.error('Skip-check failed:', error); return false; }
   if (data?.length > 0) {
     console.log(
-      `Already scraped ${LSF_STUDY_PROGRAM}/${LSF_SEMESTER} ` +
+      `Already scraped ${studyProgram}/${semester} ` +
       `(run ${data[0].id} at ${data[0].started_at}). Use LSF_FORCE=true to override.`
     );
     return true;
@@ -394,18 +417,14 @@ async function resolveModuleByName(name) {
   return null;
 }
 
-let _studyProgramIdCache = null;
-async function getStudyProgramId() {
-  if (_studyProgramIdCache) return _studyProgramIdCache;
+async function getStudyProgramId(studyProgram) {
   const { data } = await supabase
-    .from('study_programs').select('id').eq('code', LSF_STUDY_PROGRAM).limit(1);
-  _studyProgramIdCache = data?.[0]?.id ?? null;
-  return _studyProgramIdCache;
+    .from('study_programs').select('id').eq('code', studyProgram).limit(1);
+  return data?.[0]?.id ?? null;
 }
 
-async function createModuleStub(lsfTitle, publishid, coordinator) {
+async function createModuleStub(lsfTitle, publishid, coordinator, studyProgramId) {
   const name = stripLsfTitlePrefix(lsfTitle) || lsfTitle;
-  const studyProgramId = await getStudyProgramId();
   const { data, error } = await supabase.from('modules').insert({
     name,
     code: `LSF-${publishid}`,
@@ -426,6 +445,7 @@ async function createModuleStub(lsfTitle, publishid, coordinator) {
   return data;
 }
 
+// Per-program cache — cleared between programs
 const courseCache = new Map();
 
 async function resolveOrCreateCourseId(module, courseType, coordinator, faulty = false) {
@@ -488,9 +508,9 @@ function extractWebInfoUrls($) {
   return urls;
 }
 
-async function fetchModuleUrls(headers) {
-  console.log(`Fetching study plan list (ABSTGVNR=${LSF_ABSTGVNR})...`);
-  const res = await fetch(LSF_LIST_URL, { headers });
+async function fetchModuleUrls(headers, listUrl, abstgvnr) {
+  console.log(`Fetching study plan list (ABSTGVNR=${abstgvnr})...`);
+  const res = await fetch(listUrl, { headers });
   if (!res.ok) throw new Error(`Study plan list HTTP ${res.status}: ${res.statusText}`);
 
   const listHtml = await res.text();
@@ -509,14 +529,14 @@ async function fetchModuleUrls(headers) {
   }
 
   // HTWG LSF: stgPlanList shows ALL study programs on one page.
-  // Filter wplan links strictly by k_abstgv.abstgvnr=LSF_ABSTGVNR so we only
-  // follow plan pages belonging to the requested study program.
+  // Filter wplan links strictly by abstgvnr so we only follow plan pages
+  // belonging to the requested study program.
   const wplanUrls = [];
   $list('a[href*="state=wplan"]').each((_, el) => {
     const href = $list(el).attr('href') || '';
     const full = toAbsolute(href);
     if (!full) return;
-    if (LSF_ABSTGVNR && !href.includes(`abstgvnr=${LSF_ABSTGVNR}`)) return;
+    if (abstgvnr && !href.includes(`abstgvnr=${abstgvnr}`)) return;
     if (href.includes('missing=allTerms')) wplanUrls.unshift(full); // "Alle" first
     else wplanUrls.push(full);
   });
@@ -580,7 +600,7 @@ function scrapeCoordinator($) {
   return coordinator || null;
 }
 
-async function extractEventsFromPage($, sourceUrl, module, coordinator, semesterDates) {
+async function extractEventsFromPage($, sourceUrl, module, coordinator, semesterDates, semester) {
   const events = [];
 
   for (const tableEl of $('table').toArray()) {
@@ -615,16 +635,20 @@ async function extractEventsFromPage($, sourceUrl, module, coordinator, semester
       const weekday   = raw.tag ? raw.tag.replace('.', '') : null;
       const rhythm    = mapRhythm(raw.rhythmus);
       const room      = parseRoom(raw.raum);
-      const eventType = mapEventType(raw.bemerkung || raw.status);
-      const faulty = eventType === 'other';
+      const cancelled = isCancelled(raw.status);
+      if (cancelled) {
+        console.log(`  Ausfall: ${startDate} ${times.start} (${raw.status})`);
+      }
+      const eventType  = mapEventType(raw.bemerkung || raw.status);
+      const faulty     = eventType === 'other';
       if (faulty) {
         console.error(`  ERROR: Unrecognised event type — status='${raw.status}' bemerkung='${raw.bemerkung}' — course will be marked faulty`);
       }
       const courseType = EVENT_TO_COURSE_TYPE[eventType];
-      const courseId  = await resolveOrCreateCourseId(module, courseType, coordinator, faulty);
+      const courseId   = await resolveOrCreateCourseId(module, courseType, coordinator, faulty);
 
       events.push({
-        term:          LSF_SEMESTER,
+        term:          semester,
         course_id:     courseId,
         rhythm,
         event_type:    eventType,
@@ -637,6 +661,7 @@ async function extractEventsFromPage($, sourceUrl, module, coordinator, semester
         room_number:   room?.roomNumber ?? null,
         series_id:     buildSeriesId(courseId, weekday, times.start),
         status:        raw.status || null,
+        cancelled,
         source_url:    sourceUrl,
         raw_payload:   raw,
         updated_at:    new Date().toISOString(),
@@ -660,59 +685,58 @@ async function upsertRoomsAndEvents(events) {
     const { error } = await supabase
       .from('rooms')
       .upsert({ building: ev.room_building, room_number: ev.room_number },
-        { onConflict: 'building, room_number', ignoreDuplicates: true });
+        { onConflict: 'building,room_number', ignoreDuplicates: true });
     if (error) console.error('Room upsert failed:', error.message);
   }
 
-  // Delete-then-insert per source URL so re-runs are idempotent.
-  // Grouped by source_url to avoid touching events from other study programs.
-  const sourceUrls = [...new Set(events.map(e => e.source_url).filter(Boolean))];
-  for (const url of sourceUrls) {
-    const { error } = await supabase
-      .from('lsf_events').delete()
-      .eq('term', LSF_SEMESTER).eq('source_url', url);
-    if (error) throw new Error(`Delete prior events failed (${url}): ${error.message}`);
-  }
-
+  // Upsert events: new (series_id, start_date) pairs are inserted; existing rows
+  // are left untouched so that user_events.lsf_event_id foreign keys stay valid.
   const BATCH = 500;
   let inserted = 0;
   for (let i = 0; i < events.length; i += BATCH) {
-    const { error } = await supabase.from('lsf_events').insert(events.slice(i, i + BATCH));
-    if (error) throw new Error(`Insert batch ${i / BATCH + 1} failed: ${error.message}`);
-    inserted += Math.min(BATCH, events.length - i);
+    const { data, error } = await supabase
+      .from('lsf_events')
+      .upsert(events.slice(i, i + BATCH), {
+        onConflict: 'series_id,start_date',
+        ignoreDuplicates: true,
+      });
+    if (error) throw new Error(`Upsert batch ${i / BATCH + 1} failed: ${error.message}`);
+    inserted += data?.length ?? 0;
   }
-  console.log(`Inserted ${inserted} events.`);
+  const skipped = events.length - inserted;
+  console.log(`Inserted ${inserted} new events (${skipped} already existed, preserved).`);
+  return { inserted, skipped };
 }
 
 // ─────────────────────────────────────────────
-// Main
+// Per-program import
 // ─────────────────────────────────────────────
-async function main() {
-  if (!LSF_FORCE && await checkRecentRun()) process.exit(0);
+async function runForProgram(studyProgram, abstgvnr, headers) {
+  console.log(`\n${'═'.repeat(60)}`);
+  console.log(`Program: ${studyProgram}  ABSTGVNR: ${abstgvnr ?? '(none)'}`);
 
-  await createRun();
+  // Reset per-program caches
+  courseCache.clear();
 
-  let headers;
-  try {
-    headers = await getSessionHeaders();
-  } catch (err) {
-    await finishRun(false, null, `Auth failed: ${err.message}`);
-    process.exit(1);
-  }
+  if (!LSF_FORCE && await checkRecentRun(studyProgram, LSF_SEMESTER)) return;
 
+  const runId = await createRun(studyProgram, abstgvnr, LSF_SEMESTER);
+
+  const listUrl = buildListUrl(abstgvnr);
   let moduleUrls;
   try {
-    moduleUrls = await fetchModuleUrls(headers);
+    moduleUrls = await fetchModuleUrls(headers, listUrl, abstgvnr);
   } catch (err) {
-    await finishRun(false, null, `Study plan list fetch failed: ${err.message}`);
-    process.exit(1);
+    await finishRun(runId, false, null, `Study plan list fetch failed: ${err.message}`);
+    console.error(err.message);
+    return;
   }
 
   if (!moduleUrls.length) {
-    const msg = `No module URLs discovered for ABSTGVNR=${LSF_ABSTGVNR} — check the ABSTGVNR and verify the study plan list URL is correct.`;
+    const msg = `No module URLs discovered for ABSTGVNR=${abstgvnr} — check the ABSTGVNR and verify the study plan list URL is correct.`;
     console.error(msg);
-    await finishRun(false, null, msg);
-    process.exit(1);
+    await finishRun(runId, false, null, msg);
+    return;
   }
 
   const semesterDates = deriveSemesterDates(LSF_SEMESTER);
@@ -720,6 +744,7 @@ async function main() {
     console.warn(`Could not derive fallback semester dates from '${LSF_SEMESTER}' — events without Dauer column will be skipped.`);
   }
 
+  const studyProgramId = await getStudyProgramId(studyProgram);
   const allEvents = [];
   let failCount = 0;
 
@@ -762,7 +787,7 @@ async function main() {
 
     if (!mod) {
       console.error(`  ERROR: Module not found in DB for "${h1Title}" (publishid=${publishid}) — creating stub`);
-      mod = await createModuleStub(h1Title, publishid, coordinator);
+      mod = await createModuleStub(h1Title, publishid, coordinator, studyProgramId);
       if (!mod) {
         console.error(`  ERROR: Stub creation failed for "${h1Title}" (publishid=${publishid}) — skipping module`);
         failCount++;
@@ -770,12 +795,12 @@ async function main() {
       }
     }
 
-    const events = await extractEventsFromPage($, url, mod, coordinator, semesterDates);
+    const events = await extractEventsFromPage($, url, mod, coordinator, semesterDates, LSF_SEMESTER);
     console.log(`  Events found: ${events.length}`);
     allEvents.push(...events);
   }
 
-  const stats = { found: allEvents.length, inserted: 0, updated: 0 };
+  const stats = { found: allEvents.length, inserted: 0 };
   console.log(
     `\nTotal: ${allEvents.length} events from ` +
     `${moduleUrls.length - failCount}/${moduleUrls.length} modules (${failCount} failed).`
@@ -783,17 +808,54 @@ async function main() {
 
   if (allEvents.length > 0) {
     try {
-      await upsertRoomsAndEvents(allEvents);
-      stats.inserted = allEvents.length;
-      stats.updated = allEvents.length;
+      const { inserted } = await upsertRoomsAndEvents(allEvents);
+      stats.inserted = inserted;
     } catch (err) {
-      await finishRun(false, null, err.message);
+      await finishRun(runId, false, null, err.message);
       console.error('Import failed:', err.message);
-      process.exit(1);
+      return;
     }
   }
 
-  await finishRun(true, stats, null);
+  await finishRun(runId, true, stats, null);
+}
+
+// ─────────────────────────────────────────────
+// Main
+// ─────────────────────────────────────────────
+async function main() {
+  let headers;
+  try {
+    headers = await getSessionHeaders();
+  } catch (err) {
+    console.error(`Auth failed: ${err.message}`);
+    process.exit(1);
+  }
+
+  let programs;
+  if (LSF_STUDY_PROGRAM) {
+    programs = [{ code: LSF_STUDY_PROGRAM, lsf_abstgvnr: LSF_ABSTGVNR }];
+  } else {
+    console.log('LSF_STUDY_PROGRAM not set — discovering programs from study_programs.lsf_abstgvnr...');
+    try {
+      programs = await fetchStudyPrograms();
+    } catch (err) {
+      console.error(err.message);
+      process.exit(1);
+    }
+    if (!programs.length) {
+      console.error(
+        'No study programs with lsf_abstgvnr found in DB. ' +
+        'Set LSF_STUDY_PROGRAM env var or populate study_programs.lsf_abstgvnr.'
+      );
+      process.exit(1);
+    }
+    console.log(`Found ${programs.length} program(s): ${programs.map(p => p.code).join(', ')}`);
+  }
+
+  for (const prog of programs) {
+    await runForProgram(prog.code, prog.lsf_abstgvnr, headers);
+  }
 }
 
 main();
