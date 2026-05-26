@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue'
 import type {
   Category,
+  Course,
   ModuleEntry,
   ModuleHandbook,
   Spo,
@@ -150,6 +151,19 @@ export function createAppControllerState() {
     seminar: 'Seminar',
   }
 
+  function isUuid(value: string): boolean {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)
+  }
+
+  function findCourseInModules(courseId: string): { module: ModuleEntry; course: Course } | null {
+    for (const mod of modules.value) {
+      const course = mod.courses.find(c => c.id === courseId || c.code === courseId)
+      if (course) return { module: mod, course }
+    }
+    return null
+  }
+
+
   function resolveHiddenSeriesTitle(seriesId: string, fallback: string): string {
     if (seriesId.startsWith('module:')) {
       const moduleId = seriesId.slice('module:'.length)
@@ -159,10 +173,13 @@ export function createAppControllerState() {
     if (seriesId.startsWith('lsf:')) {
       const parts = seriesId.split(':')
       if (parts.length >= 3) {
-        const courseCode = parts[1]
+        const courseId = parts[1]
         const eventType = parts.slice(2).join(':')
         const typeLabel = EVENT_TYPE_LABELS[eventType] ?? eventType
-        return `${courseCode} — ${typeLabel}`
+        const found = findCourseInModules(courseId)
+        if (found) return `${found.module.name} — ${typeLabel}`
+        if (!isUuid(courseId)) return `${courseId} — ${typeLabel}`
+        return typeLabel
       }
     }
     return fallback
