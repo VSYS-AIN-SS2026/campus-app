@@ -79,6 +79,21 @@ Danach kannst du mit `npm run dev` das Frontend starten.
 
 Hinweis: Ohne eigenes SMTP nutzt Supabase den eingebauten Mail-Versand (mit Limits).
 
+### 9. Auth-Bypass für lokale Entwicklung (optional)
+
+Für Entwicklung ohne Magic-Link-Login kannst du den Auth-Bypass aktivieren:
+
+```bash
+# frontend/.env.local
+VITE_AUTH_BYPASS=true
+```
+
+Setzt `VITE_AUTH_BYPASS=true` überspringt den Login-Screen im dev mode (`npm run dev`)
+und zeigt die App direkt mit dem aktuellen Supabase-Session-User (falls vorhanden) an.
+Ein Banner "Development Mode: Auth-Bypass aktiv" erscheint zur Bestätigung.
+
+**Wichtig:** Nicht in Produktion verwenden!
+
 ## Datenbank-Workflow (wichtig für alle!)
 
 ### Neue Tabelle/Änderung erstellen
