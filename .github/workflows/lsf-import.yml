@@ -1,0 +1,114 @@
+name: LSF Import
+
+# ──────────────────────────────────────────────────────────────
+# Läuft auf einem Self-hosted Runner im HTWG-Netz.
+#
+# Required Secrets (Settings → Secrets and variables → Actions):
+#   SUPABASE_URL
+#   SUPABASE_SERVICE_ROLE_KEY
+#
+#   Auth — eine der beiden Optionen:
+#   A) LSF_SESSION_COOKIE   (Cookie nach manuellem Browser-Login kopieren)
+#   B) LSF_USERNAME + LSF_PASSWORD + LSF_TOTP_SECRET  (vollautomatisch)
+#
+# Repository Variables (nicht sensitiv, sichtbar in Logs):
+#   Keine Pflicht — ABSTGVNR wird pro Studiengang im Matrix definiert.
+# ──────────────────────────────────────────────────────────────
+
+on:
+  # Manueller Start — z.B. für Tests oder erzwungenen Re-Import
+  workflow_dispatch:
+    inputs:
+      study_program:
+        description: 'Studiengang (z.B. AIN). Leer = alle.'
+        required: false
+        type: string
+      abstgvnr:
+        description: 'LSF ABSTGVNR (nur wenn study_program gesetzt)'
+        required: false
+        type: string
+      force:
+        description: 'Duplikat-Check überspringen'
+        required: false
+        type: boolean
+        default: false
+
+  # Automatisch zu Semesterbeginn
+  schedule:
+    - cron: '0 6 1 3 *'   # 1. März  → Sommersemester
+    - cron: '0 6 1 10 *'  # 1. Oktober → Wintersemester
+
+jobs:
+  # ── Schritt 1: Bestimme welche Studiengänge importiert werden ──
+  prepare:
+    runs-on: [self-hosted, htwg]
+    outputs:
+      matrix: ${{ steps.build.outputs.matrix }}
+    steps:
+      - name: Build study program matrix
+        id: build
+        shell: bash
+        run: |
+          # Manuelle Eingabe: nur ein Studiengang
+          if [ -n "${{ github.event.inputs.study_program }}" ]; then
+            MATRIX=$(cat <<'EOF'
+          {"include":[{"code":"${{ github.event.inputs.study_program }}","abstgvnr":"${{ github.event.inputs.abstgvnr }}"}]}
+          EOF
+          )
+          else
+            # Automatisch: alle bekannten Studiengänge
+            # ABSTGVNR-Werte im LSF unter:
+            # Lehrveranstaltungen → Studiengangspläne → URL-Parameter ABSTGVNR
+            MATRIX=$(cat <<'EOF'
+          {
+            "include": [
+              { "code": "AIN", "abstgvnr": "4511" }
+            ]
+          }
+          EOF
+          )
+          fi
+          echo "matrix<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$MATRIX" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+  # ── Schritt 2: Import pro Studiengang ──
+  import:
+    needs: prepare
+    runs-on: [self-hosted, htwg]
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false   # Fehler bei einem Studiengang stoppt nicht die anderen
+      matrix: ${{ fromJson(needs.prepare.outputs.matrix) }}
+
+    name: '${{ matrix.code }}'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run LSF Import
+        env:
+          LSF_STUDY_PROGRAM: ${{ matrix.code }}
+          LSF_ABSTGVNR:      ${{ matrix.abstgvnr }}
+          LSF_FORCE:         ${{ github.event.inputs.force || 'false' }}
+          LSF_SESSION_COOKIE: ${{ secrets.LSF_SESSION_COOKIE }}
+          LSF_USERNAME:       ${{ secrets.LSF_USERNAME }}
+          LSF_PASSWORD:       ${{ secrets.LSF_PASSWORD }}
+          LSF_TOTP_SECRET:    ${{ secrets.LSF_TOTP_SECRET }}
+          SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/lsf-import.js
+
+      - name: Job summary
+        if: always()
+        run: |
+          STATUS="${{ job.status }}"
+          echo "| ${{ matrix.code }} | $STATUS |" >> "$GITHUB_STEP_SUMMARY"

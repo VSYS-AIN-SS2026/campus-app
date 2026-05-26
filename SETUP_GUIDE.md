@@ -262,6 +262,36 @@ Der Magic Link ist ein Login-System per Email. Dafür muss Supabase wissen, wohi
 
 Danach funktioniert Magic Link lokal!
 
+### Development-only: Auth-Bypass für lokale Entwicklung
+
+Möchtest du die App schnell ohne Magic-Link-Versand testen? Nutze den Auth-Bypass:
+
+**Aktivieren:**
+1. In `frontend/.env.local` hinzufügen:
+   ```env
+   VITE_AUTH_BYPASS=true
+   ```
+
+2. App neu starten:
+   ```bash
+   npm run dev
+   ```
+
+3. Login-Seite:
+   - Gib Vor- und Nachname ein (E-Mail-Feld ist optional)
+   - Klick auf "Als Demo-User fortfahren"
+   - Keine Magic-Link-Mail wird versendet!
+
+**Sicherheit:**
+- Der Bypass funktioniert **nur** in Development-Mode (`import.meta.env.DEV`)
+- In Production (npm run build) ist der Bypass automatisch deaktiviert
+- Normal Magic-Link-Login funktioniert trotzdem noch (einschalten: `VITE_AUTH_BYPASS=false`)
+
+**Fallback-User:**
+- Der Demo-User nutzt die E-Mail `alex.beispiel@htwg-konstanz.de` für RPC-Kompatibilität
+- Damit funktioniert `get_demo_user_profile` RPC korrekt
+- Die Daten werden geladen wie bei normalem Login
+
 ### Frontend lokal starten
 
 ```bash

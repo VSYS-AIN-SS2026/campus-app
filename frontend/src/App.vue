@@ -9,6 +9,12 @@ import Sidebar from './components/Sidebar.vue'
 import { useAppController } from './composables/useAppController'
 
 const { magicLinkRedirectTo, allCategories, activePlannerView, authEmail, authError, authFirstName, authInfo, authLastName, authLoading, authSending, canEditModuleStatuses, categoryError, currentUser, currentUserEmail, demoUserProfile, error, hiddenSeriesItems, isWeeklyPreviewMode, lastHiddenSeries, loading, modules, moduleStatusError, profileError, profileInfo, profileSaving, savedSpo, savedStudyProgram, savingCategoryModuleId, savingModuleId, scheduleVisibilityError, scheduleVisibilityInfo, selectedModule, selectedSpoId, selectedStudyProgramId, selectionDirty, spoItems, studyProgramItems, visibleWeeklyPreviewEvents, visibleWeeklyScheduleEvents, weekStartDate, getSpoLabel, getStudyProgramLabel, hideScheduleSeries, saveModuleCategories, saveModuleStatus, saveStudyProfileSelection, sendMagicLink, showAllScheduleSeries, showScheduleSeries, signOut, undoHideScheduleSeries } = useAppController()
+
+// ===================== AUTH-BYPASS-START =====================
+// Check if auth bypass is enabled for dev banner
+const isAuthBypassEnabled = import.meta.env.DEV && import.meta.env.VITE_AUTH_BYPASS === 'true'
+// ===================== AUTH-BYPASS-END =====================
+
 // =====================
 // DEV-BYPASS-START: Demo-User für Preview ohne Login
 // Entferne diesen Block nach dem Development!
@@ -131,7 +137,15 @@ async function onSidebarNavigate(target: SidebarSection) {
           </button>
         </div>
       </div>
-    </header>
+     </header>
+
+    <!-- ===================== AUTH-BYPASS-START ===================== -->
+    <!-- Dev-only banner to indicate auth bypass is active -->
+    <div v-if="isAuthBypassEnabled && currentUser" class="auth-bypass-banner">
+      <span class="bypass-label">⚠️ Development Mode: Auth-Bypass aktiv</span>
+      <span class="bypass-user">Benutzer: {{ currentUser.user_metadata?.full_name || 'Demo User' }}</span>
+    </div>
+    <!-- ===================== AUTH-BYPASS-END ===================== -->
 
     <div class="app-layout">
       <transition name="sidebar-overlay">
@@ -174,7 +188,7 @@ async function onSidebarNavigate(target: SidebarSection) {
           </template>
 
           <!-- ===================== DEV-BYPASS-START ===================== -->
-          <template v-else-if="!currentUser && !isDevBypass">
+          <template v-else-if="!currentUser && !isDevBypass && !isAuthBypassEnabled">
             <AuthGate
               :magic-link-redirect-to="magicLinkRedirectTo"
               :auth-first-name="authFirstName"
@@ -273,6 +287,7 @@ async function onSidebarNavigate(target: SidebarSection) {
 
 .app-layout {
   display: flex;
+  /* Adjust for header (3.5rem) + optional bypass banner (~2.5rem in dev) */
   min-height: calc(100vh - 3.5rem);
   position: relative;
 }
@@ -362,4 +377,28 @@ async function onSidebarNavigate(target: SidebarSection) {
   width: 100%;
   padding-left: 8px;
 }
+
+/* ===================== AUTH-BYPASS-START ===================== */
+.auth-bypass-banner {
+  background: linear-gradient(90deg, var(--color-primary), var(--color-primary-light));
+  color: white;
+  padding: 0.75rem var(--space-lg);
+  font-size: 0.875rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--color-primary) 30%, transparent);
+}
+
+.bypass-label {
+  flex: 0 0 auto;
+}
+
+.bypass-user {
+  flex: 1 1 auto;
+  opacity: 0.95;
+  font-size: 0.8rem;
+}
+/* ===================== AUTH-BYPASS-END ===================== */
 </style>
