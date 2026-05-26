@@ -10,6 +10,12 @@ import Sidebar from './components/Sidebar.vue'
 import { useAppController } from './composables/useAppController'
 
 const { magicLinkRedirectTo, allCategories, activePlannerView, authEmail, authError, authFirstName, authInfo, authLastName, authLoading, authSending, canEditModuleStatuses, categoryError, currentUser, currentUserEmail, demoUserProfile, error, hiddenPageEntries, hiddenPageError, hiddenPageLoading, hiddenSeriesItems, isWeeklyPreviewMode, lastHiddenSeries, loading, modules, moduleStatusError, profileError, profileInfo, profileSaving, savedSpo, savedStudyProgram, savingCategoryModuleId, savingModuleId, scheduleVisibilityError, scheduleVisibilityInfo, selectedModule, selectedSpoId, selectedStudyProgramId, selectionDirty, spoItems, studyProgramItems, visibleWeeklyPreviewEvents, visibleWeeklyScheduleEvents, weekStartDate, getSpoLabel, getStudyProgramLabel, hideScheduleSeries, saveModuleCategories, saveModuleStatus, saveStudyProfileSelection, sendMagicLink, showAllScheduleSeries, showScheduleSeries, signOut, undoHideScheduleSeries } = useAppController()
+
+// ===================== AUTH-BYPASS-START =====================
+// Skip login screen in dev with VITE_AUTH_BYPASS=true
+const isAuthBypassEnabled = import.meta.env.DEV && import.meta.env.VITE_AUTH_BYPASS === 'true'
+// ===================== AUTH-BYPASS-END =====================
+
 // =====================
 // DEV-BYPASS-START: Demo-User für Preview ohne Login
 // Entferne diesen Block nach dem Development!
@@ -166,6 +172,13 @@ async function onSidebarNavigate(target: SidebarSection) {
       </div>
     </header>
 
+    <!-- ===================== AUTH-BYPASS-START ===================== -->
+    <div v-if="isAuthBypassEnabled && currentUser" class="auth-bypass-banner">
+      <span class="bypass-label">Development Mode: Auth-Bypass aktiv</span>
+      <span class="bypass-user">Benutzer: {{ currentUser.user_metadata?.full_name || 'Demo User' }}</span>
+    </div>
+    <!-- ===================== AUTH-BYPASS-END ===================== -->
+
     <template v-if="activeView === 'hidden'">
       <HiddenPage
         :entries="hiddenPageEntries"
@@ -219,8 +232,7 @@ async function onSidebarNavigate(target: SidebarSection) {
             </template>
 
             <!-- ===================== DEV-BYPASS-START ===================== -->
-            <!-- TEMP: auth disabled for development -->
-            <template v-else-if="false && !currentUser && !isDevBypass">
+            <template v-else-if="!currentUser && !isDevBypass && !isAuthBypassEnabled">
               <AuthGate
                 :magic-link-redirect-to="magicLinkRedirectTo"
                 :auth-first-name="authFirstName"
@@ -410,4 +422,18 @@ async function onSidebarNavigate(target: SidebarSection) {
   width: 100%;
   padding-left: 8px;
 }
+
+.auth-bypass-banner {
+  background: linear-gradient(90deg, var(--color-primary), var(--color-primary-light));
+  color: white;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--color-primary) 30%, transparent);
+}
+
+.bypass-label { flex: 0 0 auto; }
 </style>
