@@ -27,3 +27,29 @@ export interface ScheduleDay {
   dateLabel: string
   isToday: boolean
 }
+
+export interface UserEvent {
+  id: string
+  lsf_event_id: string | null
+  title: string
+  subtitle: string | null
+  day_index: number
+  start_time: string
+  end_time: string
+  series_id: string
+  status: string
+  created_at: string
+}
+
+export type UserEventRow = {
+  id: string
+  lsf_event_id: string | null
+  title: string
+  subtitle: string | null
+  day_index: number
+  start_time: string
+  end_time: string
+  series_id: string
+  status: string
+  created_at: string
+}

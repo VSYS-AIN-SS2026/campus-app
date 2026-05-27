@@ -8,6 +8,7 @@ import type {
   StudyProgram,
   UserProfile,
 } from '../../types'
+import type { UserEventRow } from '../../types/schedule'
 import {
   getSpoLabel,
   getStartOfCurrentWeek,
@@ -31,6 +32,7 @@ export function createAppControllerState() {
 
   const modules = ref<ModuleEntry[]>([])
   const selectedModule = ref<ModuleEntry | null>(null)
+  const lsfImportModule = ref<ModuleEntry | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
   const moduleStatusError = ref<string | null>(null)
@@ -59,6 +61,7 @@ export function createAppControllerState() {
   const hiddenEventIds = ref<Set<string>>(new Set())
   const lastHiddenSeries = ref<{ seriesId: string; title: string } | null>(null)
   const showHiddenEvents = ref(false)
+  const userEvents = ref<UserEventRow[]>([])
 
   const currentUserEmail = computed(() => currentUser.value?.email ?? '')
   const activePlannerView = ref<PlannerView>('week')
@@ -102,7 +105,7 @@ export function createAppControllerState() {
   const weeklyScheduleEvents = computed<WeeklyScheduleEvent[]>(() => {
     const slotStarts = [8 * 60 + 15, 10 * 60, 11 * 60 + 45, 13 * 60 + 30, 15 * 60 + 15]
 
-    return modules.value.slice(0, 21).map((module, index) => {
+    const moduleEvents = modules.value.slice(0, 21).map((module, index) => {
       const dayIndex = index % 5
       const startMinutes = slotStarts[index % slotStarts.length]
       const ects = module.courses.reduce((sum, course) => sum + (course.ects ?? 0), 0)
@@ -122,6 +125,20 @@ export function createAppControllerState() {
         status: module.module_status,
       }
     })
+
+    const importedEvents: WeeklyScheduleEvent[] = userEvents.value.map(ue => ({
+      id: ue.id,
+      seriesId: ue.series_id,
+      occurrenceId: ue.id,
+      dayIndex: ue.day_index,
+      title: ue.title,
+      subtitle: ue.subtitle ?? undefined,
+      startTime: ue.start_time.slice(0, 5),
+      endTime: ue.end_time.slice(0, 5),
+      status: ue.status as ModuleStatus,
+    }))
+
+    return [...moduleEvents, ...importedEvents]
   })
 
   function applyHiddenSeries(rows: HiddenSeriesRow[]) {
@@ -232,6 +249,7 @@ export function createAppControllerState() {
     profileSaving.value = false
     savingModuleId.value = null
     loadedUserId.value = null
+    lsfImportModule.value = null
     hiddenSeriesIds.value = new Set()
     hiddenSeriesTitles.value = new Map()
     hiddenEventIds.value = new Set()
@@ -267,6 +285,7 @@ export function createAppControllerState() {
     lastHiddenSeries,
     loadedUserId,
     loading,
+    lsfImportModule,
     moduleStatusError,
     modules,
     profileError,
@@ -290,6 +309,7 @@ export function createAppControllerState() {
     displayedWeeklyPreviewEvents,
     displayedWeeklyScheduleEvents,
     showHiddenEvents,
+    userEvents,
     visibleWeeklyPreviewEvents,
     visibleWeeklyScheduleEvents,
     weekStartDate,

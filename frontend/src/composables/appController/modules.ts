@@ -146,6 +146,10 @@ export function createModulesController(state: AppControllerState) {
     if (savedStatus?.status) {
       setModuleStatus(moduleId, savedStatus.status)
     }
+
+    if (status === 'belegt' && currentModule) {
+      state.lsfImportModule.value = currentModule
+    }
   }
 
   async function saveModuleCategories(moduleId: string, categoryIds: string[]) {

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
 import AuthGate from './components/AuthGate.vue'
+import LsfEventImportModal from './components/LsfEventImportModal.vue'
 import ModuleDrawer from './components/ModuleDrawer.vue'
 import PlannerViewShell from './components/PlannerViewShell.vue'
 import ProfileSelectionPanel from './components/ProfileSelectionPanel.vue'
@@ -8,21 +9,24 @@ import WeeklySchedule from './components/WeeklySchedule.vue'
 import Sidebar from './components/Sidebar.vue'
 import { useAppController } from './composables/useAppController'
 
-const { magicLinkRedirectTo, allCategories, activePlannerView, authEmail, authError, authFirstName, authInfo, authLastName, authLoading, authSending, canEditModuleStatuses, categoryError, currentUser, currentUserEmail, demoUserProfile, displayedWeeklyPreviewEvents, displayedWeeklyScheduleEvents, error, hiddenSeriesItems, isWeeklyPreviewMode, lastHiddenSeries, loading, modules, moduleStatusError, profileError, profileInfo, profileSaving, savedSpo, savedStudyProgram, savingCategoryModuleId, savingModuleId, scheduleVisibilityError, scheduleVisibilityInfo, selectedModule, selectedSpoId, selectedStudyProgramId, selectionDirty, showHiddenEvents, spoItems, studyProgramItems, weekStartDate, getSpoLabel, getStudyProgramLabel, hideScheduleSeries, saveModuleCategories, saveModuleStatus, saveStudyProfileSelection, sendMagicLink, showAllScheduleSeries, showScheduleSeries, signOut, undoHideScheduleSeries } = useAppController()
-
 function toggleShowHiddenEvents() {
   showHiddenEvents.value = !showHiddenEvents.value
 }
 
 // ===================== AUTH-BYPASS-START =====================
 // Skip login screen in dev with VITE_AUTH_BYPASS=true
+const { magicLinkRedirectTo, allCategories, activePlannerView, authEmail, authError, authFirstName, authInfo, authLastName, authLoading, authSending, canEditModuleStatuses, categoryError, currentUser, currentUserEmail, demoUserProfile, displayedWeeklyPreviewEvents, displayedWeeklyScheduleEvents, error, hiddenSeriesItems, isWeeklyPreviewMode, lastHiddenSeries, loadImportedEvents, loading, lsfImportModule, modules, moduleStatusError, profileError, profileInfo, profileSaving, savedSpo, savedStudyProgram, savingCategoryModuleId, savingModuleId, scheduleVisibilityError, scheduleVisibilityInfo, selectedModule, selectedSpoId, selectedStudyProgramId, selectionDirty, spoItems, studyProgramItems, visibleWeeklyPreviewEvents, visibleWeeklyScheduleEvents, weekStartDate, getSpoLabel, getStudyProgramLabel, hideScheduleSeries, saveModuleCategories, saveModuleStatus, saveStudyProfileSelection, sendMagicLink, showAllScheduleSeries, showScheduleSeries, signOut, undoHideScheduleSeries } = useAppController()
+// ===================== AUTH-BYPASS-START =====================
+// Check if auth bypass is enabled for dev banner
 const isAuthBypassEnabled = import.meta.env.DEV && import.meta.env.VITE_AUTH_BYPASS === 'true'
 // ===================== AUTH-BYPASS-END =====================
 
 // =====================
 // DEV-BYPASS-START: Demo-User für Preview ohne Login
 // Entferne diesen Block nach dem Development!
-const isDevBypass = typeof window !== 'undefined' && window.location.search.includes('devpreview=1')
+const isDevBypass = typeof window !== 'undefined' && (
+  window.location.search.includes('devpreview=1') || isAuthBypassEnabled
+)
 // =====================
 // DEV-BYPASS-END
 
@@ -283,6 +287,12 @@ async function onSidebarNavigate(target: SidebarSection) {
     @update-categories="saveModuleCategories"
   />
   <!-- ===================== DEV-BYPASS-END ===================== -->
+
+  <LsfEventImportModal
+    :module="lsfImportModule"
+    @close="lsfImportModule = null"
+    @imported="loadImportedEvents"
+  />
 </template>
 
 <style scoped src="./app.css"></style>
@@ -397,4 +407,22 @@ async function onSidebarNavigate(target: SidebarSection) {
 }
 
 .bypass-label { flex: 0 0 auto; }
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--color-primary) 30%, transparent);
+}
+
+.bypass-label {
+  flex: 0 0 auto;
+}
+
+.bypass-user {
+  flex: 1 1 auto;
+  opacity: 0.95;
+  font-size: 0.76rem;
+}
 </style>

@@ -7,6 +7,7 @@ import type {
   StudyProgram,
   UserProfile,
 } from '../../types'
+import type { UserEventRow } from '../../types/schedule'
 import type { AppControllerState } from './state'
 import type { HiddenSeriesRow } from './shared'
 
@@ -106,6 +107,11 @@ export function createProfileController(
 
     if (state.selectedSpoId.value) {
       await deps.fetchModulesForSpo(state.selectedSpoId.value, deps.beginModuleRequest())
+    }
+
+    const { data: eventData } = await supabase.rpc('get_demo_user_events')
+    if (eventData) {
+      state.userEvents.value = eventData as UserEventRow[]
     }
 
     state.loadedUserId.value = state.currentUser.value.id
