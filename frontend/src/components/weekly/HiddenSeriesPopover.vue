@@ -8,6 +8,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'show-series': [seriesId: string]
   'show-all-series': []
+  'navigate-to-hidden-page': []
 }>()
 
 const isOpen = ref(false)
@@ -56,6 +57,10 @@ onUnmounted(() => {
           Alle einblenden
         </button>
       </header>
+
+      <button type="button" class="hidden-series-nav-link" @click="emit('navigate-to-hidden-page')">
+        Zur Übersicht →
+      </button>
 
       <ul class="hidden-series-list">
         <li v-for="item in items" :key="item.seriesId" class="hidden-series-row">
@@ -122,6 +127,23 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 .hidden-series-link:hover { text-decoration: underline; }
+.hidden-series-nav-link {
+  display: block;
+  width: 100%;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-primary);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.375rem 0.5rem;
+  border-radius: 0.4rem;
+  cursor: pointer;
+  text-align: center;
+  margin-top: 0.5rem;
+  transition: background 0.15s;
+}
+.hidden-series-nav-link:hover { background: var(--color-primary-subtle); }
 @media (max-width: 45em) {
   .hidden-series-popover {
     right: auto;

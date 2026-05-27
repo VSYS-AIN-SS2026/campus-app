@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue'
 import type {
   Category,
+  Course,
   ModuleEntry,
   ModuleHandbook,
   Spo,
@@ -13,6 +14,7 @@ import {
   getStartOfCurrentWeek,
   getStudyProgramLabel,
   getUniqueSposForStudyProgram,
+  type HiddenPageEntry,
   type HiddenSeriesRow,
   type PlannerView,
   toTimeString,
@@ -60,6 +62,9 @@ export function createAppControllerState() {
   const hiddenEventIds = ref<Set<string>>(new Set())
   const lastHiddenSeries = ref<{ seriesId: string; title: string } | null>(null)
   const userEvents = ref<UserEventRow[]>([])
+  const showHiddenEvents = ref(false)
+  const hiddenPageLoading = computed(() => !loadedUserId.value && loading.value)
+  const hiddenPageError = ref<string | null>(null)
 
   const currentUserEmail = computed(() => currentUser.value?.email ?? '')
   const activePlannerView = ref<PlannerView>('week')
@@ -160,14 +165,106 @@ export function createAppControllerState() {
     )
   )
 
+  function isEventHidden(event: WeeklyScheduleEvent): boolean {
+    return hiddenSeriesIds.value.has(event.seriesId)
+      || (!!event.occurrenceId && hiddenEventIds.value.has(event.occurrenceId))
+  }
+
+  const displayedWeeklyScheduleEvents = computed<WeeklyScheduleEvent[]>(() => {
+    if (!showHiddenEvents.value) return visibleWeeklyScheduleEvents.value
+    return weeklyScheduleEvents.value.map(event => ({ ...event, isHidden: isEventHidden(event) }))
+  })
+
+  const displayedWeeklyPreviewEvents = computed<WeeklyScheduleEvent[]>(() => {
+    if (!showHiddenEvents.value) return visibleWeeklyPreviewEvents.value
+    return weeklyPreviewEvents.value.map(event => ({ ...event, isHidden: isEventHidden(event) }))
+  })
+
+
+  const EVENT_TYPE_LABELS: Record<string, string> = {
+    lecture: 'Vorlesung',
+    exercise: 'Übung',
+    lab: 'Labor',
+    seminar: 'Seminar',
+  }
+
+  function isUuid(value: string): boolean {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)
+  }
+
+  function findCourseInModules(courseId: string): { module: ModuleEntry; course: Course } | null {
+    for (const mod of modules.value) {
+      const course = mod.courses.find(c => c.id === courseId || c.code === courseId)
+      if (course) return { module: mod, course }
+    }
+    return null
+  }
+
+
+
+  function resolveHiddenSeriesTitle(seriesId: string, fallback: string): string {
+    if (seriesId.startsWith('module:')) {
+      const moduleId = seriesId.slice('module:'.length)
+      const mod = modules.value.find(m => m.id === moduleId)
+      if (mod) return mod.name
+    }
+    if (seriesId.startsWith('lsf:')) {
+      const parts = seriesId.split(':')
+      if (parts.length >= 3) {
+        const courseId = parts[1]
+        const eventType = parts.slice(2).join(':')
+        const typeLabel = EVENT_TYPE_LABELS[eventType] ?? eventType
+        const found = findCourseInModules(courseId)
+        if (found) return `${found.module.name} — ${typeLabel}`
+        if (!isUuid(courseId)) return `${courseId} — ${typeLabel}`
+        return typeLabel
+      }
+    }
+    return fallback
+  }
+
   const hiddenSeriesItems = computed(() =>
     Array.from(hiddenSeriesIds.value)
       .sort((left, right) => left.localeCompare(right, 'de'))
       .map((seriesId) => ({
         seriesId,
-        title: hiddenSeriesTitles.value.get(seriesId) ?? seriesId,
+        title: resolveHiddenSeriesTitle(seriesId, hiddenSeriesTitles.value.get(seriesId) ?? seriesId),
       }))
   )
+
+  const WEEKDAY_LABELS = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
+
+  const hiddenPageEntries = computed<HiddenPageEntry[]>(() => {
+    const entries: HiddenPageEntry[] = []
+    const seenSeries = new Set<string>()
+    const sourceEvents = isWeeklyPreviewMode.value ? weeklyPreviewEvents.value : weeklyScheduleEvents.value
+
+    for (const event of sourceEvents) {
+      const inSeries = hiddenSeriesIds.value.has(event.seriesId)
+      const isSingleOccurrence = !inSeries && !!event.occurrenceId && hiddenEventIds.value.has(event.occurrenceId)
+
+      if (!inSeries && !isSingleOccurrence) continue
+
+      if (inSeries) {
+        if (seenSeries.has(event.seriesId)) continue
+        seenSeries.add(event.seriesId)
+      }
+
+      entries.push({
+        id: inSeries ? event.seriesId : (event.occurrenceId ?? event.id),
+        seriesId: event.seriesId,
+        isSeries: inSeries,
+        title: resolveHiddenSeriesTitle(event.seriesId, event.title),
+        subtitle: event.subtitle ?? null,
+        dayIndex: event.dayIndex,
+        dayLabel: WEEKDAY_LABELS[event.dayIndex] ?? '',
+        startTime: event.startTime,
+        endTime: event.endTime,
+      })
+    }
+
+    return entries
+  })
 
   function clearSelectionMessages() {
     profileError.value = null
@@ -196,6 +293,7 @@ export function createAppControllerState() {
     hiddenSeriesTitles.value = new Map()
     hiddenEventIds.value = new Set()
     lastHiddenSeries.value = null
+    showHiddenEvents.value = false
   }
 
   return {
@@ -219,6 +317,9 @@ export function createAppControllerState() {
     demoUserProfile,
     error,
     hiddenEventIds,
+    hiddenPageEntries,
+    hiddenPageError,
+    hiddenPageLoading,
     hiddenSeriesIds,
     hiddenSeriesItems,
     hiddenSeriesTitles,
@@ -248,6 +349,9 @@ export function createAppControllerState() {
     studyProgramItems,
     studyPrograms,
     userEvents,
+    displayedWeeklyPreviewEvents,
+    displayedWeeklyScheduleEvents,
+    showHiddenEvents,
     visibleWeeklyPreviewEvents,
     visibleWeeklyScheduleEvents,
     weekStartDate,

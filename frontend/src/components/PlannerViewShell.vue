@@ -16,6 +16,7 @@ const props = defineProps<{
   scheduleVisibilityInfo: string | null
   lastHiddenSeries: { seriesId: string; title: string } | null
   hiddenSeriesItems: Array<{ seriesId: string; title: string }>
+  showHiddenEvents: boolean
   modules: ModuleEntry[]
   visibleWeeklyScheduleEvents: {
     id: string
@@ -36,6 +37,8 @@ const emit = defineEmits<{
   'hide-series': [payload: { seriesId: string; title: string }]
   'show-series': [seriesId: string]
   'show-all-series': []
+  'toggle-show-hidden': []
+  'navigate-to-hidden-page': []
   'undo-hide-series': []
   'select-module': [module: ModuleEntry]
 }>()
@@ -98,12 +101,15 @@ const emit = defineEmits<{
       v-if="activePlannerView === 'week'"
       :events="visibleWeeklyScheduleEvents"
       :hidden-series-items="hiddenSeriesItems"
+      :show-hidden-events="showHiddenEvents"
       :loading="loading"
       :error="error"
       :week-start="weekStartDate"
       @hide-series="emit('hide-series', $event)"
       @show-series="emit('show-series', $event)"
       @show-all-series="emit('show-all-series')"
+      @toggle-show-hidden="emit('toggle-show-hidden')"
+      @navigate-to-hidden-page="emit('navigate-to-hidden-page')"
     />
 
     <ModuleList v-else-if="!loading" :modules="modules" @select="emit('select-module', $event)" />
