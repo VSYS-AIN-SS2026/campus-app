@@ -177,7 +177,7 @@ async function onSidebarNavigate(target: SidebarSection) {
           </button>
         </div>
       </div>
-    </header>
+     </header>
 
     <!-- ===================== AUTH-BYPASS-START ===================== -->
     <div v-if="isAuthBypassEnabled && currentUser" class="auth-bypass-banner">
@@ -350,6 +350,7 @@ async function onSidebarNavigate(target: SidebarSection) {
 
 .app-layout {
   display: flex;
+  /* Adjust for header (3.5rem) + optional bypass banner (~2.5rem in dev) */
   min-height: calc(100vh - 3.5rem);
   position: relative;
 }
@@ -440,6 +441,7 @@ async function onSidebarNavigate(target: SidebarSection) {
   padding-left: 8px;
 }
 
+/* ===================== AUTH-BYPASS-START ===================== */
 .auth-bypass-banner {
   background: linear-gradient(90deg, var(--color-primary), var(--color-primary-light));
   color: white;
@@ -461,4 +463,5 @@ async function onSidebarNavigate(target: SidebarSection) {
   opacity: 0.95;
   font-size: 0.76rem;
 }
+/* ===================== AUTH-BYPASS-END ===================== */
 </style>

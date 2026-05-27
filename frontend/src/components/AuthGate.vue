@@ -1,4 +1,7 @@
 <script setup lang="ts">
+// Development-only: Check if auth bypass is enabled
+const isAuthBypassEnabled = import.meta.env.DEV && import.meta.env.VITE_AUTH_BYPASS === 'true'
+
 defineProps<{
   magicLinkRedirectTo: string
   authFirstName: string
@@ -25,6 +28,11 @@ const emit = defineEmits<{
       <p class="auth-subtitle">
         Melde dich mit deiner E-Mail-Adresse an. Wir schicken dir sofort einen sicheren Link zum Einloggen.
       </p>
+      <!-- ===================== AUTH-BYPASS-START ===================== -->
+      <p v-if="isAuthBypassEnabled" class="auth-bypass-notice">
+        <strong>Development Mode:</strong> Auth-Bypass aktiviert. Du kannst direkt mit Vor- und Nachname fortfahren.
+      </p>
+      <!-- ===================== AUTH-BYPASS-END ===================== -->
     </header>
 
     <div class="auth-divider" />
@@ -59,26 +67,46 @@ const emit = defineEmits<{
         </div>
       </div>
 
-      <div class="field-group">
-        <label class="field-label" for="magic-link-email">E-Mail-Adresse</label>
-        <input
-          id="magic-link-email"
-          :value="authEmail"
-          class="auth-input"
-          type="email"
-          autocomplete="email"
-          placeholder="name@beispiel.de"
-          required
-          @input="emit('update:authEmail', ($event.target as HTMLInputElement).value)"
-        >
-      </div>
+      <!-- ===================== AUTH-BYPASS-START ===================== -->
+      <template v-if="!isAuthBypassEnabled">
+        <div class="field-group">
+          <label class="field-label" for="magic-link-email">E-Mail-Adresse</label>
+          <input
+            id="magic-link-email"
+            :value="authEmail"
+            class="auth-input"
+            type="email"
+            autocomplete="email"
+            placeholder="name@beispiel.de"
+            required
+            @input="emit('update:authEmail', ($event.target as HTMLInputElement).value)"
+          >
+        </div>
+      </template>
+      <!-- ===================== AUTH-BYPASS-END ===================== -->
 
       <div class="auth-actions">
-        <button class="save-button app-button" type="submit" :disabled="authSending">
-          {{ authSending ? 'Wird versendet…' : 'Magic Link senden' }}
+        <!-- ===================== AUTH-BYPASS-START ===================== -->
+        <button
+          class="save-button app-button"
+          type="submit"
+          :disabled="authSending"
+        >
+          {{
+            isAuthBypassEnabled
+              ? (authSending ? 'Wird geladen…' : 'Als Demo-User fortfahren')
+              : (authSending ? 'Wird versendet…' : 'Magic Link senden')
+          }}
         </button>
+        <!-- ===================== AUTH-BYPASS-END ===================== -->
         <p class="auth-redirect-hint">
-          Nach dem Klick landest du automatisch wieder in der App.
+          <!-- ===================== AUTH-BYPASS-START ===================== -->
+          {{
+            isAuthBypassEnabled
+              ? 'Development-Modus aktiviert.'
+              : 'Nach dem Klick landest du automatisch wieder in der App.'
+          }}
+          <!-- ===================== AUTH-BYPASS-END ===================== -->
         </p>
       </div>
     </form>
@@ -132,6 +160,19 @@ const emit = defineEmits<{
   color: var(--color-text-muted);
   line-height: 1.55;
 }
+
+/* ===================== AUTH-BYPASS-START ===================== */
+.auth-bypass-notice {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  padding: var(--space-md);
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  border-left: 0.25rem solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  line-height: 1.5;
+}
+/* ===================== AUTH-BYPASS-END ===================== */
 
 .auth-divider {
   height: 0.0625rem;

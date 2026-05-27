@@ -6,17 +6,32 @@ function getTrimmedString(value: unknown) {
   return typeof value === 'string' ? value.trim() : ''
 }
 
+/**
+ * Development-only auth bypass for local development without Magic Link emails.
+ * This function is guarded by environment checks and should never be active in production.
+ */
 function isAuthBypassEnabled(): boolean {
-  if (!import.meta.env.DEV) return false
-  return import.meta.env.VITE_AUTH_BYPASS === 'true'
+  // Only enable in development mode with explicit env var
+  if (!import.meta.env.DEV) {
+    return false
+  }
+  const bypassEnv = import.meta.env.VITE_AUTH_BYPASS
+  return bypassEnv === 'true'
 }
 
+/**
+ * Log a message only in auth bypass mode
+ */
 function bypassLog(message: string, ...args: unknown[]) {
   if (isAuthBypassEnabled()) {
     console.log(`[Auth-Bypass] ${message}`, ...args)
   }
 }
 
+/**
+ * Creates a mock demo user for auth bypass.
+ * Uses Demo-User email (alex.beispiel@htwg-konstanz.de) for RPC compatibility.
+ */
 function createDemoUser(): any {
   return {
     id: 'demo-user-local-dev',
@@ -150,6 +165,8 @@ export function createAuthController(
     state.authError.value = null
     state.authInfo.value = null
 
+    // ===================== AUTH-BYPASS-START =====================
+    // Development-only bypass: Simulate user login without Magic Link email
     if (isAuthBypassEnabled()) {
       const normalizedFirstName = state.authFirstName.value.trim()
       const normalizedLastName = state.authLastName.value.trim()
@@ -166,6 +183,7 @@ export function createAuthController(
 
       state.authSending.value = true
 
+      // Create demo user with provided name but demo email for RPC compatibility
       const demoUser = createDemoUser()
       demoUser.user_metadata.first_name = normalizedFirstName
       demoUser.user_metadata.last_name = normalizedLastName
@@ -173,19 +191,23 @@ export function createAuthController(
 
       state.currentUser.value = demoUser
 
+      // Log bypass usage
       bypassLog('Demo user logged in:', normalizedFirstName, normalizedLastName)
 
       state.authSending.value = false
       state.authInfo.value = `Demo-User "${normalizedFirstName} ${normalizedLastName}" geladen (Entwicklungsmodus).`
 
+      // Trigger initial data fetch (with error handling for RLS failures)
       try {
         await deps.fetchInitialData()
       }
       catch (error) {
         console.error('[Auth-Bypass] fetchInitialData error (non-critical):', error)
+        // Continue anyway - data loading errors shouldn't block the UI in bypass mode
       }
       return
     }
+    // ===================== AUTH-BYPASS-END =====================
 
     if (!supabase) {
       state.authError.value = supabaseConfigError
@@ -261,23 +283,21 @@ export function createAuthController(
   }
 
   async function initAuth() {
-    state.authError.value = null
-    state.authInfo.value = null
-
+    // Development-only bypass
     if (isAuthBypassEnabled()) {
-      console.log('Auth bypass enabled, initializing demo user...');
-      const demoUser = createDemoUser();
-      state.currentUser.value = demoUser;
-      state.authLoading.value = false;
-      deps.fetchInitialData()
-        .then(() => {
-          console.log('Initial data loaded for demo user.');
-        })
-        .catch((error) => {
-          console.error('[Auth-Bypass] fetchInitialData error (non-critical):', error);
-          state.authLoading.value = false;
-        });
-      return;
+      bypassLog('Auth bypass enabled, initializing demo user...')
+      const demoUser = createDemoUser()
+      state.currentUser.value = demoUser
+      state.authLoading.value = false
+      try {
+        await deps.fetchInitialData()
+        bypassLog('Initial data loaded for demo user.')
+      }
+      catch (error) {
+        console.error('[Auth-Bypass] fetchInitialData error (non-critical):', error)
+        state.authLoading.value = false
+      }
+      return
     }
 
     if (!supabase) {
