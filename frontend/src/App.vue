@@ -406,7 +406,7 @@ async function onSidebarNavigate(target: SidebarSection) {
   box-shadow: 0 2px 8px color-mix(in srgb, var(--color-primary) 30%, transparent);
 }
 
-.bypass-label { flex: 0 0 auto; }
+.bypass-label {
   padding: 0.5rem 0.75rem;
   font-size: 0.8rem;
   font-weight: 600;
