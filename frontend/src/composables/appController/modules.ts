@@ -174,6 +174,10 @@ export function createModulesController(state: AppControllerState) {
       setModuleStatus(moduleId, savedStatus.status)
     }
 
+    if (status === 'belegt' && currentModule) {
+      state.lsfImportModule.value = currentModule
+    }
+
     await fetchWeeklySchedule()
   }
 

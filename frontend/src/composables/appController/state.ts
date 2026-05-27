@@ -7,6 +7,7 @@ import type {
   StudyProgram,
   UserProfile,
 } from '../../types'
+import type { UserEventRow } from '../../types/schedule'
 import {
   getSpoLabel,
   getStartOfCurrentWeek,
@@ -18,6 +19,7 @@ import {
   type WeeklyScheduleRpcRow,
   type WeeklyScheduleEvent,
 } from './shared'
+import type { ModuleStatus } from '../../types'
 
 export function createAppControllerState() {
   const studyPrograms = ref<StudyProgram[]>([])
@@ -31,6 +33,7 @@ export function createAppControllerState() {
 
   const modules = ref<ModuleEntry[]>([])
   const selectedModule = ref<ModuleEntry | null>(null)
+  const lsfImportModule = ref<ModuleEntry | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
   const moduleStatusError = ref<string | null>(null)
@@ -58,6 +61,7 @@ export function createAppControllerState() {
   const hiddenSeriesTitles = ref<Map<string, string>>(new Map())
   const hiddenEventIds = ref<Set<string>>(new Set())
   const lastHiddenSeries = ref<{ seriesId: string; title: string } | null>(null)
+  const userEvents = ref<UserEventRow[]>([])
 
   const currentUserEmail = computed(() => currentUser.value?.email ?? '')
   const activePlannerView = ref<PlannerView>('week')
@@ -100,6 +104,21 @@ export function createAppControllerState() {
 
   const weeklyScheduleEvents = ref<WeeklyScheduleEvent[]>([])
 
+  const allScheduleEvents = computed<WeeklyScheduleEvent[]>(() => {
+    const importedEvents: WeeklyScheduleEvent[] = userEvents.value.map(ue => ({
+      id: ue.id,
+      seriesId: ue.series_id,
+      occurrenceId: ue.id,
+      dayIndex: ue.day_index,
+      title: ue.title,
+      subtitle: ue.subtitle ?? undefined,
+      startTime: ue.start_time.slice(0, 5),
+      endTime: ue.end_time.slice(0, 5),
+      status: ue.status as ModuleStatus,
+    }))
+    return [...weeklyScheduleEvents.value, ...importedEvents]
+  })
+
   function applyHiddenSeries(rows: HiddenSeriesRow[]) {
     hiddenSeriesIds.value = new Set(rows.map(row => row.series_id.trim()).filter(Boolean))
     hiddenSeriesTitles.value = new Map(
@@ -128,7 +147,7 @@ export function createAppControllerState() {
   }
 
   const visibleWeeklyScheduleEvents = computed<WeeklyScheduleEvent[]>(() =>
-    weeklyScheduleEvents.value.filter(event =>
+    allScheduleEvents.value.filter(event =>
       !hiddenSeriesIds.value.has(event.seriesId)
       && (!event.occurrenceId || !hiddenEventIds.value.has(event.occurrenceId))
     )
@@ -151,7 +170,7 @@ export function createAppControllerState() {
   )
 
   const hiddenOccurrenceItems = computed(() => {
-    const allEvents = [...weeklyScheduleEvents.value, ...weeklyPreviewEvents.value]
+    const allEvents = [...allScheduleEvents.value, ...weeklyPreviewEvents.value]
     const byOccurrenceId = new Map(
       allEvents
         .filter(event => !!event.occurrenceId)
@@ -196,6 +215,7 @@ export function createAppControllerState() {
     profileSaving.value = false
     savingModuleId.value = null
     loadedUserId.value = null
+    lsfImportModule.value = null
     hiddenSeriesIds.value = new Set()
     hiddenSeriesTitles.value = new Map()
     hiddenEventIds.value = new Set()
@@ -233,6 +253,7 @@ export function createAppControllerState() {
     lastHiddenSeries,
     loadedUserId,
     loading,
+    lsfImportModule,
     moduleStatusError,
     modules,
     profileError,
@@ -253,6 +274,7 @@ export function createAppControllerState() {
     spoItems,
     studyProgramItems,
     studyPrograms,
+    userEvents,
     visibleWeeklyPreviewEvents,
     visibleWeeklyScheduleEvents,
     weekStartDate,

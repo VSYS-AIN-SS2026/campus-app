@@ -12,6 +12,7 @@
   --color-primary-dark:   #00457f;
   --color-primary-light:  #2f79b8;
   --color-primary-glow:   #2f79b826;
+  --color-primary-subtle: rgba(0, 92, 169, 0.10);
 
   --color-text:           #132236;
   --color-text-muted:     #4a6079;

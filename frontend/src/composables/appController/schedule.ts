@@ -1,4 +1,5 @@
 import { supabase, supabaseConfigError } from '../../supabase'
+import type { UserEventRow } from '../../types/schedule'
 import type { AppControllerState } from './state'
 
 function normalizeSeriesId(seriesId: string) {
@@ -145,6 +146,16 @@ export function createScheduleController(state: AppControllerState) {
     }
   }
 
+  async function loadImportedEvents() {
+    if (!supabase) return
+
+    const { data, error } = await supabase.rpc('get_demo_user_events')
+
+    if (!error && data) {
+      state.userEvents.value = (data ?? []) as UserEventRow[]
+    }
+  }
+
   async function hideScheduleOccurrence(occurrenceId: string) {
     const normalizedOccurrenceId = normalizeOccurrenceId(occurrenceId)
 
@@ -222,6 +233,7 @@ export function createScheduleController(state: AppControllerState) {
   return {
     hideScheduleOccurrence,
     hideScheduleSeries,
+    loadImportedEvents,
     showAllScheduleOccurrences,
     showAllScheduleSeries,
     showScheduleOccurrence,
