@@ -63,6 +63,7 @@ export function createAppControllerState() {
   const hiddenSeriesTitles = ref<Map<string, string>>(new Map())
   const hiddenEventIds = ref<Set<string>>(new Set())
   const lastHiddenSeries = ref<{ seriesId: string; title: string } | null>(null)
+  const showHiddenEvents = ref(false)
   const userEvents = ref<UserEventRow[]>([])
   const showHiddenEvents = ref(false)
   const hiddenPageLoading = computed(() => !loadedUserId.value && loading.value)
@@ -375,6 +376,9 @@ export function createAppControllerState() {
     spoItems,
     studyProgramItems,
     studyPrograms,
+    displayedWeeklyPreviewEvents,
+    displayedWeeklyScheduleEvents,
+    showHiddenEvents,
     userEvents,
     displayedWeeklyPreviewEvents,
     displayedWeeklyScheduleEvents,
