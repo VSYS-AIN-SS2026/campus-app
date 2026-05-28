@@ -248,11 +248,6 @@ export function createAuthController(
         return
       }
 
-      if (window.location.search.includes('devpreview=1')) {
-        state.authLoading.value = false
-        return
-      }
-
       void initAuth()
     })
 
