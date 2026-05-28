@@ -21,6 +21,7 @@ import {
   type WeeklyScheduleRpcRow,
   type WeeklyScheduleEvent,
 } from './shared'
+import type { ModuleStatus } from '../../types'
 
 export function createAppControllerState() {
   const studyPrograms = ref<StudyProgram[]>([])
@@ -108,6 +109,21 @@ export function createAppControllerState() {
 
   const weeklyScheduleEvents = ref<WeeklyScheduleEvent[]>([])
 
+  const allScheduleEvents = computed<WeeklyScheduleEvent[]>(() => {
+    const importedEvents: WeeklyScheduleEvent[] = userEvents.value.map(ue => ({
+      id: ue.id,
+      seriesId: ue.series_id,
+      occurrenceId: ue.id,
+      dayIndex: ue.day_index,
+      title: ue.title,
+      subtitle: ue.subtitle ?? undefined,
+      startTime: ue.start_time.slice(0, 5),
+      endTime: ue.end_time.slice(0, 5),
+      status: ue.status as ModuleStatus,
+    }))
+    return [...weeklyScheduleEvents.value, ...importedEvents]
+  })
+
   function applyHiddenSeries(rows: HiddenSeriesRow[]) {
     hiddenSeriesIds.value = new Set(rows.map(row => row.series_id.trim()).filter(Boolean))
     hiddenSeriesTitles.value = new Map(
@@ -136,7 +152,7 @@ export function createAppControllerState() {
   }
 
   const visibleWeeklyScheduleEvents = computed<WeeklyScheduleEvent[]>(() =>
-    weeklyScheduleEvents.value.filter(event =>
+    allScheduleEvents.value.filter(event =>
       !hiddenSeriesIds.value.has(event.seriesId)
       && (!event.occurrenceId || !hiddenEventIds.value.has(event.occurrenceId))
     )
@@ -251,7 +267,7 @@ export function createAppControllerState() {
   })
 
   const hiddenOccurrenceItems = computed(() => {
-    const allEvents = [...weeklyScheduleEvents.value, ...weeklyPreviewEvents.value]
+    const allEvents = [...allScheduleEvents.value, ...weeklyPreviewEvents.value]
     const byOccurrenceId = new Map(
       allEvents
         .filter(event => !!event.occurrenceId)
