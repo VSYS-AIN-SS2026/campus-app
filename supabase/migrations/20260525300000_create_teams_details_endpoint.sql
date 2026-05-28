@@ -1,33 +1,30 @@
--- VSYS26T4-57: Endpoint für Team-Details
--- DTO: (name, description, members [{name, email}])
+-- VSYS26T4-57: get_team_details() RPC – Details + Mitglieder eines Teams
+-- Ersetzt die Version aus 20260524122000 (gleiche Signatur, verbesserte JOIN-Logik)
 
-CREATE OR REPLACE FUNCTION public.get_team_details(p_team_id UUID)
+CREATE OR REPLACE FUNCTION public.get_team_details(p_team_id INTEGER)
 RETURNS TABLE (
-  name        TEXT,
-  description TEXT,
-  members     JSONB
+  team_name        TEXT,
+  description      TEXT,
+  member_full_name TEXT,
+  member_email     TEXT
 )
-LANGUAGE SQL
+LANGUAGE sql
+STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
   SELECT
-    t.name,
+    t.name        AS team_name,
     t.description,
-    COALESCE(
-      jsonb_agg(
-        jsonb_build_object('name', pu.full_name, 'email', pu.email)
-        ORDER BY pu.full_name
-      ) FILTER (WHERE pu.id IS NOT NULL),
-      '[]'::jsonb
-    ) AS members
+    u.full_name   AS member_full_name,
+    u.email       AS member_email
   FROM public.teams t
   LEFT JOIN public.team_members tm ON tm.team_id = t.id
-  LEFT JOIN public.users pu ON pu.auth_user_id = tm.user_id
+  LEFT JOIN public.users u         ON u.id = tm.user_id
   WHERE t.id = p_team_id
-  GROUP BY t.id, t.name, t.description;
+  ORDER BY u.full_name NULLS LAST;
 $$;
 
-REVOKE ALL ON FUNCTION public.get_team_details(UUID) FROM public;
-GRANT EXECUTE ON FUNCTION public.get_team_details(UUID) TO anon;
-GRANT EXECUTE ON FUNCTION public.get_team_details(UUID) TO authenticated;
+REVOKE ALL ON FUNCTION public.get_team_details(INTEGER) FROM public;
+GRANT EXECUTE ON FUNCTION public.get_team_details(INTEGER) TO anon;
+GRANT EXECUTE ON FUNCTION public.get_team_details(INTEGER) TO authenticated;
