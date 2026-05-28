@@ -9,13 +9,6 @@ import Sidebar from './components/Sidebar.vue'
 import { useAppController } from './composables/useAppController'
 
 const { magicLinkRedirectTo, allCategories, activePlannerView, authEmail, authError, authFirstName, authInfo, authLastName, authLoading, authSending, canEditModuleStatuses, categoryError, currentUser, currentUserEmail, demoUserProfile, error, hiddenSeriesItems, isWeeklyPreviewMode, lastHiddenSeries, loading, modules, moduleStatusError, profileError, profileInfo, profileSaving, savedSpo, savedStudyProgram, savingCategoryModuleId, savingModuleId, scheduleVisibilityError, scheduleVisibilityInfo, selectedModule, selectedSpoId, selectedStudyProgramId, selectionDirty, spoItems, studyProgramItems, visibleWeeklyPreviewEvents, visibleWeeklyScheduleEvents, weekStartDate, getSpoLabel, getStudyProgramLabel, hideScheduleSeries, saveModuleCategories, saveModuleStatus, saveStudyProfileSelection, sendMagicLink, showAllScheduleSeries, showScheduleSeries, signOut, undoHideScheduleSeries } = useAppController()
-// =====================
-// DEV-BYPASS-START: Demo-User für Preview ohne Login
-// Entferne diesen Block nach dem Development!
-const isDevBypass = typeof window !== 'undefined' && window.location.search.includes('devpreview=1')
-// =====================
-// DEV-BYPASS-END
-
 type SidebarSection = 'modules' | 'calendar' | 'profile'
 type ThemeMode = 'light' | 'dark'
 
@@ -103,7 +96,7 @@ async function onSidebarNavigate(target: SidebarSection) {
         </div>
         <div class="header-actions">
           <button
-            v-if="currentUser || isDevBypass || isWeeklyPreviewMode"
+            v-if="currentUser || isWeeklyPreviewMode"
             type="button"
             class="sidebar-toggle ghost-button"
             :aria-expanded="sidebarOpen"
@@ -136,14 +129,14 @@ async function onSidebarNavigate(target: SidebarSection) {
     <div class="app-layout">
       <transition name="sidebar-overlay">
         <div
-          v-if="(currentUser || isDevBypass || isWeeklyPreviewMode) && sidebarOpen"
+          v-if="(currentUser || isWeeklyPreviewMode) && sidebarOpen"
           class="sidebar-overlay"
           aria-hidden="true"
           @click="sidebarOpen = false"
         />
       </transition>
       <Sidebar
-        v-if="currentUser || isDevBypass || isWeeklyPreviewMode"
+        v-if="currentUser || isWeeklyPreviewMode"
         id="app-sidebar"
         :active-section="sidebarActiveSection"
         :is-open="sidebarOpen"
@@ -173,8 +166,7 @@ async function onSidebarNavigate(target: SidebarSection) {
             </div>
           </template>
 
-          <!-- ===================== DEV-BYPASS-START ===================== -->
-          <template v-else-if="!currentUser && !isDevBypass">
+          <template v-else-if="!currentUser">
             <AuthGate
               :magic-link-redirect-to="magicLinkRedirectTo"
               :auth-first-name="authFirstName"
@@ -189,7 +181,6 @@ async function onSidebarNavigate(target: SidebarSection) {
               @submit="sendMagicLink"
             />
           </template>
-          <!-- ===================== DEV-BYPASS-END ===================== -->
           <template v-else>
             <section id="module-header-section" class="content-section">
               <section id="profile-section" class="content-subsection">
@@ -246,9 +237,8 @@ async function onSidebarNavigate(target: SidebarSection) {
     </div>
   </div>
 
-  <!-- ===================== DEV-BYPASS-START ===================== -->
   <ModuleDrawer
-    v-if="currentUser || isDevBypass"
+    v-if="currentUser"
     :module="selectedModule"
     :categories="allCategories"
     :saving="savingModuleId === selectedModule?.id"
@@ -261,7 +251,6 @@ async function onSidebarNavigate(target: SidebarSection) {
     @update-status="saveModuleStatus"
     @update-categories="saveModuleCategories"
   />
-  <!-- ===================== DEV-BYPASS-END ===================== -->
 </template>
 
 <style scoped src="./app.css"></style>
