@@ -402,7 +402,7 @@ onUnmounted(() => {
             v-for="event in selectedEvents"
             :key="`mobile-evt-${event.id}`"
             class="mobile-event"
-            :class="`event-${event.status}`"
+            :class="[`event-${event.status}`, { 'event-hidden': event.isHidden }]"
             :style="{ ...props.eventStyle(event.start, event.end), position: 'absolute', left: '0.25rem', right: '0.25rem' }"
           >
             <strong class="event-title" :class="{ 'event-title-truncate': isSingleWordTitle(event.title) }">
@@ -410,6 +410,7 @@ onUnmounted(() => {
             </strong>
             <span class="mobile-event-range">{{ event.startTime }}–{{ event.endTime }}</span>
             <span v-if="event.subtitle" class="event-subtitle">{{ event.subtitle }}</span>
+            <span v-if="event.isHidden" class="event-hidden-label">Ausgeblendet</span>
             <button
               v-if="event.seriesId"
               type="button"
@@ -464,6 +465,8 @@ onUnmounted(() => {
 .event-offen { background: color-mix(in srgb, var(--color-warning-bg) 80%, transparent); border-color: color-mix(in srgb, var(--color-warning-border) 58%, transparent); }
 .event-belegt { background: color-mix(in srgb, var(--color-primary-glow) 65%, transparent); border-color: color-mix(in srgb, var(--color-primary-light) 55%, transparent); }
 .event-abgeschlossen { background: color-mix(in srgb, var(--color-success-bg) 80%, transparent); border-color: color-mix(in srgb, var(--color-success-border) 58%, transparent); }
+.event-hidden { opacity: 0.4; border-style: dashed !important; }
+.event-hidden-label { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-text-muted); }
 .event-title { font-size: 0.75rem; line-height: 1.25; color: var(--color-text); white-space: normal; overflow-wrap: break-word; word-break: normal; max-width: 100%; }
 .event-title-truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .event-subtitle { font-size: 0.68rem; color: var(--color-text-muted); line-height: 1.25; }

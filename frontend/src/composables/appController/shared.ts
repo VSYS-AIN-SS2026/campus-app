@@ -33,6 +33,18 @@ export type WeeklyScheduleEvent = {
   status: ModuleStatus
 }
 
+export type HiddenPageEntry = {
+  id: string
+  seriesId: string
+  isSeries: boolean
+  title: string
+  subtitle: string | null
+  dayIndex: number
+  dayLabel: string
+  startTime: string
+  endTime: string
+}
+
 export type HiddenSeriesRow = {
   series_id: string
   updated_at: string

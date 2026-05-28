@@ -7,8 +7,21 @@ import type {
   StudyProgram,
   UserProfile,
 } from '../../types'
+import type { UserEventRow } from '../../types/schedule'
 import type { AppControllerState } from './state'
 import type { HiddenSeriesRow } from './shared'
+
+/**
+ * Development-only: Check if auth bypass is enabled
+ * Used to provide fallback behavior when Supabase RLS/Auth might fail
+ */
+function isAuthBypassEnabled(): boolean {
+  if (!import.meta.env.DEV) {
+    return false
+  }
+  const bypassEnv = import.meta.env.VITE_AUTH_BYPASS
+  return bypassEnv === 'true'
+}
 
 export function createProfileController(
   state: AppControllerState,
@@ -36,6 +49,12 @@ export function createProfileController(
       return
     }
 
+    // ===================== AUTH-BYPASS-START =====================
+    // In bypass mode: Handle RLS/Auth failures gracefully
+    // The demo user might not have proper Supabase session for RLS checks
+    const bypassMode = isAuthBypassEnabled()
+    // ===================== AUTH-BYPASS-END =====================
+
     const [spRes, spoRes, hbRes, categoryRes, profileRes, hiddenSeriesRes] = await Promise.all([
       supabase.from('study_programs').select('id, faculty_id, code, name').order('name').order('code'),
       supabase
@@ -52,10 +71,37 @@ export function createProfileController(
 
     state.loading.value = false
 
-    if (spRes.error) { state.error.value = spRes.error.message; return }
-    if (spoRes.error) { state.error.value = spoRes.error.message; return }
-    if (hbRes.error) { state.error.value = hbRes.error.message; return }
-    if (categoryRes.error) { state.categoryError.value = categoryRes.error.message }
+    // ===================== AUTH-BYPASS-START =====================
+    // In bypass mode: Log errors but don't stop execution
+    if (bypassMode) {
+      // Log any errors for debugging but continue
+      if (spRes.error) {
+        console.warn('[Auth-Bypass] Study programs fetch error:', spRes.error)
+      }
+      if (spoRes.error) {
+        console.warn('[Auth-Bypass] SPOs fetch error:', spoRes.error)
+      }
+      if (hbRes.error) {
+        console.warn('[Auth-Bypass] Module handbooks fetch error:', hbRes.error)
+      }
+      if (categoryRes.error) {
+        console.warn('[Auth-Bypass] Categories fetch error:', categoryRes.error)
+      }
+      if (profileRes.error) {
+        console.warn('[Auth-Bypass] Profile RPC error:', profileRes.error)
+      }
+      if (hiddenSeriesRes.error) {
+        console.warn('[Auth-Bypass] Hidden series RPC error:', hiddenSeriesRes.error)
+      }
+    }
+    else {
+      // Normal mode: Strict error handling
+      if (spRes.error) { state.error.value = spRes.error.message; return }
+      if (spoRes.error) { state.error.value = spoRes.error.message; return }
+      if (hbRes.error) { state.error.value = hbRes.error.message; return }
+      if (categoryRes.error) { state.categoryError.value = categoryRes.error.message }
+    }
+    // ===================== AUTH-BYPASS-END =====================
 
     if (hiddenSeriesRes.error) {
       state.scheduleVisibilityError.value = 'Verborgene Terminreihen konnten nicht geladen werden.'
@@ -64,6 +110,7 @@ export function createProfileController(
       state.applyHiddenSeries((hiddenSeriesRes.data ?? []) as HiddenSeriesRow[])
     }
 
+    // Set data from responses (use empty arrays as fallback if data is null)
     state.studyPrograms.value = (spRes.data ?? []) as StudyProgram[]
     state.allSpos.value = (spoRes.data ?? []) as Spo[]
     state.allHandbooks.value = (hbRes.data ?? []) as ModuleHandbook[]
@@ -106,6 +153,11 @@ export function createProfileController(
 
     if (state.selectedSpoId.value) {
       await deps.fetchModulesForSpo(state.selectedSpoId.value, deps.beginModuleRequest())
+    }
+
+    const { data: eventData } = await supabase.rpc('get_demo_user_events')
+    if (eventData) {
+      state.userEvents.value = eventData as UserEventRow[]
     }
 
     state.loadedUserId.value = state.currentUser.value.id
