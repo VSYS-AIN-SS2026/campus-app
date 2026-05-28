@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { RouterView, useRoute, useRouter } from 'vue-router'
 import AuthGate from './components/AuthGate.vue'
 import HiddenPage from './components/HiddenPage.vue'
 import LsfEventImportModal from './components/LsfEventImportModal.vue'
@@ -270,6 +270,9 @@ async function onSidebarNavigate(target: SidebarSection) {
               />
             </template>
             <!-- ===================== DEV-BYPASS-END ===================== -->
+            <template v-else-if="isTeamsRoute">
+              <RouterView />
+            </template>
             <template v-else>
               <section id="module-header-section" class="content-section">
                 <section id="profile-section" class="content-subsection">
