@@ -9,8 +9,11 @@ import ProfileSelectionPanel from './components/ProfileSelectionPanel.vue'
 import WeeklySchedule from './components/WeeklySchedule.vue'
 import Sidebar from './components/Sidebar.vue'
 import { useAppController } from './composables/useAppController'
+import TeamsManager from './components/TeamsManager.vue'
+import { useTeams } from './composables/useTeams'
 
 const { magicLinkRedirectTo, allCategories, activePlannerView, authEmail, authError, authFirstName, authInfo, authLastName, authLoading, authSending, canEditModuleStatuses, categoryError, currentUser, currentUserEmail, demoUserProfile, displayedWeeklyPreviewEvents, displayedWeeklyScheduleEvents, error, hiddenPageEntries, hiddenPageError, hiddenPageLoading, hiddenSeriesItems, isWeeklyPreviewMode, lastHiddenSeries, loadImportedEvents, loading, lsfImportModule, modules, moduleStatusError, profileError, profileInfo, profileSaving, savedSpo, savedStudyProgram, savingCategoryModuleId, savingModuleId, scheduleVisibilityError, scheduleVisibilityInfo, selectedModule, selectedSpoId, selectedStudyProgramId, selectionDirty, showHiddenEvents, spoItems, studyProgramItems, weekStartDate, getSpoLabel, getStudyProgramLabel, hideScheduleSeries, saveModuleCategories, saveModuleStatus, saveStudyProfileSelection, sendMagicLink, showAllScheduleSeries, showScheduleSeries, signOut, undoHideScheduleSeries } = useAppController()
+const { invitationCount, fetchMyInvitations} = useTeams()
 
 function toggleShowHiddenEvents() {
   showHiddenEvents.value = !showHiddenEvents.value
@@ -30,7 +33,7 @@ const isDevBypass = typeof window !== 'undefined' && (
 // =====================
 // DEV-BYPASS-END
 
-type SidebarSection = 'modules' | 'calendar' | 'profile'
+type SidebarSection = 'modules' | 'calendar' | 'profile' | 'teams'
 type ThemeMode = 'light' | 'dark'
 
 const THEME_STORAGE_KEY = 'themeMode'
@@ -81,7 +84,9 @@ function updateActiveView() {
 
 let hashInterval: ReturnType<typeof setInterval> | null = null
 
-onMounted(() => {
+onMounted(async () => {
+  await fetchMyInvitations()
+
   window.addEventListener('hashchange', updateActiveView)
   updateActiveView()
   hashInterval = setInterval(updateActiveView, 500)
@@ -133,6 +138,12 @@ async function onSidebarNavigate(target: SidebarSection) {
 
     return
   }
+
+  if (target === 'teams') {
+    await nextTick()
+    scrollToSection('teams-section')
+    return
+  } 
 
   activePlannerView.value = 'modules'
   await nextTick()
@@ -211,6 +222,7 @@ async function onSidebarNavigate(target: SidebarSection) {
           id="app-sidebar"
           :active-section="sidebarActiveSection"
           :is-open="sidebarOpen"
+          :team-invitation-count="invitationCount"
           @navigate="onSidebarNavigate"
         />
         <div class="app-content">
@@ -309,6 +321,11 @@ async function onSidebarNavigate(target: SidebarSection) {
                   @select-module="selectedModule = $event"
                 />
                 </section>
+
+                <section id="teams-section" class="content-subsection" v-if="sidebarActiveSection === 'teams'">
+                  <TeamsManager />
+                </section>
+
               </section>
             </template>
           </main>
