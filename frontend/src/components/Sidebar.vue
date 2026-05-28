@@ -25,12 +25,20 @@
       >
         Profil
       </button>
+      <button
+        type="button"
+        class="sidebar-nav-item"
+        :class="activeSection === 'teams' ? 'sidebar-nav-item-active' : ''"
+        @click="select('teams')"
+      >
+        Teams
+      </button>
     </nav>
   </aside>
 </template>
 
 <script setup lang="ts">
-type SidebarSection = 'modules' | 'calendar' | 'profile'
+type SidebarSection = 'modules' | 'calendar' | 'profile' | 'teams'
 
 defineProps<{
   activeSection: SidebarSection

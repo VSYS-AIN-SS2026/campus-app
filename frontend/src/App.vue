@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import AuthGate from './components/AuthGate.vue'
 import HiddenPage from './components/HiddenPage.vue'
 import LsfEventImportModal from './components/LsfEventImportModal.vue'
@@ -30,8 +31,12 @@ const isDevBypass = typeof window !== 'undefined' && (
 // =====================
 // DEV-BYPASS-END
 
-type SidebarSection = 'modules' | 'calendar' | 'profile'
+type SidebarSection = 'modules' | 'calendar' | 'profile' | 'teams'
 type ThemeMode = 'light' | 'dark'
+
+const route = useRoute()
+const router = useRouter()
+const isTeamsRoute = computed(() => route.path.startsWith('/teams'))
 
 const THEME_STORAGE_KEY = 'themeMode'
 
@@ -54,10 +59,8 @@ const sidebarOpen = ref(false)
 const themeMode = ref<ThemeMode>(getInitialThemeMode())
 
 const derivedSidebarSection = computed<SidebarSection>(() => {
-  if (isWeeklyPreviewMode.value || activePlannerView.value === 'week') {
-    return 'calendar'
-  }
-
+  if (isTeamsRoute.value) return 'teams'
+  if (isWeeklyPreviewMode.value || activePlannerView.value === 'week') return 'calendar'
   return 'modules'
 })
 
@@ -119,6 +122,16 @@ async function onSidebarNavigate(target: SidebarSection) {
   sidebarActiveSection.value = target
   sidebarOpen.value = false
 
+  if (target === 'teams') {
+    router.push('/teams')
+    return
+  }
+
+  if (isTeamsRoute.value) {
+    await router.push('/')
+    await nextTick()
+  }
+
   if (target === 'calendar') {
     activePlannerView.value = 'week'
     await nextTick()
@@ -149,7 +162,7 @@ async function onSidebarNavigate(target: SidebarSection) {
         </div>
         <div class="header-actions">
           <button
-            v-if="currentUser || isDevBypass || isWeeklyPreviewMode"
+            v-if="currentUser || isDevBypass || isWeeklyPreviewMode || isTeamsRoute"
             type="button"
             class="sidebar-toggle ghost-button"
             :aria-expanded="sidebarOpen"
@@ -200,14 +213,14 @@ async function onSidebarNavigate(target: SidebarSection) {
       <div class="app-layout">
         <transition name="sidebar-overlay">
           <div
-            v-if="(currentUser || isDevBypass || isWeeklyPreviewMode) && sidebarOpen"
+            v-if="(currentUser || isDevBypass || isWeeklyPreviewMode || isTeamsRoute) && sidebarOpen"
             class="sidebar-overlay"
             aria-hidden="true"
             @click="sidebarOpen = false"
           />
         </transition>
         <Sidebar
-          v-if="currentUser || isDevBypass || isWeeklyPreviewMode"
+          v-if="currentUser || isDevBypass || isWeeklyPreviewMode || isTeamsRoute"
           id="app-sidebar"
           :active-section="sidebarActiveSection"
           :is-open="sidebarOpen"
