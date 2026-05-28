@@ -21,6 +21,7 @@ const props = withDefaults(defineProps<{
   loading?: boolean
   error?: string | null
   hiddenSeriesItems?: Array<{ seriesId: string; title: string }>
+  hiddenOccurrenceItems?: Array<{ occurrenceId: string; title: string }>
   showHiddenEvents?: boolean
   weekStart: Date
   startHour?: number
@@ -29,6 +30,7 @@ const props = withDefaults(defineProps<{
   loading: false,
   error: null,
   hiddenSeriesItems: () => [],
+  hiddenOccurrenceItems: () => [],
   startHour: 0,
   endHour: 24,
 })
@@ -42,7 +44,10 @@ function toLocalDateKey(value: Date): string {
 
 const emit = defineEmits<{
   'hide-series': [payload: { seriesId: string; title: string }]
+  'hide-occurrence': [occurrenceId: string]
   'show-series': [seriesId: string]
+  'show-occurrence': [occurrenceId: string]
+  'show-all-occurrences': []
   'show-all-series': []
   'toggle-show-hidden': []
   'navigate-to-hidden-page': []
@@ -241,8 +246,9 @@ onUnmounted(() => {
           </button>
           <button type="button" class="week-nav-btn app-button" @click="nextWeek">→</button>
         </div>
-        <div v-if="props.hiddenSeriesItems.length" class="week-hidden-controls">
+        <div v-if="props.hiddenSeriesItems.length || (props.hiddenOccurrenceItems?.length ?? 0) > 0" class="week-hidden-controls">
           <button
+            v-if="props.hiddenSeriesItems.length"
             type="button"
             class="show-hidden-btn app-button"
             :class="{ 'show-hidden-btn-active': props.showHiddenEvents }"
@@ -253,7 +259,10 @@ onUnmounted(() => {
           </button>
           <HiddenSeriesPopover
             :items="props.hiddenSeriesItems"
+            :occurrence-items="props.hiddenOccurrenceItems"
             @show-series="emit('show-series', $event)"
+            @show-occurrence="emit('show-occurrence', $event)"
+            @show-all-occurrences="emit('show-all-occurrences')"
             @show-all-series="emit('show-all-series')"
             @navigate-to-hidden-page="emit('navigate-to-hidden-page')"
           />
@@ -290,6 +299,7 @@ onUnmounted(() => {
         :now-line-top-percent="nowLineTopPercent"
         @today-visibility-change="isTodayVisibleInViewport = $event"
         @hide-series="emit('hide-series', $event)"
+        @hide-occurrence="emit('hide-occurrence', $event)"
       />
 
       <WeekMobileList
@@ -305,6 +315,7 @@ onUnmounted(() => {
         @selected-year-change="onSelectedYearChange"
         @selected-day-label-change="onMobileSelectedDayLabelChange"
         @hide-series="emit('hide-series', $event)"
+        @hide-occurrence="emit('hide-occurrence', $event)"
       />
     </template>
   </section>

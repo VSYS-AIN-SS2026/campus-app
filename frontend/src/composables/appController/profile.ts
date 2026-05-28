@@ -9,7 +9,7 @@ import type {
 } from '../../types'
 import type { UserEventRow } from '../../types/schedule'
 import type { AppControllerState } from './state'
-import type { HiddenSeriesRow } from './shared'
+import type { HiddenOccurrenceRow, HiddenSeriesRow } from './shared'
 
 /**
  * Development-only: Check if auth bypass is enabled
@@ -55,7 +55,7 @@ export function createProfileController(
     const bypassMode = isAuthBypassEnabled()
     // ===================== AUTH-BYPASS-END =====================
 
-    const [spRes, spoRes, hbRes, categoryRes, profileRes, hiddenSeriesRes] = await Promise.all([
+    const [spRes, spoRes, hbRes, categoryRes, profileRes, hiddenSeriesRes, hiddenOccurrencesRes] = await Promise.all([
       supabase.from('study_programs').select('id, faculty_id, code, name').order('name').order('code'),
       supabase
         .from('spos')
@@ -67,6 +67,7 @@ export function createProfileController(
       supabase.from('categories').select('id, name, color, type').order('type').order('name'),
       supabase.rpc('get_demo_user_profile').maybeSingle(),
       supabase.rpc('get_demo_user_hidden_schedule_series_ids'),
+      supabase.rpc('get_demo_user_hidden_schedule_occurrence_ids'),
     ])
 
     state.loading.value = false
@@ -110,7 +111,14 @@ export function createProfileController(
       state.applyHiddenSeries((hiddenSeriesRes.data ?? []) as HiddenSeriesRow[])
     }
 
-    // Set data from responses (use empty arrays as fallback if data is null)
+    if (hiddenOccurrencesRes.error) {
+      state.scheduleVisibilityError.value = 'Verborgene Einzeltermine konnten nicht geladen werden.'
+    }
+    else {
+      state.applyHiddenOccurrences((hiddenOccurrencesRes.data ?? []) as HiddenOccurrenceRow[])
+    }
+
+
     state.studyPrograms.value = (spRes.data ?? []) as StudyProgram[]
     state.allSpos.value = (spoRes.data ?? []) as Spo[]
     state.allHandbooks.value = (hbRes.data ?? []) as ModuleHandbook[]

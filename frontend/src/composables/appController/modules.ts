@@ -6,6 +6,7 @@ import {
   isActiveModuleRequest,
   type ModuleCategoryRow,
   type ModuleStatusRow,
+  type WeeklyScheduleRpcRow,
   shouldReplaceModule,
 } from './shared'
 
@@ -100,6 +101,32 @@ export function createModulesController(state: AppControllerState) {
     applyModuleCategories((data ?? []) as ModuleCategoryRow[])
   }
 
+  async function fetchWeeklySchedule(requestId?: number) {
+    state.scheduleVisibilityError.value = null
+
+    if (!supabase) {
+      state.scheduleVisibilityError.value = supabaseConfigError
+      return
+    }
+
+    const { data, error } = await supabase.rpc('get_demo_user_weekly_schedule', {
+      selected_week_start: null,
+      selected_time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    })
+
+    if (requestId != null && !isActiveModuleRequest(requestId)) {
+      return
+    }
+
+    if (error) {
+      state.applyWeeklyScheduleRows([])
+      state.scheduleVisibilityError.value = 'Die Wochenansicht konnte nicht geladen werden.'
+      return
+    }
+
+    state.applyWeeklyScheduleRows((data ?? []) as WeeklyScheduleRpcRow[])
+  }
+
   async function saveModuleStatus(moduleId: string, status: ModuleStatus) {
     if (!supabase) {
       state.moduleStatusError.value = supabaseConfigError
@@ -150,6 +177,8 @@ export function createModulesController(state: AppControllerState) {
     if (status === 'belegt' && currentModule) {
       state.lsfImportModule.value = currentModule
     }
+
+    await fetchWeeklySchedule()
   }
 
   async function saveModuleCategories(moduleId: string, categoryIds: string[]) {
@@ -293,6 +322,7 @@ export function createModulesController(state: AppControllerState) {
     await Promise.all([
       fetchModuleStatuses(moduleIds, requestId),
       fetchModuleCategories(moduleIds, requestId),
+      fetchWeeklySchedule(requestId),
     ])
 
     if (!isActiveModuleRequest(requestId)) {
@@ -307,6 +337,7 @@ export function createModulesController(state: AppControllerState) {
 
     if (!matchingHandbooks.length) {
       state.modules.value = []
+      state.applyWeeklyScheduleRows([])
       state.error.value = 'Zur ausgewählten SPO wurde kein Modulhandbuch gefunden.'
       state.loading.value = false
       return

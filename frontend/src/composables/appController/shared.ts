@@ -50,6 +50,42 @@ export type HiddenSeriesRow = {
   updated_at: string
 }
 
+export type HiddenOccurrenceRow = {
+  occurrence_id: string
+  updated_at: string
+}
+
+export type HiddenScheduleScope = 'series' | 'occurrence'
+
+export type HiddenScheduleEntryRow = {
+  hidden_scope: HiddenScheduleScope
+  reference_id: string
+  series_id: string | null
+  occurrence_id: string | null
+  updated_at: string
+}
+
+export type WeeklyScheduleRpcRow = {
+  event_id: string
+  occurrence_id: string
+  series_id: string
+  module_id: string
+  module_code: string
+  module_name: string
+  module_status: ModuleStatus
+  weekday_index: number
+  day_date: string
+  start_time: string
+  end_time: string
+  start_time_minutes: number
+  end_time_minutes: number
+  title: string
+  subtitle: string | null
+  is_hidden_series: boolean
+  is_hidden_occurrence: boolean
+  is_hidden: boolean
+}
+
 let activeModuleRequestId = 0
 
 export function beginModuleRequest() {
