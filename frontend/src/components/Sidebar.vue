@@ -27,12 +27,19 @@
       </button>
       <button
         type="button"
-        class="sidebar-nav-item"
+        class="sidebar-nav-item sidebar-nav-item-with-badge"
         :class="activeSection === 'teams' ? 'sidebar-nav-item-active' : ''"
         @click="select('teams')"
       >
-        Teams
-      </button>
+        <span>Meine Teams</span>
+
+        <span
+          v-if="teamInvitationCount && teamInvitationCount > 0"
+          class="notification-badge"
+        >
+          {{ teamInvitationCount }}
+      </span>
+    </button>
     </nav>
   </aside>
 </template>
@@ -43,6 +50,7 @@ type SidebarSection = 'modules' | 'calendar' | 'profile' | 'teams'
 defineProps<{
   activeSection: SidebarSection
   isOpen?: boolean
+  teamInvitationCount?: number
 }>()
 
 const emit = defineEmits<{
@@ -102,6 +110,26 @@ function select(section: SidebarSection) {
 .sidebar-nav-item-active {
   border-color: var(--color-primary);
   background: var(--color-surface-raised);
+}
+
+.sidebar-nav-item-with-badge {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.notification-badge {
+  min-width: 1.3rem;
+  height: 1.3rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: #ff4d4f;
+  color: white;
+  font-size: 0.72rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 @media (max-width: 60em) {
