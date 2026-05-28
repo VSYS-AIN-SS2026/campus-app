@@ -10,7 +10,6 @@ import ProfileSelectionPanel from './components/ProfileSelectionPanel.vue'
 import WeeklySchedule from './components/WeeklySchedule.vue'
 import Sidebar from './components/Sidebar.vue'
 import { useAppController } from './composables/useAppController'
-import TeamsManager from './components/TeamsManager.vue'
 import { useTeams } from './composables/useTeams'
 
 const { magicLinkRedirectTo, allCategories, activePlannerView, authEmail, authError, authFirstName, authInfo, authLastName, authLoading, authSending, canEditModuleStatuses, categoryError, currentUser, currentUserEmail, demoUserProfile, displayedWeeklyPreviewEvents, displayedWeeklyScheduleEvents, error, hiddenPageEntries, hiddenPageError, hiddenPageLoading, hiddenSeriesItems, isWeeklyPreviewMode, lastHiddenSeries, loadImportedEvents, loading, lsfImportModule, modules, moduleStatusError, profileError, profileInfo, profileSaving, savedSpo, savedStudyProgram, savingCategoryModuleId, savingModuleId, scheduleVisibilityError, scheduleVisibilityInfo, selectedModule, selectedSpoId, selectedStudyProgramId, selectionDirty, showHiddenEvents, spoItems, studyProgramItems, weekStartDate, getSpoLabel, getStudyProgramLabel, hideScheduleSeries, saveModuleCategories, saveModuleStatus, saveStudyProfileSelection, sendMagicLink, showAllScheduleSeries, showScheduleSeries, signOut, undoHideScheduleSeries } = useAppController()
@@ -337,10 +336,6 @@ async function onSidebarNavigate(target: SidebarSection) {
                   @undo-hide-series="undoHideScheduleSeries"
                   @select-module="selectedModule = $event"
                 />
-                </section>
-
-                <section id="teams-section" class="content-subsection" v-if="sidebarActiveSection === 'teams'">
-                  <TeamsManager />
                 </section>
 
               </section>
