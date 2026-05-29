@@ -229,7 +229,7 @@ begin
       ordered.module_id,
       ordered.module_code,
       ordered.module_name,
-      ((ordered.row_num - 1) % 5) as weekday_index,
+      ((ordered.row_num - 1) % 5)::integer as weekday_index,
       (
         (array[495, 600, 705, 810, 915])[((ordered.row_num - 1) % 5) + 1]
       ) as start_time_minutes,

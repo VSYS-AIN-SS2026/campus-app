@@ -35,7 +35,7 @@ REVOKE ALL ON FUNCTION public.get_teams() FROM public;
 GRANT EXECUTE ON FUNCTION public.get_teams() TO anon;
 GRANT EXECUTE ON FUNCTION public.get_teams() TO authenticated;
 
--- Seed-Daten
+-- Seed-Daten (idempotent)
 DO $$
 DECLARE
   creator_id UUID;
