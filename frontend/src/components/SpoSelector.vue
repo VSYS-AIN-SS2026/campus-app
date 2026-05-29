@@ -1,30 +1,29 @@
 <script setup lang="ts">
-import type { Spo } from '../types'
-
 defineProps<{
-  spos: Spo[]
-  modelValue: number | null
+  items: { id: string; label: string }[]
+  modelValue: string | null
   loading?: boolean
+  label?: string
+  placeholder?: string
 }>()
 
 defineEmits<{
-  'update:modelValue': [value: number | null]
+  'update:modelValue': [value: string | null]
 }>()
 </script>
 
 <template>
   <div class="spo-selector">
-    <label for="spo-select">Studienprüfungsordnung (SPO)</label>
+    <label v-if="label">{{ label }}</label>
     <div class="select-wrapper">
       <select
-        id="spo-select"
-        :value="modelValue"
+        :value="modelValue ?? ''"
         :disabled="loading"
-        @change="$emit('update:modelValue', Number(($event.target as HTMLSelectElement).value) || null)"
+        @change="$emit('update:modelValue', ($event.target as HTMLSelectElement).value || null)"
       >
-        <option :value="0">— SPO auswählen —</option>
-        <option v-for="spo in spos" :key="spo.id" :value="spo.id">
-          {{ spo.name }}
+        <option value="">{{ placeholder ?? '— Bitte auswählen —' }}</option>
+        <option v-for="item in items" :key="item.id" :value="item.id">
+          {{ item.label }}
         </option>
       </select>
       <span v-if="loading" class="select-spinner" />
