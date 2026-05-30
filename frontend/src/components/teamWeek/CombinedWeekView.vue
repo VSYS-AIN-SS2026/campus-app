@@ -36,6 +36,7 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{
   'update:weekStart': [value: Date]
+  'select-search-slot': [id: string]
 }>()
 
 const MAX_AVATARS = 4
@@ -289,6 +290,7 @@ onUnmounted(() => {
       :format-time-label="formatTimeLabel"
       :current-day-index="currentDayIndex"
       :now-line-top-percent="nowLineTopPercent"
+      @select-slot="emit('select-search-slot', $event)"
     />
   </section>
 </template>

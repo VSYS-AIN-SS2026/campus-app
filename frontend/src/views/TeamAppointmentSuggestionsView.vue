@@ -4,12 +4,14 @@ import { useRoute } from 'vue-router'
 import { supabase } from '../supabase'
 import CombinedWeekView from '../components/teamWeek/CombinedWeekView.vue'
 import TeamAppointmentSearchForm from '../components/teamWeek/TeamAppointmentSearchForm.vue'
+import CreateAppointmentDialog from '../components/teamWeek/CreateAppointmentDialog.vue'
 import type {
   CombinedAppointment,
   CombinedSearchSlot,
   CombinedWeekMember,
   FreeSlotSearchParams,
   MemberScheduleSlot,
+  NewAppointmentInput,
 } from '../types/teamWeek'
 
 const route = useRoute()
@@ -95,6 +97,8 @@ function toSearchSlot(row: FreeSlotRow): CombinedSearchSlot {
     startTime: `${pad(start.getHours())}:${pad(start.getMinutes())}`,
     endTime: `${pad(end.getHours())}:${pad(end.getMinutes())}`,
     label: 'frei',
+    startsAt: row.starts_at,
+    endsAt: row.ends_at,
   }
 }
 
@@ -137,6 +141,51 @@ async function onSearch(params: FreeSlotSearchParams) {
   searchPerformed.value = true
   searchResults.value = ((data ?? []) as FreeSlotRow[]).map(toSearchSlot)
 }
+
+// ===================== Termin-Erstell-Dialog =====================
+const dialogOpen = ref(false)
+const dialogStart = ref<Date | null>(null)
+const dialogEnd = ref<Date | null>(null)
+const createLoading = ref(false)
+const createError = ref<string | null>(null)
+
+function onSelectSlot(id: string) {
+  const slot = searchResults.value.find((entry) => entry.id === id)
+  if (!slot?.startsAt || !slot.endsAt) {
+    return
+  }
+  dialogStart.value = new Date(slot.startsAt)
+  dialogEnd.value = new Date(slot.endsAt)
+  createError.value = null
+  dialogOpen.value = true
+}
+
+async function onCreate(payload: NewAppointmentInput) {
+  if (!supabase) {
+    createError.value = 'Supabase nicht konfiguriert.'
+    return
+  }
+
+  createLoading.value = true
+  createError.value = null
+
+  const { error: rpcError } = await supabase.rpc('create_team_appointment', {
+    p_team_id: teamId,
+    p_title: payload.title,
+    p_description: payload.description,
+    p_starts_at: payload.startsAt,
+    p_ends_at: payload.endsAt,
+  })
+
+  createLoading.value = false
+
+  if (rpcError) {
+    createError.value = rpcError.message
+    return
+  }
+
+  dialogOpen.value = false
+}
 </script>
 
 <template>
@@ -168,9 +217,20 @@ async function onSearch(params: FreeSlotSearchParams) {
           :appointments="sampleAppointments"
           :search-results="searchResults"
           :search-performed="searchPerformed"
+          @select-search-slot="onSelectSlot"
         />
       </div>
     </div>
+
+    <CreateAppointmentDialog
+      :open="dialogOpen"
+      :start="dialogStart"
+      :end="dialogEnd"
+      :loading="createLoading"
+      :error="createError"
+      @close="dialogOpen = false"
+      @submit="onCreate"
+    />
   </section>
 </template>
 

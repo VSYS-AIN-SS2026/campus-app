@@ -11,6 +11,10 @@ defineProps<{
   nowLineTopPercent: number | null
 }>()
 
+const emit = defineEmits<{
+  'select-slot': [id: string]
+}>()
+
 const dayBodyHeightRem = (totalMinutes: number) => (totalMinutes / 60) * 3.5
 </script>
 
@@ -88,16 +92,19 @@ const dayBodyHeightRem = (totalMinutes: number) => (totalMinutes / 60) * 3.5
             <span class="cw-layer-time">{{ appointment.timeLabel }}</span>
           </div>
 
-          <!-- Layer 3: Such-Ergebnisse (Vorschläge) -->
-          <div
+          <!-- Layer 3: Such-Ergebnisse (Vorschläge) – klickbar -->
+          <button
             v-for="result in column.searches"
             :key="result.id"
+            type="button"
             class="cw-search"
             :style="result.style"
+            :aria-label="`Vorschlag ${result.timeLabel} – Termin anlegen`"
+            @click="emit('select-slot', result.id)"
           >
             <span class="cw-layer-tag cw-layer-tag--search">Vorschlag</span>
             <span class="cw-layer-time">{{ result.timeLabel }}</span>
-          </div>
+          </button>
         </div>
       </article>
     </div>
@@ -275,7 +282,7 @@ const dayBodyHeightRem = (totalMinutes: number) => (totalMinutes / 60) * 3.5
   line-height: 1.2;
 }
 
-/* Layer 3: Such-Ergebnisse */
+/* Layer 3: Such-Ergebnisse (klickbar) */
 .cw-search {
   position: absolute;
   left: 0;
@@ -287,9 +294,28 @@ const dayBodyHeightRem = (totalMinutes: number) => (totalMinutes / 60) * 3.5
   padding: 0.25rem 0.375rem;
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: 0.125rem;
   overflow: hidden;
-  pointer-events: none;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+  transition: background 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease, transform 0.14s ease;
+}
+
+.cw-search:hover {
+  background: color-mix(in srgb, var(--color-success-bg, #16a34a) 38%, transparent);
+  border-style: solid;
+}
+
+.cw-search:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 0.125rem var(--color-success, #16a34a);
+}
+
+.cw-search:active {
+  transform: translateY(0.0625rem);
 }
 
 .cw-layer-tag {

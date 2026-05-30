@@ -41,6 +41,9 @@ export interface CombinedSearchSlot {
   startTime: string
   endTime: string
   label?: string
+  /** Absolute Start-/Endzeit (ISO 8601, UTC) – für den Termin-Erstell-Dialog. */
+  startsAt?: string
+  endsAt?: string
 }
 
 /** Eingabeparameter des Such-Formulars (an get_team_free_slots gebunden). */
@@ -49,6 +52,14 @@ export interface FreeSlotSearchParams {
   minStart: string
   maxEnd: string
   excludedWeekdays: number[]
+}
+
+/** Nutzlast des Termin-Erstell-Dialogs (Start/Ende ISO 8601, UTC). */
+export interface NewAppointmentInput {
+  title: string
+  description: string | null
+  startsAt: string
+  endsAt: string
 }
 
 /**
