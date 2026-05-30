@@ -26,12 +26,33 @@ export interface MemberScheduleSlot {
   state?: MemberSlotState
 }
 
+/** Teilnehmer eines Termins (für die Anzeige; Decliner werden weggelassen). */
+export interface AppointmentAttendee {
+  name: string
+  status: string
+}
+
 /** Bestehender Termin (Story-Datenmodell) – Start/Ende als ISO-8601 in UTC. */
 export interface CombinedAppointment {
   id: string
   title: string
   startsAt: string
   endsAt: string
+  /** Nicht-abgesagte Teilnehmer (accepted/pending) für Teilnehmer-Icons. */
+  attendees?: AppointmentAttendee[]
+}
+
+/** Eine offene Einladung des aktuellen Nutzers (get_my_appointment_invitations). */
+export interface MyAppointmentInvitation {
+  invitationId: string
+  status: string
+  appointmentId: string
+  title: string
+  description: string | null
+  startsAt: string
+  endsAt: string
+  teamId: string
+  teamName: string
 }
 
 /** Ergebnis-Slot aus der Terminsuche (eigener Layer). */
@@ -99,6 +120,8 @@ export interface LayerBlockView {
   label: string
   timeLabel: string
   style: { top: string; height: string }
+  /** Teilnehmer-Icons (z. B. für Termin-Blöcke). */
+  members?: MemberChip[]
 }
 
 export interface WeekColumnView {

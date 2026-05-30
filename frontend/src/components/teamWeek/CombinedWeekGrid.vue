@@ -90,6 +90,15 @@ const dayBodyHeightRem = (totalMinutes: number) => (totalMinutes / 60) * 3.5
             <span class="cw-layer-tag">Termin</span>
             <strong class="cw-appointment-title">{{ appointment.label }}</strong>
             <span class="cw-layer-time">{{ appointment.timeLabel }}</span>
+            <div v-if="appointment.members && appointment.members.length" class="cw-members">
+              <span
+                v-for="member in appointment.members"
+                :key="member.id"
+                class="cw-avatar"
+                :style="{ background: member.color }"
+                :title="member.name"
+              >{{ member.initials }}</span>
+            </div>
           </div>
 
           <!-- Layer 3: Such-Ergebnisse (Vorschläge) – klickbar -->

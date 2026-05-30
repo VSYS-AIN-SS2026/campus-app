@@ -1077,6 +1077,20 @@ export type Database = {
           type: string
         }[]
       }
+      get_my_appointment_invitations: {
+        Args: never
+        Returns: {
+          appointment_id: string
+          description: string
+          ends_at: string
+          invitation_id: string
+          starts_at: string
+          status: Database["public"]["Enums"]["invitation_status"]
+          team_id: string
+          team_name: string
+          title: string
+        }[]
+      }
       get_team_appointment: {
         Args: { p_appointment_id: string }
         Returns: {

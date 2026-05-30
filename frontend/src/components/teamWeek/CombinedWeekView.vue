@@ -165,11 +165,21 @@ const appointmentsByKey = computed(() => {
     }
     const startMin = starts.getHours() * 60 + starts.getMinutes()
     const endMin = ends.getHours() * 60 + ends.getMinutes()
+    const members: MemberChip[] = (appointment.attendees ?? [])
+      .filter((attendee) => attendee.status !== 'declined')
+      .map((attendee, index) => ({
+        id: `${appointment.id}-${index}`,
+        name: attendee.name,
+        initials: memberInitials(attendee.name),
+        color: '#475569',
+      }))
+
     const view: LayerBlockView = {
       id: appointment.id,
       label: appointment.title,
       timeLabel: `${formatTimeLabel(startMin)}–${formatTimeLabel(endMin)}`,
       style: eventStyle(startMin, endMin),
+      members,
     }
     const key = localDateKey(starts)
     const list = map.get(key) ?? []
