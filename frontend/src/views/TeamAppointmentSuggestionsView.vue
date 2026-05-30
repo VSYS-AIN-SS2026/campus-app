@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { supabase } from '../supabase'
 import CombinedWeekView from '../components/teamWeek/CombinedWeekView.vue'
@@ -149,6 +149,10 @@ const dialogEnd = ref<Date | null>(null)
 const createLoading = ref(false)
 const createError = ref<string | null>(null)
 
+// Neu angelegte Termine werden der Wochenansicht hinzugefügt (optimistisch).
+const createdAppointments = ref<CombinedAppointment[]>([])
+const displayedAppointments = computed(() => [...sampleAppointments, ...createdAppointments.value])
+
 function onSelectSlot(id: string) {
   const slot = searchResults.value.find((entry) => entry.id === id)
   if (!slot?.startsAt || !slot.endsAt) {
@@ -169,7 +173,7 @@ async function onCreate(payload: NewAppointmentInput) {
   createLoading.value = true
   createError.value = null
 
-  const { error: rpcError } = await supabase.rpc('create_team_appointment', {
+  const { data, error: rpcError } = await supabase.rpc('create_team_appointment', {
     p_team_id: teamId,
     p_title: payload.title,
     p_description: payload.description,
@@ -182,6 +186,17 @@ async function onCreate(payload: NewAppointmentInput) {
   if (rpcError) {
     createError.value = rpcError.message
     return
+  }
+
+  // Neuen Termin direkt in der Wochenansicht sichtbar machen.
+  const row = data as { id: string; title: string; starts_at: string; ends_at: string } | null
+  if (row) {
+    createdAppointments.value = [...createdAppointments.value, {
+      id: row.id,
+      title: row.title,
+      startsAt: row.starts_at,
+      endsAt: row.ends_at,
+    }]
   }
 
   dialogOpen.value = false
@@ -214,7 +229,7 @@ async function onCreate(payload: NewAppointmentInput) {
           v-model:week-start="weekStart"
           :members="sampleMembers"
           :slots="sampleSlots"
-          :appointments="sampleAppointments"
+          :appointments="displayedAppointments"
           :search-results="searchResults"
           :search-performed="searchPerformed"
           @select-search-slot="onSelectSlot"

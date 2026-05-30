@@ -8,7 +8,7 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap;
 
-SELECT plan(19);
+SELECT plan(21);
 
 -- ------------------------------------------------------------
 -- Setup (als postgres): 3 Nutzer (A=owner, B=member, C=outsider),
@@ -84,6 +84,19 @@ SELECT is(
   (SELECT count(*) FROM public.appointment_invitations
    WHERE appointment_id = (SELECT v FROM ids WHERE k = 'appt1')),
   2::bigint, 'create_team_appointment lädt alle Team-Mitglieder ein');
+
+-- Ersteller (A) automatisch accepted, übrige (B) pending
+SELECT is(
+  (SELECT status::text FROM public.appointment_invitations
+   WHERE appointment_id = (SELECT v FROM ids WHERE k = 'appt1')
+     AND team_member_id = (SELECT v FROM ids WHERE k = 'memberA')),
+  'accepted', 'Ersteller-Einladung ist direkt accepted');
+
+SELECT is(
+  (SELECT status::text FROM public.appointment_invitations
+   WHERE appointment_id = (SELECT v FROM ids WHERE k = 'appt1')
+     AND team_member_id = (SELECT v FROM ids WHERE k = 'memberB')),
+  'pending', 'übrige Mitglieder-Einladung bleibt pending');
 
 SELECT is(
   (SELECT count(*) FROM public.get_team_appointments((SELECT v FROM ids WHERE k = 'team'))),
