@@ -980,6 +980,36 @@ export type Database = {
       }
     }
     Functions: {
+      create_team_appointment: {
+        Args: {
+          p_description: string
+          p_ends_at: string
+          p_invitee_member_ids?: string[]
+          p_starts_at: string
+          p_team_id: string
+          p_title: string
+        }
+        Returns: {
+          created_at: string
+          created_by: string
+          description: string | null
+          ends_at: string
+          id: string
+          starts_at: string
+          team_id: string
+          title: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "team_appointments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      delete_team_appointment: {
+        Args: { p_appointment_id: string }
+        Returns: boolean
+      }
       get_demo_user_hidden_schedule_occurrence_ids: {
         Args: never
         Returns: {
@@ -1047,6 +1077,39 @@ export type Database = {
           type: string
         }[]
       }
+      get_team_appointment: {
+        Args: { p_appointment_id: string }
+        Returns: {
+          created_at: string
+          created_by: string
+          description: string | null
+          ends_at: string
+          id: string
+          starts_at: string
+          team_id: string
+          title: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "team_appointments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      get_team_appointments: {
+        Args: { p_from?: string; p_team_id: string; p_to?: string }
+        Returns: {
+          created_at: string
+          created_by: string
+          description: string
+          ends_at: string
+          id: string
+          invitations: Json
+          starts_at: string
+          team_id: string
+          title: string
+        }[]
+      }
       get_team_details: {
         Args: { p_team_id: string }
         Returns: {
@@ -1077,6 +1140,7 @@ export type Database = {
           updated_at: string
         }[]
       }
+      is_team_member: { Args: { p_team_id: string }; Returns: boolean }
       resolve_dashboard_user: {
         Args: never
         Returns: {
@@ -1092,6 +1156,26 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "users"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      respond_to_appointment_invitation: {
+        Args: {
+          p_invitation_id: string
+          p_status: Database["public"]["Enums"]["invitation_status"]
+        }
+        Returns: {
+          appointment_id: string
+          created_at: string
+          id: string
+          responded_at: string | null
+          status: Database["public"]["Enums"]["invitation_status"]
+          team_member_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "appointment_invitations"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -1138,6 +1222,31 @@ export type Database = {
           series_id: string
           updated_at: string
         }[]
+      }
+      update_team_appointment: {
+        Args: {
+          p_appointment_id: string
+          p_description?: string
+          p_ends_at?: string
+          p_starts_at?: string
+          p_title?: string
+        }
+        Returns: {
+          created_at: string
+          created_by: string
+          description: string | null
+          ends_at: string
+          id: string
+          starts_at: string
+          team_id: string
+          title: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "team_appointments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
     }
     Enums: {
