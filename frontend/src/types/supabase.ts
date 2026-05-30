@@ -39,6 +39,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      appointment_invitations: {
+        Row: {
+          appointment_id: string
+          created_at: string
+          id: string
+          responded_at: string | null
+          status: Database["public"]["Enums"]["invitation_status"]
+          team_member_id: string
+        }
+        Insert: {
+          appointment_id: string
+          created_at?: string
+          id?: string
+          responded_at?: string | null
+          status?: Database["public"]["Enums"]["invitation_status"]
+          team_member_id: string
+        }
+        Update: {
+          appointment_id?: string
+          created_at?: string
+          id?: string
+          responded_at?: string | null
+          status?: Database["public"]["Enums"]["invitation_status"]
+          team_member_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_invitations_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "team_appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_invitations_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categories: {
         Row: {
           color: string
@@ -582,6 +624,54 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "team_invitations_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_appointments: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          ends_at: string
+          id: string
+          starts_at: string
+          team_id: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          ends_at: string
+          id?: string
+          starts_at: string
+          team_id: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          ends_at?: string
+          id?: string
+          starts_at?: string
+          team_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_appointments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_appointments_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: false
             referencedRelation: "teams"
