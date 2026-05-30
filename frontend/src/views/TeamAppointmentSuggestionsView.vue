@@ -1,12 +1,68 @@
 <script setup lang="ts">
 import { useRoute } from 'vue-router'
+import CombinedWeekView from '../components/teamWeek/CombinedWeekView.vue'
+import type {
+  CombinedAppointment,
+  CombinedSearchSlot,
+  CombinedWeekMember,
+  MemberScheduleSlot,
+} from '../types/teamWeek'
 
 const route = useRoute()
 const teamId = route.params.id as string
 
-// Reines Layout-/Routing-Gerüst – noch ohne Such-Logik.
-// Solange keine Suche durchgeführt wurde, wird der Empty State gezeigt.
-const hasSearched = false
+// =====================================================================
+// DEMO-DATEN – ersetzt eine spätere Story durch echte Daten:
+//   * Mitglieder-Stundenpläne (neuer Backend-Endpunkt nötig)
+//   * Termine via get_team_appointments
+//   * Suchergebnisse aus dem Such-Tool
+// =====================================================================
+const sampleMembers: CombinedWeekMember[] = [
+  { id: 'm-anna', name: 'Anna Demo' },
+  { id: 'm-ben', name: 'Ben Demo' },
+  { id: 'm-carla', name: 'Carla Demo' },
+]
+
+const sampleSlots: MemberScheduleSlot[] = [
+  // Montag: identischer Slot aller drei (wird zusammengefasst)
+  { memberId: 'm-anna', dayIndex: 0, startTime: '08:00', endTime: '10:00', title: 'Vorlesung' },
+  { memberId: 'm-ben', dayIndex: 0, startTime: '08:00', endTime: '10:00', title: 'Vorlesung' },
+  { memberId: 'm-carla', dayIndex: 0, startTime: '08:00', endTime: '10:00', title: 'Vorlesung' },
+  // Montag: zwei Mitglieder
+  { memberId: 'm-anna', dayIndex: 0, startTime: '10:00', endTime: '12:00', title: 'Übung' },
+  { memberId: 'm-ben', dayIndex: 0, startTime: '10:00', endTime: '12:00', title: 'Übung' },
+  // Montag: ein Mitglied
+  { memberId: 'm-carla', dayIndex: 0, startTime: '13:00', endTime: '15:00', title: 'Labor' },
+  // Dienstag: Teilüberlappung -> segmentierte Blöcke
+  { memberId: 'm-anna', dayIndex: 1, startTime: '09:00', endTime: '11:00', title: 'Seminar' },
+  { memberId: 'm-ben', dayIndex: 1, startTime: '10:00', endTime: '12:00', title: 'Seminar' },
+  // Mittwoch: ausgeblendet zählt weiterhin als belegt
+  { memberId: 'm-anna', dayIndex: 2, startTime: '08:00', endTime: '09:30', title: 'Tutorium', state: 'hidden' },
+  { memberId: 'm-ben', dayIndex: 2, startTime: '08:00', endTime: '09:30', title: 'Tutorium' },
+  // Mittwoch: abgewählt -> komplett herausgefiltert (erzeugt keinen Block)
+  { memberId: 'm-carla', dayIndex: 2, startTime: '14:00', endTime: '16:00', title: 'Optional', state: 'deselected' },
+]
+
+function pad(value: number): string {
+  return String(value).padStart(2, '0')
+}
+
+// Termin-Datum relativ zur aktuellen Woche, Uhrzeit bewusst in UTC (Z),
+// damit die UTC -> Browser-Zeit-Umrechnung sichtbar wird.
+function isoOnThisWeek(dayOffset: number, utcTime: string): string {
+  const monday = new Date()
+  monday.setHours(0, 0, 0, 0)
+  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7) + dayOffset)
+  return `${monday.getFullYear()}-${pad(monday.getMonth() + 1)}-${pad(monday.getDate())}T${utcTime}Z`
+}
+
+const sampleAppointments: CombinedAppointment[] = [
+  { id: 'appt-1', title: 'Sprint Planning', startsAt: isoOnThisWeek(0, '07:30:00'), endsAt: isoOnThisWeek(0, '09:00:00') },
+  { id: 'appt-2', title: 'Retrospektive', startsAt: isoOnThisWeek(2, '12:00:00'), endsAt: isoOnThisWeek(2, '13:00:00') },
+]
+
+// Noch keine Suche durchgeführt -> Such-Ergebnis-Layer bleibt leer.
+const sampleSearchResults: CombinedSearchSlot[] = []
 </script>
 
 <template>
@@ -31,13 +87,12 @@ const hasSearched = false
 
       <!-- Container für die kombinierte Wochenansicht -->
       <div class="suggestions__week" aria-label="Kombinierte Wochenansicht">
-        <div v-if="!hasSearched" class="empty-state">
-          <p class="empty-state__title">Noch keine Suche durchgeführt</p>
-          <p class="empty-state__hint">
-            Lege links die gewünschten Kriterien fest, um Terminvorschläge zu erhalten.
-            Die kombinierte Wochenansicht der Team-Mitglieder erscheint dann hier.
-          </p>
-        </div>
+        <CombinedWeekView
+          :members="sampleMembers"
+          :slots="sampleSlots"
+          :appointments="sampleAppointments"
+          :search-results="sampleSearchResults"
+        />
       </div>
     </div>
   </section>
@@ -116,35 +171,6 @@ const hasSearched = false
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
   line-height: 1.6;
-  margin: 0;
-}
-
-.empty-state {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  gap: var(--space-md);
-  padding: var(--space-4xl) var(--space-2xl);
-  border: 0.0625rem dashed var(--color-border);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface);
-}
-
-.empty-state__title {
-  font-size: var(--font-size-sm);
-  font-weight: 700;
-  color: var(--color-text);
-  margin: 0;
-}
-
-.empty-state__hint {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-muted);
-  line-height: 1.6;
-  max-width: 28rem;
   margin: 0;
 }
 </style>
