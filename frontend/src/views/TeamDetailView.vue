@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, provide, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { supabase } from '../supabase'
 import type { TeamDetail } from '../types/team'
@@ -10,9 +10,12 @@ const team = ref<TeamDetail | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
 
-onMounted(async () => {
-  const teamId = route.params.id as string
+const teamId = computed(() => route.params.id as string)
 
+// Team-Detail an die Bereichs-Tabs (Mitglieder / Terminvorschläge) weitergeben.
+provide('teamDetail', team)
+
+onMounted(async () => {
   if (!supabase) {
     error.value = 'Supabase nicht konfiguriert.'
     loading.value = false
@@ -20,7 +23,7 @@ onMounted(async () => {
   }
 
   const { data, error: rpcError } = await supabase
-    .rpc('get_team_details', { p_team_id: teamId })
+    .rpc('get_team_details', { p_team_id: teamId.value })
     .maybeSingle()
 
   loading.value = false
@@ -60,28 +63,16 @@ onMounted(async () => {
         <p v-if="team.description" class="detail-description">{{ team.description }}</p>
       </header>
 
-      <section class="detail-members">
-        <h2 class="members-heading">Mitglieder</h2>
+      <nav class="detail-tabs" aria-label="Team-Bereiche">
+        <RouterLink class="detail-tab" :to="{ name: 'team-members', params: { id: teamId } }">
+          Mitglieder
+        </RouterLink>
+        <RouterLink class="detail-tab" :to="{ name: 'team-appointment-suggestions', params: { id: teamId } }">
+          Terminvorschläge
+        </RouterLink>
+      </nav>
 
-        <p v-if="team.members.length === 0" class="members-empty">
-          Keine Mitglieder eingetragen.
-        </p>
-
-        <table v-else class="members-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>E-Mail</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="member in team.members" :key="member.email">
-              <td>{{ member.name }}</td>
-              <td>{{ member.email }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </section>
+      <RouterView />
     </template>
   </div>
 </template>
@@ -135,50 +126,28 @@ onMounted(async () => {
   margin: 0;
 }
 
-.detail-members {
+.detail-tabs {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-2xl);
-}
-
-.members-heading {
-  font-size: var(--font-size-md);
-  font-weight: 700;
-  color: var(--color-text);
-  margin: 0;
-}
-
-.members-empty {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-muted);
-}
-
-.members-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--font-size-sm);
-}
-
-.members-table th,
-.members-table td {
-  text-align: left;
-  padding: var(--space-lg) var(--space-xl);
+  gap: var(--space-md);
   border-bottom: 0.0625rem solid var(--color-border);
 }
 
-.members-table th {
-  font-weight: 700;
-  text-transform: uppercase;
-  font-size: var(--font-size-xs);
-  letter-spacing: 0.06em;
+.detail-tab {
+  padding: var(--space-md) var(--space-lg);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
   color: var(--color-text-muted);
+  text-decoration: none;
+  border-bottom: 0.125rem solid transparent;
+  margin-bottom: -0.0625rem;
 }
 
-.members-table td {
+.detail-tab:hover {
   color: var(--color-text);
 }
 
-.members-table tbody tr:hover td {
-  background: var(--color-surface-raised);
+.detail-tab.router-link-exact-active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
 }
 </style>
