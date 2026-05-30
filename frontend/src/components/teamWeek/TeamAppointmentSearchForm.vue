@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { dateInputToMonday, dateInputValue, mondayOf } from '../../utils/datetime'
 import type { FreeSlotSearchParams } from '../../types/teamWeek'
 
 const props = withDefaults(defineProps<{
@@ -22,28 +23,13 @@ const minStart = ref('08:00')
 const maxEnd = ref('18:00')
 const excludedWeekdays = ref<number[]>([])
 
-function pad(value: number): string {
-  return String(value).padStart(2, '0')
-}
-
-function mondayOf(date: Date): Date {
-  const day = new Date(date.getFullYear(), date.getMonth(), date.getDate())
-  day.setDate(day.getDate() - ((day.getDay() + 6) % 7))
-  return day
-}
-
-const weekIso = computed(() => {
-  const monday = mondayOf(props.weekStart)
-  return `${monday.getFullYear()}-${pad(monday.getMonth() + 1)}-${pad(monday.getDate())}`
-})
+const weekIso = computed(() => dateInputValue(mondayOf(props.weekStart)))
 
 function onWeekChange(event: Event) {
-  const value = (event.target as HTMLInputElement).value
-  if (!value) {
-    return
+  const monday = dateInputToMonday((event.target as HTMLInputElement).value)
+  if (monday) {
+    emit('update:weekStart', monday)
   }
-  const [year, month, day] = value.split('-').map((part) => Number.parseInt(part, 10))
-  emit('update:weekStart', mondayOf(new Date(year, month - 1, day)))
 }
 
 function toggleDay(index: number) {

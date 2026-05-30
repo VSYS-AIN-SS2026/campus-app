@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
+import { dateTimeInputToUtcIso, dateTimeInputValue } from '../../utils/datetime'
 import type { NewAppointmentInput } from '../../types/teamWeek'
 
 const props = withDefaults(defineProps<{
@@ -24,24 +25,14 @@ const startInput = ref('')
 const endInput = ref('')
 const titleRef = ref<HTMLInputElement | null>(null)
 
-function pad(value: number): string {
-  return String(value).padStart(2, '0')
-}
-
-// Date (UTC-Instant) -> lokaler datetime-local-Wert (YYYY-MM-DDTHH:MM)
-function toLocalInput(date: Date): string {
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
-    + `T${pad(date.getHours())}:${pad(date.getMinutes())}`
-}
-
 watch(() => props.open, (isOpen) => {
   if (!isOpen) {
     return
   }
   title.value = ''
   description.value = ''
-  startInput.value = props.start ? toLocalInput(props.start) : ''
-  endInput.value = props.end ? toLocalInput(props.end) : ''
+  startInput.value = props.start ? dateTimeInputValue(props.start) : ''
+  endInput.value = props.end ? dateTimeInputValue(props.end) : ''
   void nextTick(() => titleRef.value?.focus())
 })
 
@@ -62,8 +53,8 @@ function onSubmit() {
   emit('submit', {
     title: title.value.trim(),
     description: description.value.trim() || null,
-    startsAt: new Date(startInput.value).toISOString(),
-    endsAt: new Date(endInput.value).toISOString(),
+    startsAt: dateTimeInputToUtcIso(startInput.value),
+    endsAt: dateTimeInputToUtcIso(endInput.value),
   })
 }
 </script>

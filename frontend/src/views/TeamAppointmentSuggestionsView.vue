@@ -5,6 +5,14 @@ import { supabase } from '../supabase'
 import CombinedWeekView from '../components/teamWeek/CombinedWeekView.vue'
 import TeamAppointmentSearchForm from '../components/teamWeek/TeamAppointmentSearchForm.vue'
 import CreateAppointmentDialog from '../components/teamWeek/CreateAppointmentDialog.vue'
+import {
+  BROWSER_TIME_ZONE,
+  localDateString,
+  localHhMm,
+  localWeekdayIndex,
+  mondayOf,
+  weekRangeUtc,
+} from '../utils/datetime'
 import type {
   AppNotification,
   CombinedAppointment,
@@ -18,8 +26,6 @@ import type {
 
 const route = useRoute()
 const teamId = route.params.id as string
-
-const localTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
 
 // =====================================================================
 // DEMO-DATEN für die Belegt-Spur (Mitglieder-Stundenpläne) – ersetzt eine
@@ -52,17 +58,7 @@ const sampleSlots: MemberScheduleSlot[] = [
   { memberId: 'm-carla', dayIndex: 2, startTime: '14:00', endTime: '16:00', title: 'Optional', state: 'deselected' },
 ]
 
-function pad(value: number): string {
-  return String(value).padStart(2, '0')
-}
-
 // ===================== Suche (echter Endpoint) =====================
-function mondayOf(date: Date): Date {
-  const day = new Date(date.getFullYear(), date.getMonth(), date.getDate())
-  day.setDate(day.getDate() - ((day.getDay() + 6) % 7))
-  return day
-}
-
 const weekStart = ref<Date>(mondayOf(new Date()))
 const loading = ref(false)
 const error = ref<string | null>(null)
@@ -80,9 +76,9 @@ function toSearchSlot(row: FreeSlotRow): CombinedSearchSlot {
   const end = new Date(row.ends_at)
   return {
     id: `${row.starts_at}-${row.ends_at}`,
-    dayIndex: (start.getDay() + 6) % 7,
-    startTime: `${pad(start.getHours())}:${pad(start.getMinutes())}`,
-    endTime: `${pad(end.getHours())}:${pad(end.getMinutes())}`,
+    dayIndex: localWeekdayIndex(start),
+    startTime: localHhMm(start),
+    endTime: localHhMm(end),
     label: 'frei',
     startsAt: row.starts_at,
     endsAt: row.ends_at,
@@ -109,14 +105,12 @@ async function loadAppointments() {
   if (!supabase) {
     return
   }
-  const monday = mondayOf(weekStart.value)
-  const weekEnd = new Date(monday)
-  weekEnd.setDate(weekEnd.getDate() + 7)
+  const { fromIso, toIso } = weekRangeUtc(weekStart.value)
 
   const { data, error: rpcError } = await supabase.rpc('get_team_appointments', {
     p_team_id: teamId,
-    p_from: monday.toISOString(),
-    p_to: weekEnd.toISOString(),
+    p_from: fromIso,
+    p_to: toIso,
   })
 
   if (rpcError) {
@@ -206,8 +200,7 @@ const invitationDateFormat = new Intl.DateTimeFormat('de-DE', {
   weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
 })
 function formatInvitation(invitation: MyAppointmentInvitation): string {
-  const end = new Date(invitation.endsAt)
-  return `${invitationDateFormat.format(new Date(invitation.startsAt))}–${pad(end.getHours())}:${pad(end.getMinutes())}`
+  return `${invitationDateFormat.format(new Date(invitation.startsAt))}–${localHhMm(new Date(invitation.endsAt))}`
 }
 
 // ===================== Benachrichtigungen =====================
@@ -273,12 +266,12 @@ async function onSearch(params: FreeSlotSearchParams) {
 
   const { data, error: rpcError } = await supabase.rpc('get_team_free_slots', {
     p_team_id: teamId,
-    p_week_start: `${monday.getFullYear()}-${pad(monday.getMonth() + 1)}-${pad(monday.getDate())}`,
+    p_week_start: localDateString(monday),
     p_duration_minutes: params.durationMinutes,
     p_min_start: params.minStart,
     p_max_end: params.maxEnd,
     p_excluded_weekdays: params.excludedWeekdays,
-    p_time_zone: localTimeZone,
+    p_time_zone: BROWSER_TIME_ZONE,
   })
 
   loading.value = false

@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import CombinedWeekGrid from './CombinedWeekGrid.vue'
 import { useWeeklySchedule } from '../../composables/useWeeklySchedule'
 import { memberInitials, useCombinedWeek } from '../../composables/useCombinedWeek'
+import { localDateKey, localMinutesOfDay, mondayOf, parseHhMm } from '../../utils/datetime'
 import type { WeekEvent } from '../../types/schedule'
 import type {
   BusyBlockView,
@@ -41,33 +42,9 @@ const emit = defineEmits<{
 
 const MAX_AVATARS = 4
 
-const localTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
-const dateKeyFormatter = new Intl.DateTimeFormat('sv-SE', { timeZone: localTimeZone })
 const weekdayFormatter = new Intl.DateTimeFormat('de-DE', { weekday: 'short' })
 const dateFormatter = new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit' })
 const rangeEndFormatter = new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
-
-function localDateKey(date: Date): string {
-  return dateKeyFormatter.format(date)
-}
-
-function startOfDay(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate())
-}
-
-function mondayOf(date: Date): Date {
-  const day = startOfDay(date)
-  const offset = (day.getDay() + 6) % 7
-  day.setDate(day.getDate() - offset)
-  return day
-}
-
-function parseTime(value: string): number | null {
-  const [hourRaw, minuteRaw] = value.split(':')
-  const hour = Number.parseInt(hourRaw, 10)
-  const minute = Number.parseInt(minuteRaw, 10)
-  return Number.isNaN(hour) || Number.isNaN(minute) ? null : hour * 60 + minute
-}
 
 // Wochenstart: kontrolliert über die Prop, sonst intern verwaltet.
 const internalWeek = ref(mondayOf(new Date()))
@@ -163,8 +140,8 @@ const appointmentsByKey = computed(() => {
     if (Number.isNaN(starts.getTime()) || Number.isNaN(ends.getTime())) {
       continue
     }
-    const startMin = starts.getHours() * 60 + starts.getMinutes()
-    const endMin = ends.getHours() * 60 + ends.getMinutes()
+    const startMin = localMinutesOfDay(starts)
+    const endMin = localMinutesOfDay(ends)
     const members: MemberChip[] = (appointment.attendees ?? [])
       .filter((attendee) => attendee.status !== 'declined')
       .map((attendee, index) => ({
@@ -192,8 +169,8 @@ const appointmentsByKey = computed(() => {
 const searchByWeekday = computed<LayerBlockView[][]>(() => {
   const result: LayerBlockView[][] = Array.from({ length: 7 }, () => [])
   for (const slot of props.searchResults) {
-    const startMin = parseTime(slot.startTime)
-    const endMin = parseTime(slot.endTime)
+    const startMin = parseHhMm(slot.startTime)
+    const endMin = parseHhMm(slot.endTime)
     if (slot.dayIndex < 0 || slot.dayIndex > 6 || startMin == null || endMin == null || endMin <= startMin) {
       continue
     }
