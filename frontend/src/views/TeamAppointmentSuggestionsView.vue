@@ -1,15 +1,21 @@
 <script setup lang="ts">
+import { ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { supabase } from '../supabase'
 import CombinedWeekView from '../components/teamWeek/CombinedWeekView.vue'
+import TeamAppointmentSearchForm from '../components/teamWeek/TeamAppointmentSearchForm.vue'
 import type {
   CombinedAppointment,
   CombinedSearchSlot,
   CombinedWeekMember,
+  FreeSlotSearchParams,
   MemberScheduleSlot,
 } from '../types/teamWeek'
 
 const route = useRoute()
 const teamId = route.params.id as string
+
+const localTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
 
 // =====================================================================
 // DEMO-DATEN – ersetzt eine spätere Story durch echte Daten:
@@ -61,8 +67,76 @@ const sampleAppointments: CombinedAppointment[] = [
   { id: 'appt-2', title: 'Retrospektive', startsAt: isoOnThisWeek(2, '12:00:00'), endsAt: isoOnThisWeek(2, '13:00:00') },
 ]
 
-// Noch keine Suche durchgeführt -> Such-Ergebnis-Layer bleibt leer.
-const sampleSearchResults: CombinedSearchSlot[] = []
+// ===================== Suche (echter Endpoint) =====================
+function mondayOf(date: Date): Date {
+  const day = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  day.setDate(day.getDate() - ((day.getDay() + 6) % 7))
+  return day
+}
+
+const weekStart = ref<Date>(mondayOf(new Date()))
+const loading = ref(false)
+const error = ref<string | null>(null)
+const searchPerformed = ref(false)
+const searchResults = ref<CombinedSearchSlot[]>([])
+
+interface FreeSlotRow {
+  starts_at: string
+  ends_at: string
+  duration_minutes: number
+}
+
+function toSearchSlot(row: FreeSlotRow): CombinedSearchSlot {
+  const start = new Date(row.starts_at)
+  const end = new Date(row.ends_at)
+  return {
+    id: `${row.starts_at}-${row.ends_at}`,
+    dayIndex: (start.getDay() + 6) % 7,
+    startTime: `${pad(start.getHours())}:${pad(start.getMinutes())}`,
+    endTime: `${pad(end.getHours())}:${pad(end.getMinutes())}`,
+    label: 'frei',
+  }
+}
+
+// Wochenwechsel verwirft alte Ergebnisse (sie gälten für eine andere Woche).
+watch(weekStart, () => {
+  searchResults.value = []
+  searchPerformed.value = false
+  error.value = null
+})
+
+async function onSearch(params: FreeSlotSearchParams) {
+  if (!supabase) {
+    error.value = 'Supabase nicht konfiguriert.'
+    return
+  }
+
+  const monday = mondayOf(weekStart.value)
+  loading.value = true
+  error.value = null
+
+  const { data, error: rpcError } = await supabase.rpc('get_team_free_slots', {
+    p_team_id: teamId,
+    p_week_start: `${monday.getFullYear()}-${pad(monday.getMonth() + 1)}-${pad(monday.getDate())}`,
+    p_duration_minutes: params.durationMinutes,
+    p_min_start: params.minStart,
+    p_max_end: params.maxEnd,
+    p_excluded_weekdays: params.excludedWeekdays,
+    p_time_zone: localTimeZone,
+  })
+
+  loading.value = false
+
+  if (rpcError) {
+    error.value = rpcError.message
+    searchResults.value = []
+    searchPerformed.value = false
+    return
+  }
+
+  searchPerformed.value = true
+  searchResults.value = ((data ?? []) as FreeSlotRow[]).map(toSearchSlot)
+}
 </script>
 
 <template>
@@ -75,23 +149,25 @@ const sampleSearchResults: CombinedSearchSlot[] = []
     </header>
 
     <div class="suggestions__layout">
-      <!-- Container für das Such-Tool (Logik folgt in einer späteren Story) -->
       <aside class="suggestions__search" aria-label="Suchformular">
-        <div class="placeholder-card">
-          <h3 class="placeholder-card__title">Suche</h3>
-          <p class="placeholder-card__hint">
-            Das Suchformular (Zeitraum, Start-/Endzeit, ausgeschlossene Tage) folgt hier.
-          </p>
-        </div>
+        <TeamAppointmentSearchForm
+          v-model:week-start="weekStart"
+          :loading="loading"
+          @submit="onSearch"
+        />
+        <p v-if="loading" class="search-status">Suche läuft…</p>
+        <p v-else-if="error" class="search-status search-status--error" role="alert">{{ error }}</p>
       </aside>
 
       <!-- Container für die kombinierte Wochenansicht -->
       <div class="suggestions__week" aria-label="Kombinierte Wochenansicht">
         <CombinedWeekView
+          v-model:week-start="weekStart"
           :members="sampleMembers"
           :slots="sampleSlots"
           :appointments="sampleAppointments"
-          :search-results="sampleSearchResults"
+          :search-results="searchResults"
+          :search-performed="searchPerformed"
         />
       </div>
     </div>
@@ -142,6 +218,9 @@ const sampleSearchResults: CombinedSearchSlot[] = []
 
 .suggestions__search {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
 }
 
 .suggestions__week {
@@ -150,27 +229,17 @@ const sampleSearchResults: CombinedSearchSlot[] = []
   display: flex;
 }
 
-.placeholder-card {
-  border: 0.0625rem solid var(--color-border);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface-raised);
-  padding: var(--space-2xl);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
-}
-
-.placeholder-card__title {
-  font-size: var(--font-size-sm);
-  font-weight: 700;
-  color: var(--color-text);
+.search-status {
   margin: 0;
-}
-
-.placeholder-card__hint {
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
-  line-height: 1.6;
-  margin: 0;
+}
+
+.search-status--error {
+  color: var(--color-error, #dc2626);
+  padding: var(--space-md);
+  border: 0.0625rem solid var(--color-error-border, var(--color-border));
+  border-radius: var(--radius-lg);
+  background: var(--color-error-bg, transparent);
 }
 </style>

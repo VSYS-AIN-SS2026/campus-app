@@ -20,14 +20,23 @@ const props = withDefaults(defineProps<{
   slots: MemberScheduleSlot[]
   appointments?: CombinedAppointment[]
   searchResults?: CombinedSearchSlot[]
+  /** Kontrollierter Wochenstart (beliebiges Datum der Woche). Optional. */
+  weekStart?: Date
+  /** true, sobald eine Suche durchgeführt wurde (steuert den Empty-Hinweis). */
+  searchPerformed?: boolean
   startHour?: number
   endHour?: number
 }>(), {
   appointments: () => [],
   searchResults: () => [],
+  searchPerformed: false,
   startHour: 7,
   endHour: 20,
 })
+
+const emit = defineEmits<{
+  'update:weekStart': [value: Date]
+}>()
 
 const MAX_AVATARS = 4
 
@@ -59,24 +68,31 @@ function parseTime(value: string): number | null {
   return Number.isNaN(hour) || Number.isNaN(minute) ? null : hour * 60 + minute
 }
 
-const weekStart = ref(mondayOf(new Date()))
+// Wochenstart: kontrolliert über die Prop, sonst intern verwaltet.
+const internalWeek = ref(mondayOf(new Date()))
+const weekStart = computed(() => (props.weekStart ? mondayOf(props.weekStart) : internalWeek.value))
 const nowTimestamp = ref(Date.now())
 let nowTimer: number | null = null
+
+function setWeek(monday: Date) {
+  internalWeek.value = monday
+  emit('update:weekStart', monday)
+}
 
 function previousWeek() {
   const next = new Date(weekStart.value)
   next.setDate(next.getDate() - 7)
-  weekStart.value = next
+  setWeek(next)
 }
 
 function nextWeek() {
   const next = new Date(weekStart.value)
   next.setDate(next.getDate() + 7)
-  weekStart.value = next
+  setWeek(next)
 }
 
 function goToday() {
-  weekStart.value = mondayOf(new Date())
+  setWeek(mondayOf(new Date()))
 }
 
 const startHourRef = computed(() => props.startHour)
@@ -218,7 +234,8 @@ const nowLineTopPercent = computed<number | null>(() => {
   return ((minutes - startMinutes) / totalMinutes.value) * 100
 })
 
-const hasSearchResults = computed(() => props.searchResults.length > 0)
+const showIdleHint = computed(() => !props.searchPerformed && props.searchResults.length === 0)
+const showEmptyHint = computed(() => props.searchPerformed && props.searchResults.length === 0)
 
 onMounted(() => {
   nowTimer = window.setInterval(() => {
@@ -257,8 +274,11 @@ onUnmounted(() => {
       <span class="cw-key cw-key--search">Suchergebnisse</span>
     </p>
 
-    <p v-if="!hasSearchResults" class="cw-search-empty">
+    <p v-if="showIdleHint" class="cw-search-empty">
       Noch keine Suche durchgeführt – die Stundenpläne der Mitglieder und bestehende Termine sind bereits sichtbar.
+    </p>
+    <p v-else-if="showEmptyHint" class="cw-search-empty cw-search-empty--none">
+      Keine freien Slots gefunden – passe Dauer, Uhrzeiten oder ausgeschlossene Tage an.
     </p>
 
     <CombinedWeekGrid
@@ -380,5 +400,12 @@ onUnmounted(() => {
   border: 0.0625rem dashed var(--color-border);
   border-radius: var(--radius-lg);
   background: var(--color-surface);
+}
+
+.cw-search-empty--none {
+  color: var(--color-text);
+  border-style: solid;
+  border-color: var(--color-warning-border, var(--color-border));
+  background: color-mix(in srgb, var(--color-warning-bg, var(--color-surface)) 55%, var(--color-surface));
 }
 </style>

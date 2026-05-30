@@ -43,6 +43,14 @@ export interface CombinedSearchSlot {
   label?: string
 }
 
+/** Eingabeparameter des Such-Formulars (an get_team_free_slots gebunden). */
+export interface FreeSlotSearchParams {
+  durationMinutes: number
+  minStart: string
+  maxEnd: string
+  excludedWeekdays: number[]
+}
+
 /**
  * Zusammengefasster Belegt-Block eines Wochentags: identische Zeitfenster
  * mehrerer Mitglieder werden zu einem Block mit der Menge der belegten
