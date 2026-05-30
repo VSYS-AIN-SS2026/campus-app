@@ -1091,6 +1091,18 @@ export type Database = {
           title: string
         }[]
       }
+      get_my_notifications: {
+        Args: never
+        Returns: {
+          body: string
+          created_at: string
+          id: string
+          payload: Json
+          read_at: string
+          title: string
+          type: string
+        }[]
+      }
       get_team_appointment: {
         Args: { p_appointment_id: string }
         Returns: {
@@ -1171,6 +1183,7 @@ export type Database = {
         }[]
       }
       is_team_member: { Args: { p_team_id: string }; Returns: boolean }
+      mark_notification_read: { Args: { p_id: string }; Returns: boolean }
       resolve_dashboard_user: {
         Args: never
         Returns: {

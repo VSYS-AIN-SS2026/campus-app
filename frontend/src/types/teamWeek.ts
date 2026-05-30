@@ -42,6 +42,16 @@ export interface CombinedAppointment {
   attendees?: AppointmentAttendee[]
 }
 
+/** In-App-Benachrichtigung des aktuellen Nutzers (get_my_notifications). */
+export interface AppNotification {
+  id: string
+  type: string
+  title: string
+  body: string
+  createdAt: string
+  readAt: string | null
+}
+
 /** Eine offene Einladung des aktuellen Nutzers (get_my_appointment_invitations). */
 export interface MyAppointmentInvitation {
   invitationId: string

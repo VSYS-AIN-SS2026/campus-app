@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { supabase } from '../supabase'
 import CombinedWeekView from '../components/teamWeek/CombinedWeekView.vue'
 import TeamAppointmentSearchForm from '../components/teamWeek/TeamAppointmentSearchForm.vue'
 import CreateAppointmentDialog from '../components/teamWeek/CreateAppointmentDialog.vue'
 import type {
+  AppNotification,
   CombinedAppointment,
   CombinedSearchSlot,
   CombinedWeekMember,
@@ -198,7 +199,7 @@ async function onAnswer(invitationId: string, status: 'accepted' | 'declined') {
   }
 
   // Statuswechsel sofort sichtbar: Liste + Wochenansicht aktualisieren.
-  await Promise.all([loadMyInvitations(), loadAppointments()])
+  await Promise.all([loadMyInvitations(), loadAppointments(), loadNotifications()])
 }
 
 const invitationDateFormat = new Intl.DateTimeFormat('de-DE', {
@@ -207,6 +208,49 @@ const invitationDateFormat = new Intl.DateTimeFormat('de-DE', {
 function formatInvitation(invitation: MyAppointmentInvitation): string {
   const end = new Date(invitation.endsAt)
   return `${invitationDateFormat.format(new Date(invitation.startsAt))}–${pad(end.getHours())}:${pad(end.getMinutes())}`
+}
+
+// ===================== Benachrichtigungen =====================
+interface NotificationRow {
+  id: string
+  type: string
+  title: string
+  body: string
+  created_at: string
+  read_at: string | null
+}
+
+const notifications = ref<AppNotification[]>([])
+const unreadCount = computed(() => notifications.value.filter((n) => !n.readAt).length)
+
+async function loadNotifications() {
+  if (!supabase) {
+    return
+  }
+  const { data, error: rpcError } = await supabase.rpc('get_my_notifications')
+  if (rpcError) {
+    return
+  }
+  notifications.value = ((data ?? []) as NotificationRow[]).map((row) => ({
+    id: row.id,
+    type: row.type,
+    title: row.title,
+    body: row.body,
+    createdAt: row.created_at,
+    readAt: row.read_at,
+  }))
+}
+
+async function onMarkRead(id: string) {
+  if (!supabase) {
+    return
+  }
+  await supabase.rpc('mark_notification_read', { p_id: id })
+  await loadNotifications()
+}
+
+function formatNotificationTime(createdAt: string): string {
+  return invitationDateFormat.format(new Date(createdAt))
 }
 
 // Wochenwechsel: alte Suchergebnisse verwerfen, Termine der neuen Woche laden.
@@ -294,12 +338,13 @@ async function onCreate(payload: NewAppointmentInput) {
 
   dialogOpen.value = false
   // Neuen Termin (+ eigene accepted-Einladung) sichtbar machen.
-  await Promise.all([loadAppointments(), loadMyInvitations()])
+  await Promise.all([loadAppointments(), loadMyInvitations(), loadNotifications()])
 }
 
 onMounted(() => {
   void loadAppointments()
   void loadMyInvitations()
+  void loadNotifications()
 })
 </script>
 
@@ -335,6 +380,36 @@ onMounted(() => {
               :disabled="answeringId === invitation.invitationId"
               @click="onAnswer(invitation.invitationId, 'declined')"
             >Absagen</button>
+          </div>
+        </li>
+      </ul>
+    </section>
+
+    <section class="invitations" aria-label="Benachrichtigungen">
+      <h3 class="invitations__title">
+        Benachrichtigungen
+        <span v-if="unreadCount" class="notif-badge">{{ unreadCount }}</span>
+      </h3>
+      <p v-if="notifications.length === 0" class="invitations__empty">Keine Benachrichtigungen.</p>
+      <ul v-else class="invitations__list">
+        <li
+          v-for="notification in notifications"
+          :key="notification.id"
+          class="invitation"
+          :class="{ 'invitation--unread': !notification.readAt }"
+        >
+          <div class="invitation__info">
+            <strong class="invitation__name">{{ notification.title }}</strong>
+            <span class="invitation__meta">{{ notification.body }}</span>
+            <span class="invitation__meta">{{ formatNotificationTime(notification.createdAt) }}</span>
+          </div>
+          <div class="invitation__actions">
+            <button
+              v-if="!notification.readAt"
+              type="button"
+              class="app-button"
+              @click="onMarkRead(notification.id)"
+            >Gelesen</button>
           </div>
         </li>
       </ul>
@@ -511,6 +586,24 @@ onMounted(() => {
   background: var(--color-primary);
   border-color: var(--color-primary);
   color: #fff;
+}
+
+.invitation--unread {
+  border-left: 0.1875rem solid var(--color-primary);
+}
+
+.notif-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.375rem;
+  margin-left: 0.5rem;
+  border-radius: 999rem;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
 }
 
 .search-status {
