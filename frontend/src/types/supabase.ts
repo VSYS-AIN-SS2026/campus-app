@@ -1118,6 +1118,22 @@ export type Database = {
           name: string
         }[]
       }
+      get_team_free_slots: {
+        Args: {
+          p_duration_minutes: number
+          p_excluded_weekdays?: number[]
+          p_max_end?: string
+          p_min_start?: string
+          p_team_id: string
+          p_time_zone?: string
+          p_week_start: string
+        }
+        Returns: {
+          duration_minutes: number
+          ends_at: string
+          starts_at: string
+        }[]
+      }
       get_teams: {
         Args: never
         Returns: {
