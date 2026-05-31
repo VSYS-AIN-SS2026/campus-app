@@ -42,6 +42,22 @@
           <button v-if="team.created_by === currentUserId" @click="deleteTeam(team.id)" class="delete-btn">Löschen</button>
         </div>
 
+        <div v-if="team.created_by === currentUserId" class="expiration-section">
+          <label class="expiration-label">
+            Ablaufdatum:
+            <input
+              type="date"
+              :value="team.expires_at ? team.expires_at.substring(0, 10) : ''"
+              @change="handleSetExpiration(team.id, ($event.target as HTMLInputElement).value)"
+              class="input-field-sm"
+            />
+          </label>
+          <span v-if="team.expires_at" class="expiration-info">
+            Läuft ab am {{ new Date(team.expires_at).toLocaleDateString('de-DE') }}
+          </span>
+          <button v-if="team.expires_at" @click="handleSetExpiration(team.id, '')" class="ghost-button small">Ablaufdatum entfernen</button>
+        </div>
+
             <button
             type="button"
             class="ghost-button"
@@ -69,6 +85,7 @@
         <p v-if="inviteError === team.id" class="error-text small">{{ lastErrorMessage }}</p>
       </div>
     </div>
+
   </div>
 </template>
 
@@ -77,7 +94,7 @@ import { ref, onMounted } from 'vue'
 import { useTeams } from '../composables/useTeams'
 import { supabase } from '../supabase'
 
-const { teams, invitations, loading, fetchTeams, fetchMyInvitations, createTeam, inviteUserByEmail, respondToInvitation, deleteTeam } = useTeams()
+const { teams, invitations, loading, fetchTeams, fetchMyInvitations, createTeam, inviteUserByEmail, respondToInvitation, setTeamExpiration, deleteTeam } = useTeams()
 
 const newTeamName = ref('')
 const inviteEmails = ref<Record<string, string>>({})
@@ -116,6 +133,10 @@ async function handleCreateTeam() {
   newTeamName.value = ''
 }
 
+async function handleSetExpiration(teamId: string, value: string) {
+  await setTeamExpiration(teamId, value || null)
+}
+
 async function handleInvite(teamId: string) {
   try {
     inviteError.value = null
@@ -142,4 +163,8 @@ async function handleInvite(teamId: string) {
 .accept-btn { background: #52c41a; color: white; border: none; padding: 0.4rem 0.8rem; border-radius: 0.4rem; cursor: pointer; }
 .reject-btn { background: transparent; border: 1px solid #ff4d4f; color: #ff4d4f; padding: 0.4rem 0.8rem; border-radius: 0.4rem; cursor: pointer; }
 .delete-btn { color: #ff4d4f; background: none; border: none; cursor: pointer; font-size: 0.8rem; text-decoration: underline; }
+.expiration-section { display: flex; align-items: center; gap: 0.75rem; margin-top: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+.expiration-label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; }
+.expiration-info { font-size: 0.8rem; color: var(--color-text-secondary, #666); }
+.ghost-button.small { font-size: 0.75rem; padding: 0.2rem 0.5rem; }
 </style>

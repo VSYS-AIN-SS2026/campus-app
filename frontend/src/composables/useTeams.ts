@@ -221,6 +221,37 @@ export function useTeams() {
   await fetchTeams()
 }
 
+  async function setTeamExpiration(teamId: string, expiresAt: string | null) {
+    const client = getClient()
+    if (!client) return
+
+    const { error: err } = await client
+      .from('teams')
+      .update({ expires_at: expiresAt })
+      .eq('id', teamId)
+
+    if (err) {
+      error.value = err.message
+    } else {
+      await fetchTeams()
+    }
+  }
+
+  async function triggerTeamCleanup() {
+    const client = getClient()
+    if (!client) return
+
+    const { data, error: err } = await client.rpc('trigger_team_cleanup')
+
+    if (err) {
+      error.value = err.message
+      return 0
+    }
+
+    await fetchTeams()
+    return data as number
+  }
+
   async function deleteTeam(teamId: string) {
     const client = getClient()
     if (!client) return
@@ -247,6 +278,8 @@ export function useTeams() {
     createTeam,
     inviteUserByEmail,
     respondToInvitation,
+    setTeamExpiration,
+    triggerTeamCleanup,
     deleteTeam
   }
 }
