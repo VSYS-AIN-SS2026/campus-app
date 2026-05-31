@@ -24,6 +24,7 @@ interface LsfEventRow {
   rhythm: number
   course_code: string
   course_name: string
+  coordinator: string | null
 }
 
 interface EventTypeGroup {
@@ -93,7 +94,8 @@ async function fetchData(moduleId: string) {
         code,
         name,
         course_type,
-        module_id
+        module_id,
+        coordinator
       )
     `)
     .gte('end_date', todayStr)
@@ -118,7 +120,7 @@ async function fetchData(moduleId: string) {
   const typeMap = new Map<string, EventTypeGroup>()
 
   for (const row of rawRows) {
-    const course = row.courses as { code: string; name: string; course_type: string }
+    const course = row.courses as { code: string; name: string; course_type: string; coordinator: string | null }
     const eventType = row.event_type ?? course.course_type ?? 'unknown'
 
     if (!typeMap.has(eventType)) {
@@ -145,6 +147,7 @@ async function fetchData(moduleId: string) {
       rhythm: row.rhythm,
       course_code: course.code,
       course_name: course.name,
+      coordinator: course.coordinator,
     })
   }
 
@@ -189,12 +192,14 @@ async function importSelected() {
     if (!event) continue
 
     const roomParts = [event.room_building, event.room_number].filter(Boolean)
-    const roomStr = roomParts.length ? ' · ' + roomParts.join(' ') : ''
+    const subtitleParts = [group.label]
+    if (roomParts.length) subtitleParts.push(roomParts.join(' '))
+    if (event.coordinator) subtitleParts.push(event.coordinator)
 
     eventsToInsert.push({
       lsf_event_id: event.id,
       title: event.course_name || group.courseName,
-      subtitle: `${group.label}${roomStr}`,
+      subtitle: subtitleParts.join(' · '),
       day_index: WEEKDAY_MAP[event.weekday ?? ''] ?? 0,
       start_time: event.start_time.slice(0, 5),
       end_time: event.end_time.slice(0, 5),
