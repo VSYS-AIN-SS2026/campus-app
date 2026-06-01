@@ -12,7 +12,7 @@ import { useAppController } from './composables/useAppController'
 import { useNotifications } from './composables/useNotifications'
 import { useTeams } from './composables/useTeams'
 
-const { magicLinkRedirectTo, allCategories, activePlannerView, authEmail, authError, authFirstName, authInfo, authLastName, authLoading, authSending, canEditModuleStatuses, categoryError, currentUser, currentUserEmail, userProfile, displayedWeeklyScheduleEvents, error, hiddenOccurrenceItems, hiddenPageEntries, hiddenPageError, hiddenPageLoading, hiddenSeriesItems, lastHiddenSeries, loadImportedEvents, loading, lsfImportModule, modules, moduleStatusError, profileError, profileInfo, profileSaving, savedSpo, savedStudyProgram, savingCategoryModuleId, savingModuleId, scheduleVisibilityError, scheduleVisibilityInfo, selectedModule, selectedSpoId, selectedStudyProgramId, selectionDirty, showHiddenEvents, spoItems, studyProgramItems, weekStartDate, getSpoLabel, getStudyProgramLabel, hideScheduleSeries, saveModuleCategories, saveModuleStatus, saveStudyProfileSelection, sendMagicLink, showAllScheduleSeries, showScheduleSeries, signOut, undoHideScheduleSeries } = useAppController()
+const { magicLinkRedirectTo, allCategories, activePlannerView, authEmail, authError, authFirstName, authInfo, authLastName, authLoading, authSending, canEditModuleStatuses, categoryError, currentUser, currentUserEmail, userProfile, displayedWeeklyScheduleEvents, error, hiddenOccurrenceItems, hiddenPageEntries, hiddenPageError, hiddenPageLoading, hiddenSeriesItems, lastHiddenSeries, loadImportedEvents, loading, lsfImportModule, modules, moduleStatusError, profileError, profileInfo, profileSaving, savedSpo, savedStudyProgram, savingCategoryModuleId, savingModuleId, scheduleVisibilityError, scheduleVisibilityInfo, selectedModule, selectedSpoId, selectedStudyProgramId, selectionDirty, showHiddenEvents, spoItems, studyProgramItems, weekStartDate, getSpoLabel, getStudyProgramLabel, hideScheduleOccurrence, hideScheduleSeries, saveModuleCategories, saveModuleStatus, saveStudyProfileSelection, sendMagicLink, showAllScheduleSeries, showScheduleSeries, signOut, undoHideScheduleSeries } = useAppController()
 const { invitationCount, fetchMyInvitations, subscribeToInvitations, unsubscribeFromInvitations } = useTeams()
 const {
   allNotifications,
@@ -20,6 +20,8 @@ const {
   fetchAllNotifications,
   markRead,
   markAllRead,
+  deleteNotification,
+  deleteAllNotifications,
   subscribeToInserts,
   teardownNotifications,
 } = useNotifications()
@@ -232,12 +234,20 @@ async function onSidebarNavigate(target: SidebarSection) {
             >
               <div class="notif-panel-head">
                 <span class="notif-panel-title">Benachrichtigungen</span>
-                <button
-                  v-if="unreadCount > 0"
-                  type="button"
-                  class="notif-markall"
-                  @click="markAllRead"
-                >Alle als gelesen</button>
+                <div class="notif-panel-actions">
+                  <button
+                    v-if="allNotifications.length > 0"
+                    type="button"
+                    class="notif-action-btn"
+                    @click="deleteAllNotifications"
+                  >Alle löschen</button>
+                  <button
+                    v-if="unreadCount > 0"
+                    type="button"
+                    class="notif-action-btn"
+                    @click="markAllRead"
+                  >Alle als gelesen</button>
+                </div>
               </div>
 
               <p v-if="groupedNotifications.length === 0" class="notif-empty">
@@ -246,18 +256,29 @@ async function onSidebarNavigate(target: SidebarSection) {
 
               <template v-for="group in groupedNotifications" :key="group.label">
                 <div class="notif-group-header">{{ group.label }}</div>
-                <button
+                <div
                   v-for="notif in group.items"
                   :key="notif.id"
-                  type="button"
-                  class="notif-item"
-                  :class="{ 'notif-item--unread': !notif.readAt }"
-                  @click="markRead(notif.id)"
+                  class="notif-item-row"
                 >
-                  <span class="notif-item-title">{{ notif.title }}</span>
-                  <span class="notif-item-body">{{ notif.body }}</span>
-                  <span class="notif-item-time">{{ formatNotifDate(notif.createdAt) }}</span>
-                </button>
+                  <button
+                    type="button"
+                    class="notif-item"
+                    :class="{ 'notif-item--unread': !notif.readAt }"
+                    @click="markRead(notif.id)"
+                  >
+                    <span class="notif-item-title">{{ notif.title }}</span>
+                    <span class="notif-item-body">{{ notif.body }}</span>
+                    <span class="notif-item-time">{{ formatNotifDate(notif.createdAt) }}</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="notif-delete-btn"
+                    :aria-label="`Benachrichtigung löschen: ${notif.title}`"
+                    title="Löschen"
+                    @click.stop="deleteNotification(notif.id)"
+                  >&times;</button>
+                </div>
               </template>
             </div>
           </div>
@@ -386,6 +407,7 @@ async function onSidebarNavigate(target: SidebarSection) {
                   :show-hidden-events="showHiddenEvents"
                   :week-start-date="weekStartDate"
                   @update:active-planner-view="activePlannerView = $event"
+                  @hide-occurrence="hideScheduleOccurrence($event)"
                   @hide-series="hideScheduleSeries($event.seriesId, $event.title)"
                   @show-series="showScheduleSeries"
                   @show-all-series="showAllScheduleSeries"
@@ -635,7 +657,13 @@ async function onSidebarNavigate(target: SidebarSection) {
   color: var(--color-text);
 }
 
-.notif-markall {
+.notif-panel-actions {
+  display: flex;
+  gap: 0.375rem;
+  align-items: center;
+}
+
+.notif-action-btn {
   font-size: var(--font-size-xs, 0.75rem);
   color: var(--color-primary);
   background: none;
@@ -646,7 +674,7 @@ async function onSidebarNavigate(target: SidebarSection) {
   border-radius: 0.25rem;
 }
 
-.notif-markall:hover {
+.notif-action-btn:hover {
   text-decoration: underline;
 }
 
@@ -723,5 +751,44 @@ async function onSidebarNavigate(target: SidebarSection) {
   font-size: 0.66rem;
   color: var(--color-text-muted);
   margin-top: 0.125rem;
+}
+
+.notif-item-row {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 0.0625rem solid var(--color-border);
+}
+
+.notif-item-row:last-child {
+  border-bottom: none;
+}
+
+.notif-item {
+  flex: 1;
+  min-width: 0;
+  border-bottom: none !important;
+}
+
+.notif-delete-btn {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  background: none;
+  border: none;
+  font-size: 1.05rem;
+  line-height: 1;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s ease, color 0.12s ease;
+}
+
+.notif-item-row:hover .notif-delete-btn {
+  opacity: 1;
+}
+
+.notif-delete-btn:hover {
+  color: var(--color-error, #dc2626);
 }
 </style>

@@ -55,19 +55,21 @@ onMounted(async () => {
 
 <style scoped>
 .team-list-view {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 40px 24px 80px;
+  width: 100%;
+  max-width: 56rem;
+  margin-inline: auto;
+  padding: var(--space-4xl) var(--space-3xl) var(--space-5xl);
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: var(--space-3xl);
+  box-sizing: border-box;
 }
 
-.page-header { display: flex; flex-direction: column; gap: 6px; }
+.page-header { display: flex; flex-direction: column; gap: var(--space-sm); }
 
 .page-title {
   margin: 0;
-  font-size: 1.8rem;
+  font-size: var(--font-size-xl);
   font-weight: 800;
   letter-spacing: -0.02em;
   color: var(--color-text);
@@ -75,30 +77,30 @@ onMounted(async () => {
 
 .page-subtitle {
   margin: 0;
-  font-size: 0.9rem;
+  font-size: var(--font-size-sm);
   color: var(--color-text-muted);
 }
 
 .error-banner {
-  padding: 12px 16px;
+  padding: var(--space-lg) var(--space-xl);
   background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  border-radius: 8px;
+  border: 0.0625rem solid rgba(239, 68, 68, 0.3);
+  border-radius: var(--radius-md);
   color: #ef4444;
-  font-size: 0.88rem;
+  font-size: var(--font-size-sm);
 }
 
 .team-cards {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--space-lg);
 }
 
 .team-card {
   background: var(--color-surface);
   border: 0.0625rem solid var(--color-border);
   border-radius: 0.625rem;
-  padding: 16px 20px;
+  padding: var(--space-2xl) var(--space-3xl);
   cursor: pointer;
   user-select: none;
   transition: border-color 0.15s, box-shadow 0.15s;
@@ -110,14 +112,14 @@ onMounted(async () => {
 }
 
 .team-card-name {
-  font-size: 1rem;
+  font-size: var(--font-size-md);
   font-weight: 700;
   color: var(--color-text);
 }
 
 .team-card-info {
-  margin-top: 4px;
-  font-size: 0.82rem;
+  margin-top: var(--space-xs);
+  font-size: var(--font-size-sm);
   color: var(--color-text-muted);
 }
 
@@ -126,21 +128,27 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-  padding: 40px;
+  gap: var(--space-xl);
+  padding: var(--space-5xl);
   color: var(--color-text-muted);
 }
 
 .empty-icon { font-size: 2.5rem; }
 
 .spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid var(--color-border);
+  width: var(--space-3xl);
+  height: var(--space-3xl);
+  border: 0.1875rem solid var(--color-border);
   border-top-color: var(--color-primary);
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 45em) {
+  .team-list-view {
+    padding: var(--space-2xl) var(--space-lg);
+  }
+}
 </style>

@@ -9,7 +9,7 @@ const props = defineProps<{
   startHour: number
   totalMinutes: number
   formatTimeLabel: (minutes: number) => string
-  eventStyle: (start: number, end: number) => { top: string; height: string }
+  eventStyle: (start: number, end: number, columnIndex?: number, columnCount?: number) => { top: string; height: string; left?: string; width?: string; right?: string }
   currentDayIndex: number
   nowLineTopPercent: number | null
 }>()
@@ -241,7 +241,7 @@ defineExpose({
             :key="event.id"
             class="event-block"
             :class="[`event-${event.status}`, { 'event-hidden': event.isHidden }]"
-            :style="eventStyle(event.start, event.end)"
+            :style="eventStyle(event.start, event.end, event.columnIndex, event.columnCount)"
           >
             <span class="event-time">{{ event.startTime }}–{{ event.endTime }}</span>
             <strong class="event-title">

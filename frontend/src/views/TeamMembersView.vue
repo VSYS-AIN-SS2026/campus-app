@@ -9,26 +9,28 @@ const team = inject<Ref<TeamDetail | null>>('teamDetail')
 
 <template>
   <section v-if="team" class="detail-members">
-    <h2 class="members-heading">Mitglieder</h2>
+    <div class="members-content">
+      <h2 class="members-heading">Mitglieder</h2>
 
-    <p v-if="team.members.length === 0" class="members-empty">
-      Keine Mitglieder eingetragen.
-    </p>
+      <p v-if="team.members.length === 0" class="members-empty">
+        Keine Mitglieder eingetragen.
+      </p>
 
-    <table v-else class="members-table">
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>E-Mail</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="member in team.members" :key="member.email">
-          <td>{{ member.name }}</td>
-          <td>{{ member.email }}</td>
-        </tr>
-      </tbody>
-    </table>
+      <table v-else class="members-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>E-Mail</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="member in team.members" :key="member.email">
+            <td>{{ member.name }}</td>
+            <td>{{ member.email }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </section>
 </template>
 
@@ -37,6 +39,11 @@ const team = inject<Ref<TeamDetail | null>>('teamDetail')
   display: flex;
   flex-direction: column;
   gap: var(--space-2xl);
+}
+
+.members-content {
+  max-width: 48rem;
+  width: 100%;
 }
 
 .members-heading {

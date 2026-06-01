@@ -79,10 +79,20 @@ onMounted(async () => {
 <style scoped>
 .detail-page {
   padding: var(--space-4xl) var(--space-3xl);
-  max-width: 56rem;
+  width: 100%;
+  max-width: none;
+  margin-inline: auto;
   display: flex;
   flex-direction: column;
   gap: var(--space-4xl);
+  box-sizing: border-box;
+}
+
+@media (max-width: 45em) {
+  .detail-page {
+    padding: var(--space-2xl) var(--space-lg);
+    gap: var(--space-2xl);
+  }
 }
 
 .back-button {

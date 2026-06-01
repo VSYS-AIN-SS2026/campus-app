@@ -125,12 +125,22 @@ const endHourRef = computed(() => props.endHour)
 const emptyEvents = computed<WeekEvent[]>(() => [])
 
 // Layout-Primitive aus der bestehenden Wochenansicht wiederverwenden.
-const { hourSlots, totalMinutes, formatTimeLabel, eventStyle } = useWeeklySchedule(
+const { hourSlots, totalMinutes, formatTimeLabel } = useWeeklySchedule(
   emptyEvents,
   computed(() => weekStart.value),
   startHourRef,
   endHourRef,
 )
+
+// Rem-based positioning (instead of %) — eliminates sub-pixel gaps at shared
+// boundaries between adjacent blocks. The day-body height is
+// (totalMinutes / 60) * 3.5 rem, so 1 minute = 3.5/60 rem.
+const REM_PER_MIN = 3.5 / 60
+function eventStyleRem(start: number, end: number) {
+  const startOffset = Math.max((start - props.startHour * 60) * REM_PER_MIN, 0)
+  const height = Math.max((end - start) * REM_PER_MIN, 1.5)
+  return { top: `${startOffset}rem`, height: `${height}rem` }
+}
 
 const { memberById, memberColor, mergedByWeekday } = useCombinedWeek(
   computed(() => props.members),
@@ -203,7 +213,7 @@ const appointmentsByKey = computed(() => {
       id: appointment.id,
       label: appointment.title,
       timeLabel: `${formatTimeLabel(startMin)}–${formatTimeLabel(endMin)}`,
-      style: eventStyle(startMin, endMin),
+      style: eventStyleRem(startMin, endMin),
       members,
     }
     const key = localDateKey(starts)
@@ -232,7 +242,7 @@ const searchByWeekday = computed<LayerBlockView[][]>(() => {
       id: slot.id,
       label: slot.label ?? 'Vorschlag',
       timeLabel: `${formatTimeLabel(startMin)}–${formatTimeLabel(endMin)}`,
-      style: eventStyle(startMin, endMin),
+      style: eventStyleRem(startMin, endMin),
     }
     raw[slot.dayIndex].push({ startMin, endMin, style: view.style, view })
   }
@@ -255,7 +265,7 @@ const fillsByWeekday = computed<MemberFill[][]>(() => {
     result[slot.dayIndex].push({
       id: `fill-${slot.memberId}-${slot.dayIndex}-${slot.startTime}`,
       color,
-      style: eventStyle(startMin, endMin),
+      style: eventStyleRem(startMin, endMin),
     })
   }
   return result
@@ -266,11 +276,13 @@ const columns = computed<WeekColumnView[]>(() => days.value.map((day) => {
     const { members, extraCount } = chipsFor(block.memberIds)
     return {
       id: `${day.key}-${block.start}-${block.end}-${block.memberIds.join('_')}`,
-      style: eventStyle(block.start, block.end),
+      style: eventStyleRem(block.start, block.end),
       members,
       extraCount,
     }
   })
+
+  const searches = searchByWeekday.value[day.index] ?? []
 
   return {
     key: day.key,
@@ -280,7 +292,7 @@ const columns = computed<WeekColumnView[]>(() => days.value.map((day) => {
     fills: fillsByWeekday.value[day.index],
     busy,
     appointments: appointmentsByKey.value.get(day.key) ?? [],
-    searches: searchByWeekday.value[day.index] ?? [],
+    searches,
   }
 }))
 

@@ -37,6 +37,8 @@ export interface AppointmentAttendee {
 export interface CombinedAppointment {
   id: string
   title: string
+  description: string | null
+  createdBy: string
   startsAt: string
   endsAt: string
   /** Nicht-abgesagte Teilnehmer (accepted/pending) für Teilnehmer-Icons. */

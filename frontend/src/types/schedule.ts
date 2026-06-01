@@ -25,6 +25,8 @@ export interface WeekEvent {
 export interface NormalizedWeekEvent extends WeekEvent {
   start: number
   end: number
+  columnIndex: number
+  columnCount: number
 }
 
 export interface ScheduleDay {

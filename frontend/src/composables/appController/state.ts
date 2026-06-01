@@ -109,8 +109,8 @@ export function createAppControllerState() {
         }
         return {
           id: `appointment:${row.appointment_id}`,
-          // Leere seriesId -> keine Ausblenden-Aktion und nie als verborgen gewertet.
-          seriesId: '',
+          seriesId: `team-appt:${row.team_id}`,
+          occurrenceId: `appointment:${row.appointment_id}`,
           dayIndex: localWeekdayIndex(start),
           date: localDateKey(start),
           title: row.title,

@@ -5,6 +5,7 @@ import { useRoute } from 'vue-router'
 import { supabase } from '../supabase'
 import CombinedWeekView from '../components/teamWeek/CombinedWeekView.vue'
 import TeamAppointmentSearchForm from '../components/teamWeek/TeamAppointmentSearchForm.vue'
+import AppointmentDetailDialog from '../components/teamWeek/AppointmentDetailDialog.vue'
 import CreateAppointmentDialog from '../components/teamWeek/CreateAppointmentDialog.vue'
 import {
   BROWSER_TIME_ZONE,
@@ -35,6 +36,7 @@ interface TeamScheduleRow {
   start_time: string | null
   end_time: string | null
   title: string | null
+  status: string | null
 }
 
 const members = ref<CombinedWeekMember[]>([])
@@ -69,6 +71,7 @@ async function loadTeamSchedule() {
       startTime: (row.start_time as string).slice(0, 5),
       endTime: (row.end_time as string).slice(0, 5),
       title: row.title ?? undefined,
+      state: row.status === 'belegt' ? 'active' : row.status === 'ausgeblendet' ? 'hidden' : row.status === 'abgewählt' ? 'deselected' : undefined,
     }))
 }
 
@@ -88,9 +91,10 @@ interface FreeSlotRow {
 function toSearchSlot(row: FreeSlotRow): CombinedSearchSlot {
   const start = new Date(row.starts_at)
   const end = new Date(row.ends_at)
+  const dayIndex = localWeekdayIndex(start)
   return {
     id: `${row.starts_at}-${row.ends_at}`,
-    dayIndex: localWeekdayIndex(start),
+    dayIndex,
     startTime: localHhMm(start),
     endTime: localHhMm(end),
     label: 'frei',
@@ -108,6 +112,8 @@ interface AppointmentInvitationRow {
 interface AppointmentRow {
   id: string
   title: string
+  description: string | null
+  created_by: string
   starts_at: string
   ends_at: string
   invitations: AppointmentInvitationRow[] | null
@@ -146,6 +152,8 @@ async function loadAppointments() {
     .map((row) => ({
       id: row.id,
       title: row.title,
+      description: row.description,
+      createdBy: row.created_by,
       startsAt: row.starts_at,
       endsAt: row.ends_at,
       attendees: (row.invitations ?? [])
@@ -335,9 +343,65 @@ async function onSearch(params: FreeSlotSearchParams) {
   searchResults.value = ((data ?? []) as FreeSlotRow[]).map(toSearchSlot)
 }
 
-// ===================== Termin-Detail (Platzhalter) =====================
-// Detail-Ansicht noch nicht implementiert — click wird ignoriert.
-function onSelectAppointment(_id: string) { /* no-op */ }
+// ===================== Termin-Detail-Dialog =====================
+const currentUserId = ref<string | null>(null)
+const selectedAppointment = ref<CombinedAppointment | null>(null)
+const editDialogOpen = ref(false)
+const editLoading = ref(false)
+const editError = ref<string | null>(null)
+
+function onSelectAppointment(id: string) {
+  selectedAppointment.value = appointments.value.find(a => a.id === id) ?? null
+  editDialogOpen.value = !!selectedAppointment.value
+  editError.value = null
+}
+
+async function onUpdateAppointment(payload: NewAppointmentInput) {
+  if (!supabase || !selectedAppointment.value) return
+  editLoading.value = true
+  editError.value = null
+
+  const { error: rpcError } = await supabase.rpc('update_team_appointment', {
+    p_appointment_id: selectedAppointment.value.id,
+    p_title: payload.title,
+    p_description: payload.description,
+    p_starts_at: payload.startsAt,
+    p_ends_at: payload.endsAt,
+  })
+
+  editLoading.value = false
+
+  if (rpcError) {
+    editError.value = rpcError.message
+    return
+  }
+
+  editDialogOpen.value = false
+  selectedAppointment.value = null
+  await loadAppointments()
+}
+
+async function onDeleteAppointment(id: string) {
+  if (!supabase) return
+  editLoading.value = true
+  editError.value = null
+
+  const { error: rpcError } = await supabase.rpc('delete_team_appointment', {
+    p_appointment_id: id,
+  })
+
+  editLoading.value = false
+
+  if (rpcError) {
+    editError.value = rpcError.message
+    return
+  }
+
+  editDialogOpen.value = false
+  selectedAppointment.value = null
+  appointments.value = appointments.value.filter(a => a.id !== id)
+  await loadMyInvitations()
+}
 
 // ===================== Termin-Erstell-Dialog =====================
 const dialogOpen = ref(false)
@@ -383,7 +447,9 @@ async function onCreate(payload: NewAppointmentInput) {
   await Promise.all([loadAppointments(), loadMyInvitations()])
 }
 
-onMounted(() => {
+onMounted(async () => {
+  const { data: { user } } = await supabase!.auth.getUser()
+  currentUserId.value = user?.id ?? null
   void loadTeamSchedule()
   void loadAppointments()
   void loadMyInvitations()
@@ -469,6 +535,17 @@ onUnmounted(() => {
       :error="createError"
       @close="dialogOpen = false"
       @submit="onCreate"
+    />
+
+    <AppointmentDetailDialog
+      :open="editDialogOpen"
+      :appointment="selectedAppointment"
+      :current-user-id="currentUserId"
+      :loading="editLoading"
+      :error="editError"
+      @close="editDialogOpen = false"
+      @update="onUpdateAppointment"
+      @delete="onDeleteAppointment"
     />
   </section>
 </template>

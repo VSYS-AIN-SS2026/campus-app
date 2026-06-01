@@ -98,6 +98,19 @@ function teardownNotifications() {
   }
 }
 
+async function deleteNotification(id: string) {
+  allNotifications.value = allNotifications.value.filter(n => n.id !== id)
+  if (!supabase) return
+  await supabase.rpc('delete_notification', { p_id: id })
+}
+
+async function deleteAllNotifications() {
+  const ids = allNotifications.value.map(n => n.id)
+  allNotifications.value = []
+  if (!supabase || ids.length === 0) return
+  await Promise.all(ids.map(id => supabase!.rpc('delete_notification', { p_id: id })))
+}
+
 export function useNotifications() {
   return {
     allNotifications,
@@ -105,6 +118,8 @@ export function useNotifications() {
     fetchAllNotifications,
     markRead,
     markAllRead,
+    deleteNotification,
+    deleteAllNotifications,
     subscribeToInserts,
     teardownNotifications,
   }
