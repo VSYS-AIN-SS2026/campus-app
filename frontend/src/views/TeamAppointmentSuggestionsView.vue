@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
+import type { RealtimeChannel } from '@supabase/supabase-js'
 import { useRoute } from 'vue-router'
 import { supabase } from '../supabase'
 import CombinedWeekView from '../components/teamWeek/CombinedWeekView.vue'
@@ -7,14 +8,13 @@ import TeamAppointmentSearchForm from '../components/teamWeek/TeamAppointmentSea
 import CreateAppointmentDialog from '../components/teamWeek/CreateAppointmentDialog.vue'
 import {
   BROWSER_TIME_ZONE,
-  localDateString,
+  localDateKey,
   localHhMm,
   localWeekdayIndex,
   mondayOf,
   weekRangeUtc,
 } from '../utils/datetime'
 import type {
-  AppNotification,
   CombinedAppointment,
   CombinedSearchSlot,
   CombinedWeekMember,
@@ -27,38 +27,52 @@ import type {
 const route = useRoute()
 const teamId = route.params.id as string
 
-// =====================================================================
-// DEMO-DATEN für die Belegt-Spur (Mitglieder-Stundenpläne) – ersetzt eine
-// spätere Story durch echte Daten (Endpunkt für Mitglieder-Stundenpläne).
-// Termine, Einladungen und Suche laufen bereits über echte Endpunkte.
-// =====================================================================
-const sampleMembers: CombinedWeekMember[] = [
-  { id: 'm-anna', name: 'Anna Demo' },
-  { id: 'm-ben', name: 'Ben Demo' },
-  { id: 'm-carla', name: 'Carla Demo' },
-]
+// ===================== Team-Mitglieder + Stundenpläne =====================
+interface TeamScheduleRow {
+  member_id: string
+  member_name: string
+  day_index: number | null
+  start_time: string | null
+  end_time: string | null
+  title: string | null
+}
 
-const sampleSlots: MemberScheduleSlot[] = [
-  // Montag: identischer Slot aller drei (wird zusammengefasst)
-  { memberId: 'm-anna', dayIndex: 0, startTime: '08:00', endTime: '10:00', title: 'Vorlesung' },
-  { memberId: 'm-ben', dayIndex: 0, startTime: '08:00', endTime: '10:00', title: 'Vorlesung' },
-  { memberId: 'm-carla', dayIndex: 0, startTime: '08:00', endTime: '10:00', title: 'Vorlesung' },
-  // Montag: zwei Mitglieder
-  { memberId: 'm-anna', dayIndex: 0, startTime: '10:00', endTime: '12:00', title: 'Übung' },
-  { memberId: 'm-ben', dayIndex: 0, startTime: '10:00', endTime: '12:00', title: 'Übung' },
-  // Montag: ein Mitglied
-  { memberId: 'm-carla', dayIndex: 0, startTime: '13:00', endTime: '15:00', title: 'Labor' },
-  // Dienstag: Teilüberlappung -> segmentierte Blöcke
-  { memberId: 'm-anna', dayIndex: 1, startTime: '09:00', endTime: '11:00', title: 'Seminar' },
-  { memberId: 'm-ben', dayIndex: 1, startTime: '10:00', endTime: '12:00', title: 'Seminar' },
-  // Mittwoch: ausgeblendet zählt weiterhin als belegt
-  { memberId: 'm-anna', dayIndex: 2, startTime: '08:00', endTime: '09:30', title: 'Tutorium', state: 'hidden' },
-  { memberId: 'm-ben', dayIndex: 2, startTime: '08:00', endTime: '09:30', title: 'Tutorium' },
-  // Mittwoch: abgewählt -> komplett herausgefiltert (erzeugt keinen Block)
-  { memberId: 'm-carla', dayIndex: 2, startTime: '14:00', endTime: '16:00', title: 'Optional', state: 'deselected' },
-]
+const members = ref<CombinedWeekMember[]>([])
+const memberSlots = ref<MemberScheduleSlot[]>([])
+const scheduleLoading = ref(false)
 
-// ===================== Suche (echter Endpoint) =====================
+async function loadTeamSchedule() {
+  if (!supabase) return
+  scheduleLoading.value = true
+  const { data, error: err } = await supabase.rpc('get_team_week_schedule', {
+    p_team_id: teamId,
+  })
+  scheduleLoading.value = false
+  if (err || !data) return
+
+  const rows = data as TeamScheduleRow[]
+
+  // Deduplicate members preserving DB order.
+  const memberMap = new Map<string, string>()
+  for (const row of rows) {
+    if (!memberMap.has(row.member_id)) {
+      memberMap.set(row.member_id, row.member_name)
+    }
+  }
+  members.value = Array.from(memberMap.entries()).map(([id, name]) => ({ id, name }))
+
+  memberSlots.value = rows
+    .filter(row => row.day_index != null && row.start_time != null && row.end_time != null)
+    .map(row => ({
+      memberId: row.member_id,
+      dayIndex: row.day_index as number,
+      startTime: (row.start_time as string).slice(0, 5),
+      endTime: (row.end_time as string).slice(0, 5),
+      title: row.title ?? undefined,
+    }))
+}
+
+// ===================== Suche =====================
 const weekStart = ref<Date>(mondayOf(new Date()))
 const loading = ref(false)
 const error = ref<string | null>(null)
@@ -85,8 +99,9 @@ function toSearchSlot(row: FreeSlotRow): CombinedSearchSlot {
   }
 }
 
-// ===================== Termine (echte Daten) =====================
+// ===================== Termine =====================
 interface AppointmentInvitationRow {
+  user_id: string | null
   name: string | null
   status: string
 }
@@ -102,10 +117,11 @@ const appointments = ref<CombinedAppointment[]>([])
 const appointmentsError = ref<string | null>(null)
 
 async function loadAppointments() {
-  if (!supabase) {
-    return
-  }
+  if (!supabase) return
   const { fromIso, toIso } = weekRangeUtc(weekStart.value)
+
+  const { data: { user } } = await supabase.auth.getUser()
+  const currentUserId = user?.id
 
   const { data, error: rpcError } = await supabase.rpc('get_team_appointments', {
     p_team_id: teamId,
@@ -120,16 +136,26 @@ async function loadAppointments() {
   }
 
   appointmentsError.value = null
-  appointments.value = ((data ?? []) as AppointmentRow[]).map((row) => ({
-    id: row.id,
-    title: row.title,
-    startsAt: row.starts_at,
-    endsAt: row.ends_at,
-    // Decliner werden nicht als Teilnehmer (belegt) geführt.
-    attendees: (row.invitations ?? [])
-      .filter((invitation) => invitation.status !== 'declined')
-      .map((invitation) => ({ name: invitation.name ?? 'Unbekannt', status: invitation.status })),
-  }))
+  const rows = (data ?? []) as AppointmentRow[]
+  appointments.value = rows
+    .filter((row) => {
+      if (!currentUserId) return true
+      const myInvite = (row.invitations ?? []).find((inv) => inv.user_id === currentUserId)
+      return !myInvite || myInvite.status !== 'declined'
+    })
+    .map((row) => ({
+      id: row.id,
+      title: row.title,
+      startsAt: row.starts_at,
+      endsAt: row.ends_at,
+      attendees: (row.invitations ?? [])
+        .filter((inv) => inv.status !== 'declined')
+        .map((inv) => ({
+          userId: inv.user_id ?? undefined,
+          name: inv.name ?? 'Unbekannt',
+          status: inv.status,
+        })),
+    }))
 }
 
 // ===================== Meine offenen Einladungen =====================
@@ -150,10 +176,8 @@ const invitationsError = ref<string | null>(null)
 const answeringId = ref<string | null>(null)
 
 async function loadMyInvitations() {
-  if (!supabase) {
-    return
-  }
-  const { data, error: rpcError } = await supabase.rpc('get_my_appointment_invitations')
+  if (!supabase) return
+  const { data, error: rpcError } = await supabase.rpc('get_my_appointment_invitations', { p_team_id: teamId })
   if (rpcError) {
     invitationsError.value = rpcError.message
     myInvitations.value = []
@@ -174,11 +198,15 @@ async function loadMyInvitations() {
 }
 
 async function onAnswer(invitationId: string, status: 'accepted' | 'declined') {
-  if (!supabase || answeringId.value) {
-    return
-  }
+  if (!supabase || answeringId.value) return
   answeringId.value = invitationId
   invitationsError.value = null
+
+  const invitation = myInvitations.value.find((inv) => inv.invitationId === invitationId)
+  const appointmentId = invitation?.appointmentId
+
+  // Optimistically remove from local state
+  myInvitations.value = myInvitations.value.filter((inv) => inv.invitationId !== invitationId)
 
   const { error: rpcError } = await supabase.rpc('respond_to_appointment_invitation', {
     p_invitation_id: invitationId,
@@ -188,12 +216,15 @@ async function onAnswer(invitationId: string, status: 'accepted' | 'declined') {
   answeringId.value = null
 
   if (rpcError) {
+    // Restore on error
+    if (invitation) myInvitations.value.push(invitation)
     invitationsError.value = rpcError.message
     return
   }
 
-  // Statuswechsel sofort sichtbar: Liste + Wochenansicht aktualisieren.
-  await Promise.all([loadMyInvitations(), loadAppointments(), loadNotifications()])
+  if (status === 'declined' && appointmentId) {
+    appointments.value = appointments.value.filter((a) => a.id !== appointmentId)
+  }
 }
 
 const invitationDateFormat = new Intl.DateTimeFormat('de-DE', {
@@ -203,50 +234,67 @@ function formatInvitation(invitation: MyAppointmentInvitation): string {
   return `${invitationDateFormat.format(new Date(invitation.startsAt))}–${localHhMm(new Date(invitation.endsAt))}`
 }
 
-// ===================== Benachrichtigungen =====================
-interface NotificationRow {
-  id: string
-  type: string
-  title: string
-  body: string
-  created_at: string
-  read_at: string | null
-}
+// ===================== Realtime: appointment_invitations =====================
+let invChannel: RealtimeChannel | null = null
+let invChannelConnectedOnce = false
+let authStateUnsub: (() => void) | null = null
 
-const notifications = ref<AppNotification[]>([])
-const unreadCount = computed(() => notifications.value.filter((n) => !n.readAt).length)
-
-async function loadNotifications() {
-  if (!supabase) {
-    return
+function subscribeToInvitationInserts() {
+  if (!supabase) return
+  if (invChannel) {
+    void supabase.removeChannel(invChannel)
+    invChannel = null
   }
-  const { data, error: rpcError } = await supabase.rpc('get_my_notifications')
-  if (rpcError) {
-    return
+  invChannelConnectedOnce = false
+  invChannel = supabase
+    .channel(`appointment-invitations:${teamId}`)
+    .on(
+      'postgres_changes',
+      { event: 'INSERT', schema: 'public', table: 'appointment_invitations' },
+      (payload) => {
+        const row = payload.new as { id: string; status: string }
+        if (
+          row.status === 'pending' &&
+          !myInvitations.value.some((inv) => inv.invitationId === row.id)
+        ) {
+          void loadMyInvitations()
+        }
+      },
+    )
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        if (invChannelConnectedOnce) {
+          void loadMyInvitations()
+        }
+        invChannelConnectedOnce = true
+      }
+    })
+}
+
+function teardownInvitationsChannel() {
+  if (supabase && invChannel) {
+    void supabase.removeChannel(invChannel)
+    invChannel = null
   }
-  notifications.value = ((data ?? []) as NotificationRow[]).map((row) => ({
-    id: row.id,
-    type: row.type,
-    title: row.title,
-    body: row.body,
-    createdAt: row.created_at,
-    readAt: row.read_at,
-  }))
 }
 
-async function onMarkRead(id: string) {
-  if (!supabase) {
-    return
-  }
-  await supabase.rpc('mark_notification_read', { p_id: id })
-  await loadNotifications()
+function setupInvitationsRealtime() {
+  subscribeToInvitationInserts()
+  if (!supabase) return
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    if (event === 'SIGNED_IN') subscribeToInvitationInserts()
+    if (event === 'SIGNED_OUT') teardownInvitationsChannel()
+  })
+  authStateUnsub = () => subscription.unsubscribe()
 }
 
-function formatNotificationTime(createdAt: string): string {
-  return invitationDateFormat.format(new Date(createdAt))
+function teardownInvitationsRealtime() {
+  teardownInvitationsChannel()
+  authStateUnsub?.()
+  authStateUnsub = null
 }
 
-// Wochenwechsel: alte Suchergebnisse verwerfen, Termine der neuen Woche laden.
+// Wochenwechsel: Suchergebnisse verwerfen, Termine der neuen Woche laden.
 watch(weekStart, () => {
   searchResults.value = []
   searchPerformed.value = false
@@ -266,7 +314,7 @@ async function onSearch(params: FreeSlotSearchParams) {
 
   const { data, error: rpcError } = await supabase.rpc('get_team_free_slots', {
     p_team_id: teamId,
-    p_week_start: localDateString(monday),
+    p_week_start: localDateKey(monday),
     p_duration_minutes: params.durationMinutes,
     p_min_start: params.minStart,
     p_max_end: params.maxEnd,
@@ -287,6 +335,10 @@ async function onSearch(params: FreeSlotSearchParams) {
   searchResults.value = ((data ?? []) as FreeSlotRow[]).map(toSearchSlot)
 }
 
+// ===================== Termin-Detail (Platzhalter) =====================
+// Detail-Ansicht noch nicht implementiert — click wird ignoriert.
+function onSelectAppointment(_id: string) { /* no-op */ }
+
 // ===================== Termin-Erstell-Dialog =====================
 const dialogOpen = ref(false)
 const dialogStart = ref<Date | null>(null)
@@ -296,9 +348,7 @@ const createError = ref<string | null>(null)
 
 function onSelectSlot(id: string) {
   const slot = searchResults.value.find((entry) => entry.id === id)
-  if (!slot?.startsAt || !slot.endsAt) {
-    return
-  }
+  if (!slot?.startsAt || !slot.endsAt) return
   dialogStart.value = new Date(slot.startsAt)
   dialogEnd.value = new Date(slot.endsAt)
   createError.value = null
@@ -330,14 +380,18 @@ async function onCreate(payload: NewAppointmentInput) {
   }
 
   dialogOpen.value = false
-  // Neuen Termin (+ eigene accepted-Einladung) sichtbar machen.
-  await Promise.all([loadAppointments(), loadMyInvitations(), loadNotifications()])
+  await Promise.all([loadAppointments(), loadMyInvitations()])
 }
 
 onMounted(() => {
+  void loadTeamSchedule()
   void loadAppointments()
   void loadMyInvitations()
-  void loadNotifications()
+  setupInvitationsRealtime()
+})
+
+onUnmounted(() => {
+  teardownInvitationsRealtime()
 })
 </script>
 
@@ -378,60 +432,33 @@ onMounted(() => {
       </ul>
     </section>
 
-    <section class="invitations" aria-label="Benachrichtigungen">
-      <h3 class="invitations__title">
-        Benachrichtigungen
-        <span v-if="unreadCount" class="notif-badge">{{ unreadCount }}</span>
-      </h3>
-      <p v-if="notifications.length === 0" class="invitations__empty">Keine Benachrichtigungen.</p>
-      <ul v-else class="invitations__list">
-        <li
-          v-for="notification in notifications"
-          :key="notification.id"
-          class="invitation"
-          :class="{ 'invitation--unread': !notification.readAt }"
-        >
-          <div class="invitation__info">
-            <strong class="invitation__name">{{ notification.title }}</strong>
-            <span class="invitation__meta">{{ notification.body }}</span>
-            <span class="invitation__meta">{{ formatNotificationTime(notification.createdAt) }}</span>
-          </div>
-          <div class="invitation__actions">
-            <button
-              v-if="!notification.readAt"
-              type="button"
-              class="app-button"
-              @click="onMarkRead(notification.id)"
-            >Gelesen</button>
-          </div>
-        </li>
-      </ul>
+    <!-- Search panel -->
+    <section class="suggestions__search" aria-label="Suchformular">
+      <TeamAppointmentSearchForm
+        v-model:week-start="weekStart"
+        :loading="loading"
+        @submit="onSearch"
+      />
+      <p v-if="loading" class="search-status">Suche läuft…</p>
+      <p v-else-if="error" class="search-status search-status--error" role="alert">{{ error }}</p>
+      <p v-if="appointmentsError" class="search-status search-status--error" role="alert">{{ appointmentsError }}</p>
     </section>
 
-    <div class="suggestions__layout">
-      <aside class="suggestions__search" aria-label="Suchformular">
-        <TeamAppointmentSearchForm
-          v-model:week-start="weekStart"
-          :loading="loading"
-          @submit="onSearch"
-        />
-        <p v-if="loading" class="search-status">Suche läuft…</p>
-        <p v-else-if="error" class="search-status search-status--error" role="alert">{{ error }}</p>
-      </aside>
-
-      <!-- Container für die kombinierte Wochenansicht -->
-      <div class="suggestions__week" aria-label="Kombinierte Wochenansicht">
-        <p v-if="appointmentsError" class="search-status search-status--error" role="alert">{{ appointmentsError }}</p>
-        <CombinedWeekView
-          v-model:week-start="weekStart"
-          :members="sampleMembers"
-          :slots="sampleSlots"
-          :appointments="appointments"
-          :search-results="searchResults"
-          :search-performed="searchPerformed"
-          @select-search-slot="onSelectSlot"
-        />
-      </div>
+    <!-- Group calendar: all members' schedules, team appointments, search results -->
+    <div class="suggestions__week" aria-label="Gruppenkalender">
+      <p v-if="scheduleLoading" class="search-status">Stundenpläne werden geladen…</p>
+      <CombinedWeekView
+        v-else
+        v-model:week-start="weekStart"
+        :members="members"
+        :slots="memberSlots"
+        :appointments="appointments"
+        :search-results="searchResults"
+        :loading="loading"
+        :search-performed="searchPerformed"
+        @select-search-slot="onSelectSlot"
+        @select-appointment="onSelectAppointment"
+      />
     </div>
 
     <CreateAppointmentDialog
@@ -473,34 +500,16 @@ onMounted(() => {
   margin: 0;
 }
 
-/* Layout-Container: Such-Form links, Wochenansicht rechts.
-   Stapelt auf schmalen Viewports. */
-.suggestions__layout {
-  display: grid;
-  grid-template-columns: minmax(0, 18rem) minmax(0, 1fr);
-  gap: var(--space-2xl);
-  align-items: start;
-}
-
-@media (max-width: 48rem) {
-  .suggestions__layout {
-    grid-template-columns: 1fr;
-  }
-}
-
 .suggestions__search {
-  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
 }
 
 .suggestions__week {
-  min-width: 0;
-  min-height: 18rem;
+  min-height: 28rem;
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
 }
 
 .invitations {
@@ -583,20 +592,6 @@ onMounted(() => {
 
 .invitation--unread {
   border-left: 0.1875rem solid var(--color-primary);
-}
-
-.notif-badge {
-  display: inline-grid;
-  place-items: center;
-  min-width: 1.25rem;
-  height: 1.25rem;
-  padding: 0 0.375rem;
-  margin-left: 0.5rem;
-  border-radius: 999rem;
-  background: var(--color-primary);
-  color: #fff;
-  font-size: 0.7rem;
-  font-weight: 700;
 }
 
 .search-status {

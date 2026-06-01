@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterView, useRoute, useRouter } from 'vue-router'
 import AuthGate from './components/AuthGate.vue'
 import HiddenPage from './components/HiddenPage.vue'
@@ -9,10 +9,20 @@ import PlannerViewShell from './components/PlannerViewShell.vue'
 import ProfileSelectionPanel from './components/ProfileSelectionPanel.vue'
 import Sidebar from './components/Sidebar.vue'
 import { useAppController } from './composables/useAppController'
+import { useNotifications } from './composables/useNotifications'
 import { useTeams } from './composables/useTeams'
 
 const { magicLinkRedirectTo, allCategories, activePlannerView, authEmail, authError, authFirstName, authInfo, authLastName, authLoading, authSending, canEditModuleStatuses, categoryError, currentUser, currentUserEmail, userProfile, displayedWeeklyScheduleEvents, error, hiddenOccurrenceItems, hiddenPageEntries, hiddenPageError, hiddenPageLoading, hiddenSeriesItems, lastHiddenSeries, loadImportedEvents, loading, lsfImportModule, modules, moduleStatusError, profileError, profileInfo, profileSaving, savedSpo, savedStudyProgram, savingCategoryModuleId, savingModuleId, scheduleVisibilityError, scheduleVisibilityInfo, selectedModule, selectedSpoId, selectedStudyProgramId, selectionDirty, showHiddenEvents, spoItems, studyProgramItems, weekStartDate, getSpoLabel, getStudyProgramLabel, hideScheduleSeries, saveModuleCategories, saveModuleStatus, saveStudyProfileSelection, sendMagicLink, showAllScheduleSeries, showScheduleSeries, signOut, undoHideScheduleSeries } = useAppController()
-const { invitationCount, fetchMyInvitations} = useTeams()
+const { invitationCount, fetchMyInvitations, subscribeToInvitations, unsubscribeFromInvitations } = useTeams()
+const {
+  allNotifications,
+  unreadCount,
+  fetchAllNotifications,
+  markRead,
+  markAllRead,
+  subscribeToInserts,
+  teardownNotifications,
+} = useNotifications()
 
 function toggleShowHiddenEvents() {
   showHiddenEvents.value = !showHiddenEvents.value
@@ -45,6 +55,44 @@ const sidebarActiveSection = ref<SidebarSection>('modules')
 const sidebarOpen = ref(false)
 const themeMode = ref<ThemeMode>(getInitialThemeMode())
 
+// ── Notification inbox ──────────────────────────────────────────
+const notifOpen = ref(false)
+const notifBtnRef = ref<HTMLElement | null>(null)
+const notifPanelRef = ref<HTMLElement | null>(null)
+
+const notifDateFmt = new Intl.DateTimeFormat('de-DE', {
+  day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+})
+function formatNotifDate(iso: string): string {
+  return notifDateFmt.format(new Date(iso))
+}
+
+// Group by team; use payload.team_name for the label, fall back to "Allgemein".
+const groupedNotifications = computed(() => {
+  const groups = new Map<string | null, { label: string; items: typeof allNotifications.value }>()
+  for (const n of allNotifications.value) {
+    const key = n.teamId
+    if (!groups.has(key)) {
+      const label = key
+        ? ((n.payload as Record<string, unknown>).team_name as string | undefined) ?? 'Team'
+        : 'Allgemein'
+      groups.set(key, { label, items: [] })
+    }
+    groups.get(key)!.items.push(n)
+  }
+  return Array.from(groups.values())
+})
+
+function onDocMousedown(e: MouseEvent) {
+  if (
+    notifOpen.value &&
+    !notifBtnRef.value?.contains(e.target as Node) &&
+    !notifPanelRef.value?.contains(e.target as Node)
+  ) {
+    notifOpen.value = false
+  }
+}
+
 const derivedSidebarSection = computed<SidebarSection>(() => {
   if (isTeamsRoute.value) return 'teams'
   if (activePlannerView.value === 'week') return 'calendar'
@@ -66,6 +114,23 @@ const isHiddenView = computed(() => route.path === '/schedule/hidden')
 
 onMounted(() => {
   void fetchMyInvitations()
+  void fetchAllNotifications()
+  subscribeToInserts()
+  document.addEventListener('mousedown', onDocMousedown)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('mousedown', onDocMousedown)
+  teardownNotifications()
+  unsubscribeFromInvitations()
+})
+
+watch(currentUser, (user) => {
+  if (user?.id) {
+    subscribeToInvitations(user.id)
+  } else {
+    unsubscribeFromInvitations()
+  }
 })
 
 function navigateToHiddenPage() {
@@ -142,6 +207,61 @@ async function onSidebarNavigate(target: SidebarSection) {
             <span class="sidebar-toggle-icon" :class="{ open: sidebarOpen }">☰</span>
           </button>
           <span v-if="currentUser" class="session-email">{{ currentUserEmail }}</span>
+          <!-- Notification inbox bell -->
+          <div v-if="currentUser" class="notif-wrap">
+            <button
+              ref="notifBtnRef"
+              type="button"
+              class="notif-btn ghost-button"
+              :aria-label="`Benachrichtigungen${unreadCount > 0 ? `, ${unreadCount} ungelesen` : ''}`"
+              :aria-expanded="notifOpen"
+              @click="notifOpen = !notifOpen"
+            >
+              <span aria-hidden="true">🔔</span>
+              <span v-if="unreadCount > 0" class="notif-badge" aria-hidden="true">
+                {{ unreadCount > 99 ? '99+' : unreadCount }}
+              </span>
+            </button>
+
+            <div
+              v-if="notifOpen"
+              ref="notifPanelRef"
+              class="notif-panel"
+              role="dialog"
+              aria-label="Benachrichtigungen"
+            >
+              <div class="notif-panel-head">
+                <span class="notif-panel-title">Benachrichtigungen</span>
+                <button
+                  v-if="unreadCount > 0"
+                  type="button"
+                  class="notif-markall"
+                  @click="markAllRead"
+                >Alle als gelesen</button>
+              </div>
+
+              <p v-if="groupedNotifications.length === 0" class="notif-empty">
+                Keine Benachrichtigungen.
+              </p>
+
+              <template v-for="group in groupedNotifications" :key="group.label">
+                <div class="notif-group-header">{{ group.label }}</div>
+                <button
+                  v-for="notif in group.items"
+                  :key="notif.id"
+                  type="button"
+                  class="notif-item"
+                  :class="{ 'notif-item--unread': !notif.readAt }"
+                  @click="markRead(notif.id)"
+                >
+                  <span class="notif-item-title">{{ notif.title }}</span>
+                  <span class="notif-item-body">{{ notif.body }}</span>
+                  <span class="notif-item-time">{{ formatNotifDate(notif.createdAt) }}</span>
+                </button>
+              </template>
+            </div>
+          </div>
+
           <button
             type="button"
             class="theme-toggle"
@@ -446,5 +566,162 @@ async function onSidebarNavigate(target: SidebarSection) {
   max-width: none;
   width: 100%;
   padding-left: 8px;
+}
+
+/* ── Notification inbox ──────────────────────────────────────── */
+.notif-wrap {
+  position: relative;
+}
+
+.notif-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 10px;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.notif-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 1.1rem;
+  height: 1.1rem;
+  padding: 0 0.25rem;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 700;
+  display: inline-grid;
+  place-items: center;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.notif-panel {
+  position: fixed;
+  top: 3.625rem; /* just below the 56px header */
+  right: 1rem;
+  width: 22rem;
+  max-height: 28rem;
+  overflow-y: auto;
+  background: var(--color-surface-raised);
+  border: 0.0625rem solid var(--color-border);
+  border-radius: var(--radius-lg, 0.75rem);
+  box-shadow: 0 8px 32px color-mix(in srgb, black 14%, transparent);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+}
+
+.notif-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem 0.5rem;
+  border-bottom: 0.0625rem solid var(--color-border);
+  position: sticky;
+  top: 0;
+  background: var(--color-surface-raised);
+  z-index: 1;
+}
+
+.notif-panel-title {
+  font-size: var(--font-size-sm, 0.875rem);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.notif-markall {
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--color-primary);
+  background: none;
+  border: none;
+  padding: 0.125rem 0.25rem;
+  cursor: pointer;
+  font: inherit;
+  border-radius: 0.25rem;
+}
+
+.notif-markall:hover {
+  text-decoration: underline;
+}
+
+.notif-empty {
+  margin: 0;
+  padding: 1.25rem 1rem;
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.notif-group-header {
+  padding: 0.5rem 1rem 0.25rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  position: sticky;
+  top: 2.75rem; /* below panel head */
+}
+
+.notif-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1875rem;
+  width: 100%;
+  padding: 0.625rem 1rem;
+  text-align: left;
+  background: none;
+  border: none;
+  border-bottom: 0.0625rem solid var(--color-border);
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  transition: background 0.12s ease;
+}
+
+.notif-item:last-child {
+  border-bottom: none;
+}
+
+.notif-item:hover {
+  background: color-mix(in srgb, var(--color-primary) 6%, transparent);
+}
+
+.notif-item--unread {
+  background: var(--color-primary-glow);
+}
+
+.notif-item--unread:hover {
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+}
+
+.notif-item-title {
+  font-size: var(--font-size-xs, 0.75rem);
+  font-weight: 600;
+  color: var(--color-text);
+  line-height: 1.3;
+}
+
+.notif-item-body {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.notif-item-time {
+  font-size: 0.66rem;
+  color: var(--color-text-muted);
+  margin-top: 0.125rem;
 }
 </style>

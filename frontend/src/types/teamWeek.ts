@@ -28,6 +28,7 @@ export interface MemberScheduleSlot {
 
 /** Teilnehmer eines Termins (für die Anzeige; Decliner werden weggelassen). */
 export interface AppointmentAttendee {
+  userId?: string
   name: string
   status: string
 }
@@ -116,10 +117,15 @@ export interface MemberChip {
   name: string
 }
 
+/** Einzelner Mitglieds-Fill (farbige Hintergrundfläche, Layer 0). */
+export interface MemberFill {
+  id: string
+  color: string
+  style: { top: string; height: string }
+}
+
 export interface BusyBlockView {
   id: string
-  startTime: string
-  endTime: string
   style: { top: string; height: string }
   members: MemberChip[]
   extraCount: number
@@ -129,7 +135,7 @@ export interface LayerBlockView {
   id: string
   label: string
   timeLabel: string
-  style: { top: string; height: string }
+  style: { top: string; height: string; left?: string; width?: string }
   /** Teilnehmer-Icons (z. B. für Termin-Blöcke). */
   members?: MemberChip[]
 }
@@ -139,6 +145,7 @@ export interface WeekColumnView {
   weekdayLabel: string
   dateLabel: string
   isToday: boolean
+  fills: MemberFill[]
   busy: BusyBlockView[]
   appointments: LayerBlockView[]
   searches: LayerBlockView[]

@@ -1,8 +1,7 @@
 // src/composables/useTeams.ts
 import { computed, ref } from 'vue'
-import { supabase } from '../supabase' 
-
-
+import type { RealtimeChannel } from '@supabase/supabase-js'
+import { supabase } from '../supabase'
 
 export function useTeams() {
     const teams = ref<any[]>([])
@@ -10,6 +9,11 @@ export function useTeams() {
     const loading = ref(false)
     const error = ref<string | null>(null)
     const invitationCount = computed(() => invitations.value.length)
+
+    // teamId -> [userId, ...] (all members per team)
+    const allTeamMembers = ref<Map<string, string[]>>(new Map())
+    // userId -> full_name | null
+    const memberProfiles = ref<Map<string, string | null>>(new Map())
 
   /**
    * Hilfsfunktion um sicherzustellen, dass der Client geladen ist
@@ -47,9 +51,40 @@ export function useTeams() {
     
     if (err) {
       error.value = err.message
-    } else {
-      teams.value = data
+      loading.value = false
+      return
     }
+
+    teams.value = data ?? []
+
+    // Load member data via get_team_details (SECURITY DEFINER — bypasses RLS on team_members).
+    // Direct queries on team_members return no rows because the UUID table has RLS enabled
+    // without a permissive SELECT policy.
+    const teamIds = (data ?? []).map((t: any) => t.id as string)
+    if (teamIds.length > 0) {
+      const detailResults = await Promise.all(
+        teamIds.map((id) =>
+          client.rpc('get_team_details', { p_team_id: id }).maybeSingle()
+        )
+      )
+
+      const memberMap = new Map<string, string[]>()
+      const profileMap = new Map<string, string | null>()
+
+      teamIds.forEach((teamId, i) => {
+        const detail = detailResults[i].data as { members?: Array<{ name: string; email: string }> } | null
+        if (!detail) return
+        const members = detail.members ?? []
+        memberMap.set(teamId, members.map((m) => m.email))
+        for (const m of members) {
+          profileMap.set(m.email, m.name || null)
+        }
+      })
+
+      allTeamMembers.value = memberMap
+      memberProfiles.value = profileMap
+    }
+
     loading.value = false
   }
 
@@ -127,7 +162,7 @@ export function useTeams() {
   // 2. Eingeladenen Nutzer in profiles suchen
   const { data: invitedUser, error: userErr } = await client
     .from('profiles')
-    .select('id, email')
+    .select('id, email, full_name')
     .eq('email', normalizedEmail)
     .maybeSingle()
 
@@ -189,6 +224,8 @@ export function useTeams() {
 
     throw new Error(insertErr.message)
   }
+
+  return (invitedUser.full_name as string | null) ?? normalizedEmail
 }
 
   async function respondToInvitation(invitationId: string, teamId: string, accept: boolean) {
@@ -198,12 +235,18 @@ export function useTeams() {
   const { data: { user } } = await client.auth.getUser()
   if (!user) return
 
+  // Optimistically remove from local state
+  const removed = invitations.value.find((i) => i.id === invitationId)
+  invitations.value = invitations.value.filter((i) => i.id !== invitationId)
+
   if (accept) {
     const { error: memberErr } = await client
       .from('team_members')
       .insert([{ team_id: teamId, user_id: user.id, role: 'member' }])
 
     if (memberErr && memberErr.code !== '23505') {
+      // Restore on error
+      if (removed) invitations.value.push(removed)
       throw new Error(memberErr.message)
     }
   }
@@ -214,10 +257,11 @@ export function useTeams() {
     .eq('id', invitationId)
 
   if (deleteErr) {
+    // Restore on error
+    if (removed) invitations.value.push(removed)
     throw new Error(deleteErr.message)
   }
 
-  await fetchMyInvitations()
   await fetchTeams()
 }
 
@@ -267,12 +311,49 @@ export function useTeams() {
     loading.value = false
   }
 
+  // ===================== Realtime: notifications → refresh invitations =====================
+  let invChannel: RealtimeChannel | null = null
+
+  function subscribeToInvitations(userId: string) {
+    const client = getClient()
+    if (!client) return
+    if (invChannel) {
+      void client.removeChannel(invChannel)
+      invChannel = null
+    }
+    invChannel = client
+      .channel('my-invitations')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `recipient_id=eq.${userId}`,
+        },
+        async () => {
+          await fetchMyInvitations()
+        },
+      )
+      .subscribe()
+  }
+
+  function unsubscribeFromInvitations() {
+    const client = getClient()
+    if (client && invChannel) {
+      void client.removeChannel(invChannel)
+      invChannel = null
+    }
+  }
+
   return {
     teams,
     invitations,
     invitationCount,
     loading,
     error,
+    allTeamMembers,
+    memberProfiles,
     fetchTeams,
     fetchMyInvitations,
     createTeam,
@@ -280,6 +361,8 @@ export function useTeams() {
     respondToInvitation,
     setTeamExpiration,
     triggerTeamCleanup,
-    deleteTeam
+    deleteTeam,
+    subscribeToInvitations,
+    unsubscribeFromInvitations,
   }
 }

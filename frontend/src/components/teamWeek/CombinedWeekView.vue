@@ -12,6 +12,7 @@ import type {
   CombinedWeekMember,
   LayerBlockView,
   MemberChip,
+  MemberFill,
   MemberScheduleSlot,
   WeekColumnView,
 } from '../../types/teamWeek'
@@ -23,6 +24,8 @@ const props = withDefaults(defineProps<{
   searchResults?: CombinedSearchSlot[]
   /** Kontrollierter Wochenstart (beliebiges Datum der Woche). Optional. */
   weekStart?: Date
+  /** true, sobald eine Suche läuft (Idle-Hinweis wird sofort ausgeblendet). */
+  loading?: boolean
   /** true, sobald eine Suche durchgeführt wurde (steuert den Empty-Hinweis). */
   searchPerformed?: boolean
   startHour?: number
@@ -30,6 +33,7 @@ const props = withDefaults(defineProps<{
 }>(), {
   appointments: () => [],
   searchResults: () => [],
+  loading: false,
   searchPerformed: false,
   startHour: 7,
   endHour: 20,
@@ -38,9 +42,52 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{
   'update:weekStart': [value: Date]
   'select-search-slot': [id: string]
+  'select-appointment': [id: string]
 }>()
 
 const MAX_AVATARS = 4
+
+/**
+ * Sweep-line overlap layout: groups items that overlap in time and assigns each
+ * a column within its overlap group so they render side by side.
+ * Mutates `items` in place, adding `left` and `width` to each item's `style`.
+ */
+interface LayoutEntry {
+  startMin: number
+  endMin: number
+  style: Record<string, string>
+}
+function applyOverlapLayout(items: LayoutEntry[]): void {
+  if (items.length <= 1) {
+    for (const item of items) {
+      item.style.left = '0.25rem'
+      item.style.width = 'calc(100% - 0.5rem)'
+    }
+    return
+  }
+  // Sort indices by start time, then end time
+  const sorted = items
+    .map((_, idx) => idx)
+    .sort((a, b) => items[a].startMin - items[b].startMin || items[a].endMin - items[b].endMin)
+  const columnOf = new Array(items.length).fill(-1)
+  const columnEnds: number[] = []
+  for (const idx of sorted) {
+    const { startMin, endMin } = items[idx]
+    let col = columnEnds.findIndex((end) => end <= startMin)
+    if (col === -1) {
+      col = columnEnds.length
+      columnEnds.push(0)
+    }
+    columnOf[idx] = col
+    columnEnds[col] = endMin
+  }
+  const groupSize = Math.max(columnEnds.length, 1)
+  for (let i = 0; i < items.length; i++) {
+    const col = columnOf[i]
+    items[i].style.left = `calc(${(col / groupSize) * 100}% + 0.125rem)`
+    items[i].style.width = `calc(${100 / groupSize}% - 0.25rem)`
+  }
+}
 
 const weekdayFormatter = new Intl.DateTimeFormat('de-DE', { weekday: 'short' })
 const dateFormatter = new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit' })
@@ -134,6 +181,7 @@ function chipsFor(memberIds: string[]): { members: MemberChip[]; extraCount: num
 // und dem lokalen Kalendertag (+ Position) zugeordnet.
 const appointmentsByKey = computed(() => {
   const map = new Map<string, LayerBlockView[]>()
+  const raw = new Map<string, (LayoutEntry & { view: LayerBlockView })[]>()
   for (const appointment of props.appointments) {
     const starts = new Date(appointment.startsAt)
     const ends = new Date(appointment.endsAt)
@@ -148,7 +196,7 @@ const appointmentsByKey = computed(() => {
         id: `${appointment.id}-${index}`,
         name: attendee.name,
         initials: memberInitials(attendee.name),
-        color: '#475569',
+        color: (attendee.userId ? memberColor.value.get(attendee.userId) : undefined) ?? '#64748b',
       }))
 
     const view: LayerBlockView = {
@@ -159,25 +207,54 @@ const appointmentsByKey = computed(() => {
       members,
     }
     const key = localDateKey(starts)
-    const list = map.get(key) ?? []
-    list.push(view)
-    map.set(key, list)
+    const list: (LayoutEntry & { view: LayerBlockView })[] = raw.get(key) ?? []
+    list.push({ view, startMin, endMin, style: view.style })
+    raw.set(key, list)
+  }
+  for (const [, entries] of raw) {
+    applyOverlapLayout(entries)
+  }
+  for (const [key, entries] of raw) {
+    map.set(key, entries.map((e) => e.view))
   }
   return map
 })
 
 const searchByWeekday = computed<LayerBlockView[][]>(() => {
-  const result: LayerBlockView[][] = Array.from({ length: 7 }, () => [])
+  const raw: (LayoutEntry & { view: LayerBlockView })[][] = Array.from({ length: 7 }, () => [] as (LayoutEntry & { view: LayerBlockView })[])
   for (const slot of props.searchResults) {
     const startMin = parseHhMm(slot.startTime)
     const endMin = parseHhMm(slot.endTime)
     if (slot.dayIndex < 0 || slot.dayIndex > 6 || startMin == null || endMin == null || endMin <= startMin) {
       continue
     }
-    result[slot.dayIndex].push({
+    const view: LayerBlockView = {
       id: slot.id,
       label: slot.label ?? 'Vorschlag',
       timeLabel: `${formatTimeLabel(startMin)}–${formatTimeLabel(endMin)}`,
+      style: eventStyle(startMin, endMin),
+    }
+    raw[slot.dayIndex].push({ startMin, endMin, style: view.style, view })
+  }
+  for (const day of raw) {
+    applyOverlapLayout(day)
+  }
+  return raw.map((day) => day.map((e) => e.view))
+})
+
+// Per-member fills: one coloured rectangle per raw slot (Layer 0).
+const fillsByWeekday = computed<MemberFill[][]>(() => {
+  const result: MemberFill[][] = Array.from({ length: 7 }, () => [])
+  for (const slot of props.slots) {
+    const startMin = parseHhMm(slot.startTime)
+    const endMin = parseHhMm(slot.endTime)
+    if (slot.dayIndex < 0 || slot.dayIndex > 6 || startMin == null || endMin == null || endMin <= startMin) {
+      continue
+    }
+    const color = memberColor.value.get(slot.memberId) ?? '#64748b'
+    result[slot.dayIndex].push({
+      id: `fill-${slot.memberId}-${slot.dayIndex}-${slot.startTime}`,
+      color,
       style: eventStyle(startMin, endMin),
     })
   }
@@ -189,8 +266,6 @@ const columns = computed<WeekColumnView[]>(() => days.value.map((day) => {
     const { members, extraCount } = chipsFor(block.memberIds)
     return {
       id: `${day.key}-${block.start}-${block.end}-${block.memberIds.join('_')}`,
-      startTime: block.startTime,
-      endTime: block.endTime,
       style: eventStyle(block.start, block.end),
       members,
       extraCount,
@@ -202,6 +277,7 @@ const columns = computed<WeekColumnView[]>(() => days.value.map((day) => {
     weekdayLabel: weekdayFormatter.format(day.date),
     dateLabel: dateFormatter.format(day.date),
     isToday: day.key === todayKey.value,
+    fills: fillsByWeekday.value[day.index],
     busy,
     appointments: appointmentsByKey.value.get(day.key) ?? [],
     searches: searchByWeekday.value[day.index] ?? [],
@@ -222,8 +298,14 @@ const nowLineTopPercent = computed<number | null>(() => {
   return ((minutes - startMinutes) / totalMinutes.value) * 100
 })
 
-const showIdleHint = computed(() => !props.searchPerformed && props.searchResults.length === 0)
-const showEmptyHint = computed(() => props.searchPerformed && props.searchResults.length === 0)
+// Idle: no search triggered yet (and not currently running).
+const showIdleHint = computed(
+  () => !props.searchPerformed && !props.loading && props.searchResults.length === 0,
+)
+// Empty: search completed with zero results.
+const showEmptyHint = computed(
+  () => props.searchPerformed && !props.loading && props.searchResults.length === 0,
+)
 
 onMounted(() => {
   nowTimer = window.setInterval(() => {
@@ -262,12 +344,12 @@ onUnmounted(() => {
       <span class="cw-key cw-key--search">Suchergebnisse</span>
     </p>
 
-    <p v-if="showIdleHint" class="cw-search-empty">
+    <div v-if="showIdleHint" class="cw-hint cw-hint--idle" role="status">
       Noch keine Suche durchgeführt – die Stundenpläne der Mitglieder und bestehende Termine sind bereits sichtbar.
-    </p>
-    <p v-else-if="showEmptyHint" class="cw-search-empty cw-search-empty--none">
+    </div>
+    <div v-else-if="showEmptyHint" class="cw-hint cw-hint--empty" role="status">
       Keine freien Slots gefunden – passe Dauer, Uhrzeiten oder ausgeschlossene Tage an.
-    </p>
+    </div>
 
     <CombinedWeekGrid
       :columns="columns"
@@ -278,6 +360,7 @@ onUnmounted(() => {
       :current-day-index="currentDayIndex"
       :now-line-top-percent="nowLineTopPercent"
       @select-slot="emit('select-search-slot', $event)"
+      @select-appointment="emit('select-appointment', $event)"
     />
   </section>
 </template>
@@ -362,39 +445,52 @@ onUnmounted(() => {
   width: 0.75rem;
   height: 0.75rem;
   border-radius: 0.1875rem;
-  border: 0.0625rem solid transparent;
+  flex-shrink: 0;
 }
 
+/* Filled square — represents the per-member coloured fill blocks */
 .cw-key--busy::before {
-  background: color-mix(in srgb, var(--color-primary-glow) 60%, transparent);
-  border-color: color-mix(in srgb, var(--color-primary-light) 50%, transparent);
+  background: color-mix(in srgb, #2563eb 28%, transparent);
+  outline: 0.0625rem solid color-mix(in srgb, #2563eb 40%, transparent);
+  outline-offset: -0.0625rem;
 }
 
+/* Solid left bar — matches the appointment block style */
 .cw-key--appointment::before {
-  background: var(--color-surface);
+  background: var(--color-surface-raised, var(--color-surface));
   border-left: 0.1875rem solid var(--color-primary);
+  border-top: 0.0625rem solid var(--color-primary-light);
+  border-right: 0.0625rem solid var(--color-primary-light);
+  border-bottom: 0.0625rem solid var(--color-primary-light);
   border-radius: 0.125rem;
 }
 
+/* Dashed outline — matches the search result block style */
 .cw-key--search::before {
   border: 0.125rem dashed var(--color-success-border, #16a34a);
   background: color-mix(in srgb, var(--color-success-bg, #16a34a) 22%, transparent);
 }
 
-.cw-search-empty {
+/* Info boxes — positioned above the grid, full width */
+.cw-hint {
   margin: 0;
   font-size: var(--font-size-xs);
-  color: var(--color-text-muted);
-  padding: var(--space-md);
-  border: 0.0625rem dashed var(--color-border);
+  line-height: 1.55;
+  padding: var(--space-md) var(--space-lg);
   border-radius: var(--radius-lg);
+}
+
+/* Idle: "no search yet" — subtle solid border, neutral background */
+.cw-hint--idle {
+  color: var(--color-text-muted);
+  border: 0.0625rem solid var(--color-border);
   background: var(--color-surface);
 }
 
-.cw-search-empty--none {
+/* Empty: search returned zero results — amber/warning tint */
+.cw-hint--empty {
   color: var(--color-text);
-  border-style: solid;
-  border-color: var(--color-warning-border, var(--color-border));
-  background: color-mix(in srgb, var(--color-warning-bg, var(--color-surface)) 55%, var(--color-surface));
+  border: 0.0625rem solid var(--color-warning-border, var(--color-border));
+  background: color-mix(in srgb, var(--color-warning-bg, #fef3c7) 40%, var(--color-surface));
 }
 </style>
