@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { RouterView, useRoute, useRouter } from 'vue-router'
 import AuthGate from './components/AuthGate.vue'
 import HiddenPage from './components/HiddenPage.vue'
@@ -62,38 +62,18 @@ watch(themeMode, (mode) => {
   applyThemeMode(mode)
 }, { immediate: true })
 
-const activeView = ref<'main' | 'hidden'>('main')
+const isHiddenView = computed(() => route.path === '/schedule/hidden')
 
-function updateActiveView() {
-  const hash = window.location.hash
-  activeView.value = hash === '#/schedule/hidden' ? 'hidden' : 'main'
-}
-
-let hashInterval: ReturnType<typeof setInterval> | null = null
-
-onMounted(async () => {
-  await fetchMyInvitations()
-
-  window.addEventListener('hashchange', updateActiveView)
-  updateActiveView()
-  hashInterval = setInterval(updateActiveView, 500)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('hashchange', updateActiveView)
-  if (hashInterval) clearInterval(hashInterval)
+onMounted(() => {
+  void fetchMyInvitations()
 })
 
 function navigateToHiddenPage() {
-  window.location.hash = '#/schedule/hidden'
+  void router.push('/schedule/hidden')
 }
 
 function navigateToMain() {
-  if (window.location.hash === '#/schedule/hidden') {
-    window.history.back()
-  } else {
-    window.location.hash = '#/'
-  }
+  void router.push('/')
 }
 
 function scrollToSection(sectionId: string) {
@@ -181,7 +161,7 @@ async function onSidebarNavigate(target: SidebarSection) {
       </div>
      </header>
 
-    <template v-if="activeView === 'hidden'">
+    <template v-if="isHiddenView">
       <HiddenPage
         :entries="hiddenPageEntries"
         :loading="hiddenPageLoading"
