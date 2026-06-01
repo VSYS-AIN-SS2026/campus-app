@@ -152,10 +152,16 @@ async function onSidebarNavigate(target: SidebarSection) {
           <button
             v-if="currentUser"
             type="button"
-            class="ghost-button"
+            class="logout-button"
+            aria-label="Abmelden"
+            title="Abmelden"
             @click="signOut"
           >
-            Abmelden
+            <svg class="logout-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M15 12H4m0 0 3.5-3.5M4 12l3.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+              <path d="M9 7.5V6a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6a2 2 0 0 1-2-2v-1.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            <span class="logout-label">Abmelden</span>
           </button>
         </div>
       </div>
@@ -362,6 +368,40 @@ async function onSidebarNavigate(target: SidebarSection) {
   transform: translateY(-1px);
 }
 
+.logout-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.15s;
+}
+
+.logout-icon {
+  width: 1.05rem;
+  height: 1.05rem;
+  flex-shrink: 0;
+}
+
+.logout-button:hover {
+  border-color: color-mix(in srgb, var(--color-error, #dc2626) 55%, var(--color-border));
+  color: var(--color-error, #dc2626);
+  background: color-mix(in srgb, var(--color-error-bg, #fee2e2) 35%, var(--color-surface-raised));
+  transform: translateY(-1px);
+}
+
+.logout-button:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--color-error, #dc2626) 60%, transparent);
+  outline-offset: 2px;
+}
+
 @media (max-width: 45em) {
   .sidebar-toggle {
     display: inline-flex;
@@ -383,6 +423,14 @@ async function onSidebarNavigate(target: SidebarSection) {
   .theme-toggle {
     padding: 7px 12px;
     font-size: 0.76rem;
+  }
+
+  .logout-label {
+    display: none;
+  }
+
+  .logout-button {
+    padding: 7px 9px;
   }
 }
 
