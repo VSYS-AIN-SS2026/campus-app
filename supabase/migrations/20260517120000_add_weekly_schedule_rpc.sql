@@ -11,27 +11,43 @@ create index if not exists user_hidden_schedule_occurrences_occurrence_id_idx
 
 alter table public.user_hidden_schedule_occurrences enable row level security;
 
-create policy "users can read own hidden occurrences"
-  on public.user_hidden_schedule_occurrences
-  for select
-  to authenticated
-  using (exists (
-    select 1
-    from public.users
-    where users.id = user_hidden_schedule_occurrences.user_id
-      and users.auth_user_id = auth.uid()
-  ));
+do $$ begin
+  if not exists (
+    select 1 from pg_policies
+    where tablename = 'user_hidden_schedule_occurrences'
+      and policyname = 'users can read own hidden occurrences'
+  ) then
+    create policy "users can read own hidden occurrences"
+      on public.user_hidden_schedule_occurrences
+      for select
+      to authenticated
+      using (exists (
+        select 1
+        from public.users
+        where users.id = user_hidden_schedule_occurrences.user_id
+          and users.auth_user_id = auth.uid()
+      ));
+  end if;
+end $$;
 
-create policy "users can insert own hidden occurrences"
-  on public.user_hidden_schedule_occurrences
-  for insert
-  to authenticated
-  with check (exists (
-    select 1
-    from public.users
-    where users.id = user_hidden_schedule_occurrences.user_id
-      and users.auth_user_id = auth.uid()
-  ));
+do $$ begin
+  if not exists (
+    select 1 from pg_policies
+    where tablename = 'user_hidden_schedule_occurrences'
+      and policyname = 'users can insert own hidden occurrences'
+  ) then
+    create policy "users can insert own hidden occurrences"
+      on public.user_hidden_schedule_occurrences
+      for insert
+      to authenticated
+      with check (exists (
+        select 1
+        from public.users
+        where users.id = user_hidden_schedule_occurrences.user_id
+          and users.auth_user_id = auth.uid()
+      ));
+  end if;
+end $$;
 
 create or replace function public.get_demo_user_hidden_schedule_occurrence_ids()
 returns table (
@@ -235,7 +251,7 @@ begin
       ordered.module_id,
       ordered.module_code,
       ordered.module_name,
-      ((ordered.row_num - 1) % 5) as weekday_index,
+      ((ordered.row_num - 1) % 5)::integer as weekday_index,
       (
         (array[495, 600, 705, 810, 915])[((ordered.row_num - 1) % 5) + 1]
       ) as start_time_minutes,

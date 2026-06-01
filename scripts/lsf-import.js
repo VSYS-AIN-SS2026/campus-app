@@ -25,6 +25,10 @@
  *   LSF_THROTTLE_MS=500        Delay between module page requests (default 500ms)
  *   LSF_LIMIT=N                Cap modules per program (for testing)
  *   LSF_DEBUG=true             Save HTML to scripts/data/ for inspection
+ *
+ * CLI flags:
+ *   --fresh                    Delete all events for the semester before importing
+ *                              (use to backfill new fields like lecturer / room_type)
  */
 
 import * as cheerio from 'cheerio';
@@ -53,6 +57,7 @@ const LSF_TOTP_SECRET    = process.env.LSF_TOTP_SECRET    || null;
 const THROTTLE_MS        = parseInt(process.env.LSF_THROTTLE_MS || '500', 10);
 const LSF_LIMIT          = process.env.LSF_LIMIT ? parseInt(process.env.LSF_LIMIT, 10) : null;
 const LSF_DEBUG          = process.env.LSF_DEBUG === 'true';
+const LSF_FRESH          = process.argv.includes('--fresh');
 const SUPABASE_URL       = process.env.SUPABASE_URL;
 const SUPABASE_KEY       = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 
@@ -620,6 +625,7 @@ async function extractEventsFromPage($, sourceUrl, module, coordinator, semester
         rhythmus:  cleanCell(cells.eq(3)),
         dauer:     cleanCell(cells.eq(4)),
         raum:      cleanCell(cells.eq(5)),
+        dozent:    cleanCell(cells.eq(6)),
         status:    cleanCell(cells.eq(8)),
         bemerkung: cleanCell(cells.eq(9)),
       };
@@ -659,6 +665,8 @@ async function extractEventsFromPage($, sourceUrl, module, coordinator, semester
         end_time:      times.end,
         room_building: room?.building ?? null,
         room_number:   room?.roomNumber ?? null,
+        room_type:     room?.roomType ?? null,
+        lecturer:      raw.dozent || null,
         series_id:     buildSeriesId(courseId, weekday, times.start),
         status:        raw.status || null,
         cancelled,
@@ -682,10 +690,11 @@ async function upsertRoomsAndEvents(events) {
     const key = `${ev.room_building}::${ev.room_number}`;
     if (seenRooms.has(key)) continue;
     seenRooms.add(key);
+    const roomRow = { building: ev.room_building, room_number: ev.room_number };
+    if (ev.room_type) roomRow.room_type = ev.room_type;
     const { error } = await supabase
       .from('rooms')
-      .upsert({ building: ev.room_building, room_number: ev.room_number },
-        { onConflict: 'building,room_number', ignoreDuplicates: true });
+      .upsert(roomRow, { onConflict: 'building,room_number', ignoreDuplicates: true });
     if (error) console.error('Room upsert failed:', error.message);
   }
 
@@ -694,9 +703,11 @@ async function upsertRoomsAndEvents(events) {
   const BATCH = 500;
   let inserted = 0;
   for (let i = 0; i < events.length; i += BATCH) {
+    // Strip room_type — it lives on the rooms table, not lsf_events
+    const batch = events.slice(i, i + BATCH).map(({ room_type, ...rest }) => rest);
     const { data, error } = await supabase
       .from('lsf_events')
-      .upsert(events.slice(i, i + BATCH), {
+      .upsert(batch, {
         onConflict: 'series_id,start_date',
         ignoreDuplicates: true,
       });
@@ -823,6 +834,16 @@ async function runForProgram(studyProgram, abstgvnr, headers) {
 // ─────────────────────────────────────────────
 // Main
 // ─────────────────────────────────────────────
+async function dropEventsForSemester(semester) {
+  console.log(`--fresh: Deleting all lsf_events for term '${semester}'...`);
+  const { error, count } = await supabase
+    .from('lsf_events')
+    .delete({ count: 'exact' })
+    .eq('term', semester);
+  if (error) throw new Error(`Failed to delete events: ${error.message}`);
+  console.log(`--fresh: Deleted ${count ?? '?'} events for ${semester}.`);
+}
+
 async function main() {
   let headers;
   try {
@@ -830,6 +851,10 @@ async function main() {
   } catch (err) {
     console.error(`Auth failed: ${err.message}`);
     process.exit(1);
+  }
+
+  if (LSF_FRESH) {
+    await dropEventsForSemester(LSF_SEMESTER);
   }
 
   let programs;

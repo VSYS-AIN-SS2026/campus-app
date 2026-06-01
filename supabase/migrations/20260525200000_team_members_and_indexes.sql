@@ -16,7 +16,7 @@ ALTER TABLE public.team_members ENABLE ROW LEVEL SECURITY;
 CREATE INDEX IF NOT EXISTS team_members_team_id_idx ON public.team_members (team_id);
 CREATE INDEX IF NOT EXISTS team_members_user_id_idx ON public.team_members (user_id);
 
--- Seed: Demo-User in Team Alpha
+-- Seed: Demo-User in Team Alpha (idempotent)
 INSERT INTO public.team_members (team_id, user_id)
 SELECT
   'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'::uuid,
