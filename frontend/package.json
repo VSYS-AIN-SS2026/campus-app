@@ -8,6 +8,7 @@
     "typecheck": "vue-tsc --noEmit",
     "build": "npm run typecheck && vite build",
     "preview": "vite preview",
+    "test": "TZ=Europe/Berlin vitest run",
     "clean": "find src \\( -name '*.js' -o -name '*.vue.js' \\) -delete && rm -rf node_modules/.vite"
   },
   "dependencies": {
@@ -20,6 +21,7 @@
     "@vue/tsconfig": "^0.9.1",
     "typescript": "^6.0.3",
     "vite": "^5.4.10",
+    "vitest": "^4.1.7",
     "vue-tsc": "^3.2.7"
   }
 }
