@@ -7,31 +7,28 @@ import LsfEventImportModal from './components/LsfEventImportModal.vue'
 import ModuleDrawer from './components/ModuleDrawer.vue'
 import PlannerViewShell from './components/PlannerViewShell.vue'
 import ProfileSelectionPanel from './components/ProfileSelectionPanel.vue'
-import WeeklySchedule from './components/WeeklySchedule.vue'
 import Sidebar from './components/Sidebar.vue'
 import { useAppController } from './composables/useAppController'
+import { useNotifications } from './composables/useNotifications'
 import { useTeams } from './composables/useTeams'
 
-const { magicLinkRedirectTo, allCategories, activePlannerView, authEmail, authError, authFirstName, authInfo, authLastName, authLoading, authSending, canEditModuleStatuses, categoryError, currentUser, currentUserEmail, demoUserProfile, displayedWeeklyPreviewEvents, displayedWeeklyScheduleEvents, error, hiddenPageEntries, hiddenPageError, hiddenPageLoading, hiddenSeriesItems, isWeeklyPreviewMode, lastHiddenSeries, loadImportedEvents, loading, lsfImportModule, modules, moduleStatusError, profileError, profileInfo, profileSaving, savedSpo, savedStudyProgram, savingCategoryModuleId, savingModuleId, scheduleVisibilityError, scheduleVisibilityInfo, selectedModule, selectedSpoId, selectedStudyProgramId, selectionDirty, showHiddenEvents, spoItems, studyProgramItems, weekStartDate, getSpoLabel, getStudyProgramLabel, hideScheduleSeries, saveModuleCategories, saveModuleStatus, saveStudyProfileSelection, sendMagicLink, showAllScheduleSeries, showScheduleSeries, signOut, undoHideScheduleSeries } = useAppController()
-const { invitationCount, fetchMyInvitations} = useTeams()
+const { magicLinkRedirectTo, allCategories, activePlannerView, authEmail, authError, authFirstName, authInfo, authLastName, authLoading, authSending, canEditModuleStatuses, categoryError, currentUser, currentUserEmail, userProfile, displayedWeeklyScheduleEvents, error, hiddenOccurrenceItems, hiddenPageEntries, hiddenPageError, hiddenPageLoading, hiddenSeriesItems, lastHiddenSeries, loadImportedEvents, loading, lsfImportModule, modules, moduleStatusError, profileError, profileInfo, profileSaving, savedSpo, savedStudyProgram, savingCategoryModuleId, savingModuleId, scheduleVisibilityError, scheduleVisibilityInfo, selectedModule, selectedSpoId, selectedStudyProgramId, selectionDirty, showHiddenEvents, spoItems, studyProgramItems, weekStartDate, getSpoLabel, getStudyProgramLabel, hideScheduleOccurrence, hideScheduleSeries, saveModuleCategories, saveModuleStatus, saveStudyProfileSelection, sendMagicLink, showAllScheduleSeries, showScheduleSeries, signOut, undoHideScheduleSeries } = useAppController()
+const { invitationCount, fetchMyInvitations, subscribeToInvitations, unsubscribeFromInvitations } = useTeams()
+const {
+  allNotifications,
+  unreadCount,
+  fetchAllNotifications,
+  markRead,
+  markAllRead,
+  deleteNotification,
+  deleteAllNotifications,
+  subscribeToInserts,
+  teardownNotifications,
+} = useNotifications()
 
 function toggleShowHiddenEvents() {
   showHiddenEvents.value = !showHiddenEvents.value
 }
-
-// ===================== AUTH-BYPASS-START =====================
-// Skip login screen in dev with VITE_AUTH_BYPASS=true
-const isAuthBypassEnabled = import.meta.env.DEV && import.meta.env.VITE_AUTH_BYPASS === 'true'
-// ===================== AUTH-BYPASS-END =====================
-
-// =====================
-// DEV-BYPASS-START: Demo-User für Preview ohne Login
-// Entferne diesen Block nach dem Development!
-const isDevBypass = typeof window !== 'undefined' && (
-  window.location.search.includes('devpreview=1') || isAuthBypassEnabled
-)
-// =====================
-// DEV-BYPASS-END
 
 type SidebarSection = 'modules' | 'calendar' | 'profile' | 'teams'
 type ThemeMode = 'light' | 'dark'
@@ -60,9 +57,47 @@ const sidebarActiveSection = ref<SidebarSection>('modules')
 const sidebarOpen = ref(false)
 const themeMode = ref<ThemeMode>(getInitialThemeMode())
 
+// ── Notification inbox ──────────────────────────────────────────
+const notifOpen = ref(false)
+const notifBtnRef = ref<HTMLElement | null>(null)
+const notifPanelRef = ref<HTMLElement | null>(null)
+
+const notifDateFmt = new Intl.DateTimeFormat('de-DE', {
+  day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+})
+function formatNotifDate(iso: string): string {
+  return notifDateFmt.format(new Date(iso))
+}
+
+// Group by team; use payload.team_name for the label, fall back to "Allgemein".
+const groupedNotifications = computed(() => {
+  const groups = new Map<string | null, { label: string; items: typeof allNotifications.value }>()
+  for (const n of allNotifications.value) {
+    const key = n.teamId
+    if (!groups.has(key)) {
+      const label = key
+        ? ((n.payload as Record<string, unknown>).team_name as string | undefined) ?? 'Team'
+        : 'Allgemein'
+      groups.set(key, { label, items: [] })
+    }
+    groups.get(key)!.items.push(n)
+  }
+  return Array.from(groups.values())
+})
+
+function onDocMousedown(e: MouseEvent) {
+  if (
+    notifOpen.value &&
+    !notifBtnRef.value?.contains(e.target as Node) &&
+    !notifPanelRef.value?.contains(e.target as Node)
+  ) {
+    notifOpen.value = false
+  }
+}
+
 const derivedSidebarSection = computed<SidebarSection>(() => {
   if (isTeamsRoute.value) return 'teams'
-  if (isWeeklyPreviewMode.value || activePlannerView.value === 'week') return 'calendar'
+  if (activePlannerView.value === 'week') return 'calendar'
   return 'modules'
 })
 
@@ -77,38 +112,35 @@ watch(themeMode, (mode) => {
   applyThemeMode(mode)
 }, { immediate: true })
 
-const activeView = ref<'main' | 'hidden'>('main')
+const isHiddenView = computed(() => route.path === '/schedule/hidden')
 
-function updateActiveView() {
-  const hash = window.location.hash
-  activeView.value = hash === '#/schedule/hidden' ? 'hidden' : 'main'
-}
-
-let hashInterval: ReturnType<typeof setInterval> | null = null
-
-onMounted(async () => {
-  await fetchMyInvitations()
-
-  window.addEventListener('hashchange', updateActiveView)
-  updateActiveView()
-  hashInterval = setInterval(updateActiveView, 500)
+onMounted(() => {
+  void fetchMyInvitations()
+  void fetchAllNotifications()
+  subscribeToInserts()
+  document.addEventListener('mousedown', onDocMousedown)
 })
 
 onUnmounted(() => {
-  window.removeEventListener('hashchange', updateActiveView)
-  if (hashInterval) clearInterval(hashInterval)
+  document.removeEventListener('mousedown', onDocMousedown)
+  teardownNotifications()
+  unsubscribeFromInvitations()
+})
+
+watch(currentUser, (user) => {
+  if (user?.id) {
+    subscribeToInvitations(user.id)
+  } else {
+    unsubscribeFromInvitations()
+  }
 })
 
 function navigateToHiddenPage() {
-  window.location.hash = '#/schedule/hidden'
+  void router.push('/schedule/hidden')
 }
 
 function navigateToMain() {
-  if (window.location.hash === '#/schedule/hidden') {
-    window.history.back()
-  } else {
-    window.location.hash = '#/'
-  }
+  void router.push('/')
 }
 
 function scrollToSection(sectionId: string) {
@@ -151,12 +183,6 @@ async function onSidebarNavigate(target: SidebarSection) {
     return
   }
 
-  if (target === 'teams') {
-    await nextTick()
-    scrollToSection('teams-section')
-    return
-  } 
-
   activePlannerView.value = 'modules'
   await nextTick()
   scrollToSection('module-header-section')
@@ -172,7 +198,7 @@ async function onSidebarNavigate(target: SidebarSection) {
         </div>
         <div class="header-actions">
           <button
-            v-if="currentUser || isDevBypass || isWeeklyPreviewMode || isTeamsRoute"
+            v-if="currentUser"
             type="button"
             class="sidebar-toggle ghost-button"
             :aria-expanded="sidebarOpen"
@@ -183,6 +209,80 @@ async function onSidebarNavigate(target: SidebarSection) {
             <span class="sidebar-toggle-icon" :class="{ open: sidebarOpen }">☰</span>
           </button>
           <span v-if="currentUser" class="session-email">{{ currentUserEmail }}</span>
+          <!-- Notification inbox bell -->
+          <div v-if="currentUser" class="notif-wrap">
+            <button
+              ref="notifBtnRef"
+              type="button"
+              class="notif-btn ghost-button"
+              :aria-label="`Benachrichtigungen${unreadCount > 0 ? `, ${unreadCount} ungelesen` : ''}`"
+              :aria-expanded="notifOpen"
+              @click="notifOpen = !notifOpen"
+            >
+              <span aria-hidden="true">🔔</span>
+              <span v-if="unreadCount > 0" class="notif-badge" aria-hidden="true">
+                {{ unreadCount > 99 ? '99+' : unreadCount }}
+              </span>
+            </button>
+
+            <div
+              v-if="notifOpen"
+              ref="notifPanelRef"
+              class="notif-panel"
+              role="dialog"
+              aria-label="Benachrichtigungen"
+            >
+              <div class="notif-panel-head">
+                <span class="notif-panel-title">Benachrichtigungen</span>
+                <div class="notif-panel-actions">
+                  <button
+                    v-if="allNotifications.length > 0"
+                    type="button"
+                    class="notif-action-btn"
+                    @click="deleteAllNotifications"
+                  >Alle löschen</button>
+                  <button
+                    v-if="unreadCount > 0"
+                    type="button"
+                    class="notif-action-btn"
+                    @click="markAllRead"
+                  >Alle als gelesen</button>
+                </div>
+              </div>
+
+              <p v-if="groupedNotifications.length === 0" class="notif-empty">
+                Keine Benachrichtigungen.
+              </p>
+
+              <template v-for="group in groupedNotifications" :key="group.label">
+                <div class="notif-group-header">{{ group.label }}</div>
+                <div
+                  v-for="notif in group.items"
+                  :key="notif.id"
+                  class="notif-item-row"
+                >
+                  <button
+                    type="button"
+                    class="notif-item"
+                    :class="{ 'notif-item--unread': !notif.readAt }"
+                    @click="markRead(notif.id)"
+                  >
+                    <span class="notif-item-title">{{ notif.title }}</span>
+                    <span class="notif-item-body">{{ notif.body }}</span>
+                    <span class="notif-item-time">{{ formatNotifDate(notif.createdAt) }}</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="notif-delete-btn"
+                    :aria-label="`Benachrichtigung löschen: ${notif.title}`"
+                    title="Löschen"
+                    @click.stop="deleteNotification(notif.id)"
+                  >&times;</button>
+                </div>
+              </template>
+            </div>
+          </div>
+
           <button
             type="button"
             class="theme-toggle"
@@ -193,23 +293,22 @@ async function onSidebarNavigate(target: SidebarSection) {
           <button
             v-if="currentUser"
             type="button"
-            class="ghost-button"
+            class="logout-button"
+            aria-label="Abmelden"
+            title="Abmelden"
             @click="signOut"
           >
-            Abmelden
+            <svg class="logout-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M15 12H4m0 0 3.5-3.5M4 12l3.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+              <path d="M9 7.5V6a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6a2 2 0 0 1-2-2v-1.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            <span class="logout-label">Abmelden</span>
           </button>
         </div>
       </div>
      </header>
 
-    <!-- ===================== AUTH-BYPASS-START ===================== -->
-    <div v-if="isAuthBypassEnabled && currentUser" class="auth-bypass-banner">
-      <span class="bypass-label">Development Mode: Auth-Bypass aktiv</span>
-      <span class="bypass-user">Benutzer: {{ currentUser.user_metadata?.full_name || 'Demo User' }}</span>
-    </div>
-    <!-- ===================== AUTH-BYPASS-END ===================== -->
-
-    <template v-if="activeView === 'hidden'">
+    <template v-if="isHiddenView">
       <HiddenPage
         :entries="hiddenPageEntries"
         :loading="hiddenPageLoading"
@@ -223,14 +322,14 @@ async function onSidebarNavigate(target: SidebarSection) {
       <div class="app-layout">
         <transition name="sidebar-overlay">
           <div
-            v-if="(currentUser || isDevBypass || isWeeklyPreviewMode || isTeamsRoute) && sidebarOpen"
+            v-if="currentUser && sidebarOpen"
             class="sidebar-overlay"
             aria-hidden="true"
             @click="sidebarOpen = false"
           />
         </transition>
         <Sidebar
-          v-if="currentUser || isDevBypass || isWeeklyPreviewMode || isTeamsRoute"
+          v-if="currentUser"
           id="app-sidebar"
           :active-section="sidebarActiveSection"
           :is-open="sidebarOpen"
@@ -239,33 +338,14 @@ async function onSidebarNavigate(target: SidebarSection) {
         />
         <div class="app-content">
           <main class="app-main">
-            <template v-if="isWeeklyPreviewMode">
-              <section id="planner-section" class="content-section">
-                <WeeklySchedule
-                  :events="displayedWeeklyPreviewEvents"
-                  :hidden-series-items="hiddenSeriesItems"
-                  :show-hidden-events="showHiddenEvents"
-                  :loading="false"
-                  :error="null"
-                  :week-start="weekStartDate"
-                  @hide-series="hideScheduleSeries($event.seriesId, $event.title)"
-                  @show-series="showScheduleSeries"
-                  @show-all-series="showAllScheduleSeries"
-                  @toggle-show-hidden="toggleShowHiddenEvents"
-                  @navigate-to-hidden-page="navigateToHiddenPage"
-                />
-              </section>
-            </template>
-
-            <template v-else-if="authLoading">
+            <template v-if="authLoading">
               <div class="loading-state">
                 <div class="spinner" />
                 <p>Session wird geladen…</p>
               </div>
             </template>
 
-            <!-- ===================== DEV-BYPASS-START ===================== -->
-            <template v-else-if="!currentUser && !isDevBypass && !isAuthBypassEnabled">
+            <template v-else-if="!currentUser">
               <AuthGate
                 :magic-link-redirect-to="magicLinkRedirectTo"
                 :auth-first-name="authFirstName"
@@ -280,7 +360,6 @@ async function onSidebarNavigate(target: SidebarSection) {
                 @submit="sendMagicLink"
               />
             </template>
-            <!-- ===================== DEV-BYPASS-END ===================== -->
             <template v-else-if="isTeamsRoute">
               <RouterView />
             </template>
@@ -288,7 +367,7 @@ async function onSidebarNavigate(target: SidebarSection) {
               <section id="module-header-section" class="content-section">
                 <section id="profile-section" class="content-subsection">
                 <ProfileSelectionPanel
-                  :demo-user-profile="demoUserProfile"
+                  :user-profile="userProfile"
                   :saved-study-program="savedStudyProgram"
                   :saved-spo="savedSpo"
                   :selection-dirty="selectionDirty"
@@ -328,6 +407,7 @@ async function onSidebarNavigate(target: SidebarSection) {
                   :show-hidden-events="showHiddenEvents"
                   :week-start-date="weekStartDate"
                   @update:active-planner-view="activePlannerView = $event"
+                  @hide-occurrence="hideScheduleOccurrence($event)"
                   @hide-series="hideScheduleSeries($event.seriesId, $event.title)"
                   @show-series="showScheduleSeries"
                   @show-all-series="showAllScheduleSeries"
@@ -346,9 +426,8 @@ async function onSidebarNavigate(target: SidebarSection) {
     </template>
   </div>
 
-  <!-- ===================== DEV-BYPASS-START ===================== -->
   <ModuleDrawer
-    v-if="currentUser || isDevBypass"
+    v-if="currentUser"
     :module="selectedModule"
     :categories="allCategories"
     :saving="savingModuleId === selectedModule?.id"
@@ -361,7 +440,6 @@ async function onSidebarNavigate(target: SidebarSection) {
     @update-status="saveModuleStatus"
     @update-categories="saveModuleCategories"
   />
-  <!-- ===================== DEV-BYPASS-END ===================== -->
 
   <LsfEventImportModal
     :module="lsfImportModule"
@@ -379,7 +457,7 @@ async function onSidebarNavigate(target: SidebarSection) {
 
 .app-layout {
   display: flex;
-  /* Adjust for header (3.5rem) + optional bypass banner (~2.5rem in dev) */
+  /* Adjust for header (3.5rem) */
   min-height: calc(100vh - 3.5rem);
   position: relative;
 }
@@ -432,6 +510,40 @@ async function onSidebarNavigate(target: SidebarSection) {
   transform: translateY(-1px);
 }
 
+.logout-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.15s;
+}
+
+.logout-icon {
+  width: 1.05rem;
+  height: 1.05rem;
+  flex-shrink: 0;
+}
+
+.logout-button:hover {
+  border-color: color-mix(in srgb, var(--color-error, #dc2626) 55%, var(--color-border));
+  color: var(--color-error, #dc2626);
+  background: color-mix(in srgb, var(--color-error-bg, #fee2e2) 35%, var(--color-surface-raised));
+  transform: translateY(-1px);
+}
+
+.logout-button:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--color-error, #dc2626) 60%, transparent);
+  outline-offset: 2px;
+}
+
 @media (max-width: 45em) {
   .sidebar-toggle {
     display: inline-flex;
@@ -454,6 +566,14 @@ async function onSidebarNavigate(target: SidebarSection) {
     padding: 7px 12px;
     font-size: 0.76rem;
   }
+
+  .logout-label {
+    display: none;
+  }
+
+  .logout-button {
+    padding: 7px 9px;
+  }
 }
 
 .app-content {
@@ -470,27 +590,205 @@ async function onSidebarNavigate(target: SidebarSection) {
   padding-left: 8px;
 }
 
-/* ===================== AUTH-BYPASS-START ===================== */
-.auth-bypass-banner {
-  background: linear-gradient(90deg, var(--color-primary), var(--color-primary-light));
-  color: white;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.8rem;
-  font-weight: 600;
+/* ── Notification inbox ──────────────────────────────────────── */
+.notif-wrap {
+  position: relative;
+}
+
+.notif-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 10px;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.notif-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 1.1rem;
+  height: 1.1rem;
+  padding: 0 0.25rem;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 700;
+  display: inline-grid;
+  place-items: center;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.notif-panel {
+  position: fixed;
+  top: 3.625rem; /* just below the 56px header */
+  right: 1rem;
+  width: 22rem;
+  max-height: 28rem;
+  overflow-y: auto;
+  background: var(--color-surface-raised);
+  border: 0.0625rem solid var(--color-border);
+  border-radius: var(--radius-lg, 0.75rem);
+  box-shadow: 0 8px 32px color-mix(in srgb, black 14%, transparent);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+}
+
+.notif-panel-head {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 0.5rem;
-  box-shadow: 0 2px 8px color-mix(in srgb, var(--color-primary) 30%, transparent);
+  padding: 0.75rem 1rem 0.5rem;
+  border-bottom: 0.0625rem solid var(--color-border);
+  position: sticky;
+  top: 0;
+  background: var(--color-surface-raised);
+  z-index: 1;
 }
 
-.bypass-label {
-  flex: 0 0 auto;
+.notif-panel-title {
+  font-size: var(--font-size-sm, 0.875rem);
+  font-weight: 700;
+  color: var(--color-text);
 }
 
-.bypass-user {
-  flex: 1 1 auto;
-  opacity: 0.95;
-  font-size: 0.76rem;
+.notif-panel-actions {
+  display: flex;
+  gap: 0.375rem;
+  align-items: center;
 }
-/* ===================== AUTH-BYPASS-END ===================== */
+
+.notif-action-btn {
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--color-primary);
+  background: none;
+  border: none;
+  padding: 0.125rem 0.25rem;
+  cursor: pointer;
+  font: inherit;
+  border-radius: 0.25rem;
+}
+
+.notif-action-btn:hover {
+  text-decoration: underline;
+}
+
+.notif-empty {
+  margin: 0;
+  padding: 1.25rem 1rem;
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.notif-group-header {
+  padding: 0.5rem 1rem 0.25rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  position: sticky;
+  top: 2.75rem; /* below panel head */
+}
+
+.notif-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1875rem;
+  width: 100%;
+  padding: 0.625rem 1rem;
+  text-align: left;
+  background: none;
+  border: none;
+  border-bottom: 0.0625rem solid var(--color-border);
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  transition: background 0.12s ease;
+}
+
+.notif-item:last-child {
+  border-bottom: none;
+}
+
+.notif-item:hover {
+  background: color-mix(in srgb, var(--color-primary) 6%, transparent);
+}
+
+.notif-item--unread {
+  background: var(--color-primary-glow);
+}
+
+.notif-item--unread:hover {
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+}
+
+.notif-item-title {
+  font-size: var(--font-size-xs, 0.75rem);
+  font-weight: 600;
+  color: var(--color-text);
+  line-height: 1.3;
+}
+
+.notif-item-body {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.notif-item-time {
+  font-size: 0.66rem;
+  color: var(--color-text-muted);
+  margin-top: 0.125rem;
+}
+
+.notif-item-row {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 0.0625rem solid var(--color-border);
+}
+
+.notif-item-row:last-child {
+  border-bottom: none;
+}
+
+.notif-item {
+  flex: 1;
+  min-width: 0;
+  border-bottom: none !important;
+}
+
+.notif-delete-btn {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  background: none;
+  border: none;
+  font-size: 1.05rem;
+  line-height: 1;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s ease, color 0.12s ease;
+}
+
+.notif-item-row:hover .notif-delete-btn {
+  opacity: 1;
+}
+
+.notif-delete-btn:hover {
+  color: var(--color-error, #dc2626);
+}
 </style>

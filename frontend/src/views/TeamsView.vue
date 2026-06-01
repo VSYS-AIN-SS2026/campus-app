@@ -15,10 +15,13 @@ import TeamsManager from '../components/TeamsManager.vue'
 <style scoped>
 .teams-page {
   padding: var(--space-4xl) var(--space-3xl);
+  width: 100%;
   max-width: 56rem;
+  margin-inline: auto;
   display: flex;
   flex-direction: column;
   gap: var(--space-3xl);
+  box-sizing: border-box;
 }
 
 .page-header {
@@ -31,5 +34,11 @@ import TeamsManager from '../components/TeamsManager.vue'
   letter-spacing: -0.02em;
   color: var(--color-text);
   margin: 0;
+}
+
+@media (max-width: 45em) {
+  .teams-page {
+    padding: var(--space-2xl) var(--space-lg);
+  }
 }
 </style>

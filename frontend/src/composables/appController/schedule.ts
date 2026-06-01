@@ -1,6 +1,7 @@
 import { supabase, supabaseConfigError } from '../../supabase'
 import type { UserEventRow } from '../../types/schedule'
 import type { AppControllerState } from './state'
+import type { AcceptedAppointmentRow } from './shared'
 
 function normalizeSeriesId(seriesId: string) {
   return seriesId.trim()
@@ -29,11 +30,6 @@ export function createScheduleController(state: AppControllerState) {
     state.hiddenSeriesIds.value = nextHiddenSeries
     state.hiddenSeriesTitles.value.set(normalizedSeriesId, normalizedTitle || 'Unbenannte Reihe')
     state.lastHiddenSeries.value = { seriesId: normalizedSeriesId, title: normalizedTitle || 'Unbenannte Reihe' }
-
-    if (state.isWeeklyPreviewMode.value) {
-      state.scheduleVisibilityInfo.value = 'Terminreihe wurde ausgeblendet.'
-      return
-    }
 
     if (!supabase) {
       state.hiddenSeriesIds.value = previousHiddenSeries
@@ -72,12 +68,6 @@ export function createScheduleController(state: AppControllerState) {
     state.hiddenSeriesTitles.value.delete(seriesId)
     state.scheduleVisibilityError.value = null
 
-    if (state.isWeeklyPreviewMode.value) {
-      state.scheduleVisibilityInfo.value = `„${title}“ ist wieder sichtbar.`
-      state.lastHiddenSeries.value = null
-      return
-    }
-
     if (!supabase) {
       state.hiddenSeriesIds.value = previousHiddenSeries
       state.hiddenSeriesTitles.value = previousHiddenSeriesTitles
@@ -115,10 +105,6 @@ export function createScheduleController(state: AppControllerState) {
     state.hiddenSeriesIds.value = nextHiddenSeries
     state.hiddenSeriesTitles.value.delete(normalizedSeriesId)
     state.scheduleVisibilityError.value = null
-
-    if (state.isWeeklyPreviewMode.value) {
-      return
-    }
 
     if (!supabase) {
       state.hiddenSeriesIds.value = previousHiddenSeries
@@ -159,6 +145,27 @@ export function createScheduleController(state: AppControllerState) {
   async function hideScheduleOccurrence(occurrenceId: string) {
     const normalizedOccurrenceId = normalizeOccurrenceId(occurrenceId)
 
+    // Team-Termin: Einladung ablehnen statt ausblenden
+    if (normalizedOccurrenceId.startsWith('appointment:')) {
+      const appointmentId = normalizedOccurrenceId.slice('appointment:'.length)
+      const row = (state.acceptedAppointments.value as AcceptedAppointmentRow[]).find(
+        r => r.appointment_id === appointmentId
+      )
+      if (!row || !supabase) return
+
+      const { error } = await supabase.rpc('respond_to_appointment_invitation', {
+        p_invitation_id: row.invitation_id,
+        p_status: 'declined',
+      })
+
+      if (!error) {
+        state.acceptedAppointments.value = (
+          state.acceptedAppointments.value as AcceptedAppointmentRow[]
+        ).filter(r => r.appointment_id !== appointmentId)
+      }
+      return
+    }
+
     if (!normalizedOccurrenceId || state.hiddenEventIds.value.has(normalizedOccurrenceId)) {
       return
     }
@@ -168,10 +175,6 @@ export function createScheduleController(state: AppControllerState) {
     nextHiddenOccurrenceIds.add(normalizedOccurrenceId)
     state.hiddenEventIds.value = nextHiddenOccurrenceIds
     state.scheduleVisibilityError.value = null
-
-    if (state.isWeeklyPreviewMode.value) {
-      return
-    }
 
     if (!supabase) {
       state.hiddenEventIds.value = previousHiddenOccurrenceIds
@@ -201,10 +204,6 @@ export function createScheduleController(state: AppControllerState) {
     nextHiddenOccurrenceIds.delete(normalizedOccurrenceId)
     state.hiddenEventIds.value = nextHiddenOccurrenceIds
     state.scheduleVisibilityError.value = null
-
-    if (state.isWeeklyPreviewMode.value) {
-      return
-    }
 
     if (!supabase) {
       state.hiddenEventIds.value = previousHiddenOccurrenceIds

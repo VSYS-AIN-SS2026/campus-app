@@ -259,8 +259,8 @@ export function createModulesController(state: AppControllerState) {
       return
     }
 
-    state.demoUserProfile.value = (data ?? null) as UserProfile | null
-    state.profileInfo.value = 'Studiengang und SPO wurden im Demo-Profil gespeichert.'
+    state.userProfile.value = (data ?? null) as UserProfile | null
+    state.profileInfo.value = 'Studiengang und SPO wurden in deinem Profil gespeichert.'
   }
 
   async function fetchModules(handbookIds: string[], requestId: number) {

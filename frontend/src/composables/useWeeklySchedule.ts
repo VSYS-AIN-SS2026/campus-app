@@ -53,7 +53,7 @@ export function useWeeklySchedule(
           return null
         }
 
-        return { ...event, start, end }
+        return { ...event, start, end, columnIndex: 0, columnCount: 1 }
       })
       .filter((event): event is NormalizedWeekEvent => !!event)
       .sort((first, second) => {
@@ -65,8 +65,33 @@ export function useWeeklySchedule(
       })
   })
 
+  function assignColumns(events: NormalizedWeekEvent[]): NormalizedWeekEvent[] {
+    const sorted = [...events].sort((a, b) => a.start - b.start || b.end - a.end)
+    const columns: number[] = []
+
+    const withCol = sorted.map(event => {
+      let col = columns.findIndex(endTime => endTime <= event.start)
+      if (col === -1) {
+        col = columns.length
+        columns.push(0)
+      }
+      columns[col] = event.end
+      return { ...event, columnIndex: col }
+    })
+
+    return withCol.map(event => {
+      const columnCount = withCol.reduce((max, other) => {
+        if (other.start < event.end && other.end > event.start) {
+          return Math.max(max, other.columnIndex + 1)
+        }
+        return max
+      }, 1)
+      return { ...event, columnCount }
+    })
+  }
+
   const eventsByDay = computed(() => {
-    return days.value.map(day => normalizedEvents.value.filter(event => event.dayIndex === day.index))
+    return days.value.map(day => assignColumns(normalizedEvents.value.filter(event => event.dayIndex === day.index)))
   })
 
   const hourSlots = computed(() => {
@@ -83,13 +108,18 @@ export function useWeeklySchedule(
 
   const hasEvents = computed(() => normalizedEvents.value.length > 0)
 
-  function eventStyle(start: number, end: number) {
+  function eventStyle(start: number, end: number, columnIndex = 0, columnCount = 1) {
     const startOffset = ((start - startHourRef.value * 60) / totalMinutes.value) * 100
     const height = ((end - start) / totalMinutes.value) * 100
+    const width = 100 / columnCount
+    const left = columnIndex * width
 
     return {
       top: `${Math.max(startOffset, 0)}%`,
       height: `${Math.max(height, 3)}%`,
+      left: `${left}%`,
+      width: `${width}%`,
+      right: 'auto',
     }
   }
 

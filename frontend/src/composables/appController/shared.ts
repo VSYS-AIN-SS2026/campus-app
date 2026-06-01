@@ -26,11 +26,25 @@ export type WeeklyScheduleEvent = {
   seriesId: string
   occurrenceId?: string
   dayIndex: number
+  /** Lokaler Kalendertag ('YYYY-MM-DD') für datumsgebundene Events (Team-Termine). */
+  date?: string
   title: string
   subtitle?: string
   startTime: string
   endTime: string
   status: ModuleStatus
+}
+
+/** Zeile aus get_my_accepted_appointments (zugesagte Team-Termine, UTC). */
+export type AcceptedAppointmentRow = {
+  appointment_id: string
+  invitation_id: string
+  title: string
+  description: string | null
+  starts_at: string
+  ends_at: string
+  team_id: string
+  team_name: string
 }
 
 export type HiddenPageEntry = {

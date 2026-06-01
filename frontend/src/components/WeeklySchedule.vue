@@ -31,8 +31,39 @@ const props = withDefaults(defineProps<{
   error: null,
   hiddenSeriesItems: () => [],
   hiddenOccurrenceItems: () => [],
-  startHour: 0,
-  endHour: 24,
+  // Standard-Sichtfenster der Wochenansicht: 08:00–18:00. Zeilen außerhalb davon
+  // werden nur eingeblendet, wenn dort tatsächlich Termine/Vorlesungen liegen.
+  startHour: 8,
+  endHour: 18,
+})
+
+// Früheste Start- und späteste Endzeit der aktuell sichtbaren Woche (Minuten ab
+// 00:00). Bezieht sich bewusst auf die angezeigten Events, damit Zeilen außerhalb
+// des Basisfensters nur dann erscheinen, wenn in DIESER Woche etwas dort liegt.
+const eventMinuteBounds = computed(() => {
+  let min = Number.POSITIVE_INFINITY
+  let max = Number.NEGATIVE_INFINITY
+  for (const dayEvents of continuousEventsByDay.value) {
+    for (const event of dayEvents) {
+      if (event.start < min) min = event.start
+      if (event.end > max) max = event.end
+    }
+  }
+  return { min, max }
+})
+
+// Sichtfenster = Basisfenster, bei Bedarf nach außen erweitert, damit kein Event
+// abgeschnitten wird. Ohne Events bleibt es beim Basisfenster.
+const effectiveStartHour = computed(() => {
+  const { min } = eventMinuteBounds.value
+  if (!Number.isFinite(min)) return props.startHour
+  return Math.max(0, Math.min(props.startHour, Math.floor(min / 60)))
+})
+
+const effectiveEndHour = computed(() => {
+  const { max } = eventMinuteBounds.value
+  if (!Number.isFinite(max)) return props.endHour
+  return Math.min(24, Math.max(props.endHour, Math.ceil(max / 60)))
 })
 
 const localTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -121,8 +152,8 @@ function jumpToToday() {
 const schedule = useWeeklySchedule(
   computed(() => props.events),
   displayedWeekStart,
-  computed(() => props.startHour),
-  computed(() => props.endHour)
+  effectiveStartHour,
+  effectiveEndHour
 )
 
 const {
@@ -154,7 +185,12 @@ const continuousDays = computed<ScheduleDay[]>(() => {
 const continuousEventsByDay = computed(() => {
   return continuousDays.value.map((day) => {
     const weekdayIndex = (day.date.getDay() + 6) % 7
-    return eventsByDay.value[weekdayIndex] ?? []
+    const dayKey = toLocalDateKey(day.date)
+    // Datumsgebundene Events (Team-Termine) nur am konkreten Tag zeigen;
+    // wiederkehrende Events (ohne date) erscheinen in jeder Woche.
+    return (eventsByDay.value[weekdayIndex] ?? []).filter(
+      (event) => !event.date || event.date === dayKey
+    )
   })
 })
 
@@ -189,8 +225,8 @@ const nowLineTopPercent = computed<number | null>(() => {
 
   const now = new Date(nowTimestamp.value)
   const minutes = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60
-  const startMinutes = props.startHour * 60
-  const endMinutes = props.endHour * 60
+  const startMinutes = effectiveStartHour.value * 60
+  const endMinutes = effectiveEndHour.value * 60
 
   if (minutes < startMinutes || minutes > endMinutes) {
     return null
@@ -291,7 +327,7 @@ onUnmounted(() => {
         :days="continuousDays"
         :events-by-day="continuousEventsByDay"
         :hour-slots="hourSlots"
-        :start-hour="props.startHour"
+        :start-hour="effectiveStartHour"
         :total-minutes="totalMinutes"
         :format-time-label="formatTimeLabel"
         :event-style="eventStyle"
@@ -309,7 +345,7 @@ onUnmounted(() => {
         :hour-slots="hourSlots"
         :format-time-label="formatTimeLabel"
         :current-day-index="currentDayIndex"
-        :start-hour="props.startHour"
+        :start-hour="effectiveStartHour"
         :total-minutes="totalMinutes"
         :event-style="eventStyle"
         @selected-year-change="onSelectedYearChange"

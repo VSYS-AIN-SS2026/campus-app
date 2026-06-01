@@ -1077,8 +1077,21 @@ export type Database = {
           type: string
         }[]
       }
+      get_my_accepted_appointments: {
+        Args: { p_from?: string; p_to?: string }
+        Returns: {
+          appointment_id: string
+          description: string
+          ends_at: string
+          invitation_id: string
+          starts_at: string
+          team_id: string
+          team_name: string
+          title: string
+        }[]
+      }
       get_my_appointment_invitations: {
-        Args: never
+        Args: { p_team_id?: string }
         Returns: {
           appointment_id: string
           description: string

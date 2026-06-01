@@ -7,6 +7,13 @@ export interface WeekEvent {
   seriesId: string
   occurrenceId?: string
   dayIndex: number
+  /**
+   * Lokaler Kalendertag ('YYYY-MM-DD'), an dem dieses Event stattfindet.
+   * Gesetzt für datumsgebundene Events (z. B. Team-Termine), die nur in der
+   * konkreten Woche erscheinen sollen. Ohne Wert gilt das Event als
+   * wöchentlich wiederkehrend (über `dayIndex`).
+   */
+  date?: string
   title: string
   subtitle?: string
   startTime: string
@@ -18,6 +25,8 @@ export interface WeekEvent {
 export interface NormalizedWeekEvent extends WeekEvent {
   start: number
   end: number
+  columnIndex: number
+  columnCount: number
 }
 
 export interface ScheduleDay {

@@ -12,7 +12,6 @@ const error = ref<string | null>(null)
 
 const teamId = computed(() => route.params.id as string)
 
-// Team-Detail an die Bereichs-Tabs (Mitglieder / Terminvorschläge) weitergeben.
 provide('teamDetail', team)
 
 onMounted(async () => {
@@ -44,7 +43,7 @@ onMounted(async () => {
 
 <template>
   <div class="detail-page">
-    <button class="back-button ghost-button" type="button" @click="router.push('/teams')">
+    <button class="back-button" type="button" @click="router.push('/teams')">
       ← Zurück zur Übersicht
     </button>
 
@@ -80,10 +79,20 @@ onMounted(async () => {
 <style scoped>
 .detail-page {
   padding: var(--space-4xl) var(--space-3xl);
-  max-width: 48rem;
+  width: 100%;
+  max-width: none;
+  margin-inline: auto;
   display: flex;
   flex-direction: column;
   gap: var(--space-4xl);
+  box-sizing: border-box;
+}
+
+@media (max-width: 45em) {
+  .detail-page {
+    padding: var(--space-2xl) var(--space-lg);
+    gap: var(--space-2xl);
+  }
 }
 
 .back-button {
@@ -91,6 +100,10 @@ onMounted(async () => {
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
   padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  transition: color 0.15s;
 }
 
 .back-button:hover {
@@ -150,4 +163,24 @@ onMounted(async () => {
   color: var(--color-primary);
   border-bottom-color: var(--color-primary);
 }
+
+.error-banner {
+  padding: 0.75rem 1rem;
+  background: rgba(239, 68, 68, 0.1);
+  border: 0.0625rem solid rgba(239, 68, 68, 0.3);
+  border-radius: var(--radius-md);
+  color: #ef4444;
+  font-size: var(--font-size-sm);
+}
+
+.spinner {
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 0.1875rem solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
 </style>

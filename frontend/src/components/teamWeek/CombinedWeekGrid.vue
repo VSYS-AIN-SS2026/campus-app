@@ -13,6 +13,7 @@ defineProps<{
 
 const emit = defineEmits<{
   'select-slot': [id: string]
+  'select-appointment': [id: string]
 }>()
 
 const dayBodyHeightRem = (totalMinutes: number) => (totalMinutes / 60) * 3.5
@@ -45,6 +46,7 @@ const dayBodyHeightRem = (totalMinutes: number) => (totalMinutes / 60) * 3.5
         </header>
 
         <div class="cw-day-body" :style="{ height: `${dayBodyHeightRem(totalMinutes)}rem` }">
+          <!-- hour grid lines -->
           <div
             v-for="slot in hourSlots"
             :key="`${column.key}-${slot}`"
@@ -58,15 +60,25 @@ const dayBodyHeightRem = (totalMinutes: number) => (totalMinutes / 60) * 3.5
             :style="{ top: `${nowLineTopPercent}%` }"
           />
 
-          <!-- Layer 1: zusammengefasste Belegt-Blöcke (Stundenpläne) -->
+          <!-- Layer 0: per-member coloured fills (Stundenpläne background) -->
+          <div
+            v-for="fill in column.fills"
+            :key="fill.id"
+            class="cw-fill"
+            :style="[fill.style, { '--fill-color': fill.color }]"
+          />
+
+          <!-- Layer 1: merged avatar stacks – who is busy during each interval -->
           <div
             v-for="block in column.busy"
             :key="block.id"
             class="cw-busy"
             :style="block.style"
           >
-            <span class="cw-busy-time">{{ block.startTime }}–{{ block.endTime }}</span>
-            <div class="cw-members" :aria-label="`${block.members.length + block.extraCount} Mitglieder belegt`">
+            <div
+              class="cw-members"
+              :aria-label="`${block.members.length + block.extraCount} Mitglieder belegt`"
+            >
               <span
                 v-for="member in block.members"
                 :key="member.id"
@@ -80,17 +92,19 @@ const dayBodyHeightRem = (totalMinutes: number) => (totalMinutes / 60) * 3.5
             </div>
           </div>
 
-          <!-- Layer 2: bestehende Termine -->
-          <div
+          <!-- Layer 2: team appointments (clickable) -->
+          <button
             v-for="appointment in column.appointments"
             :key="appointment.id"
+            type="button"
             class="cw-appointment"
             :style="appointment.style"
+            :aria-label="`Termin: ${appointment.label}, ${appointment.timeLabel}`"
+            @click="emit('select-appointment', appointment.id)"
           >
-            <span class="cw-layer-tag">Termin</span>
-            <strong class="cw-appointment-title">{{ appointment.label }}</strong>
-            <span class="cw-layer-time">{{ appointment.timeLabel }}</span>
-            <div v-if="appointment.members && appointment.members.length" class="cw-members">
+            <span class="cw-apt-time">{{ appointment.timeLabel }}</span>
+            <span class="cw-apt-title">{{ appointment.label }}</span>
+            <div v-if="appointment.members?.length" class="cw-members">
               <span
                 v-for="member in appointment.members"
                 :key="member.id"
@@ -99,9 +113,9 @@ const dayBodyHeightRem = (totalMinutes: number) => (totalMinutes / 60) * 3.5
                 :title="member.name"
               >{{ member.initials }}</span>
             </div>
-          </div>
+          </button>
 
-          <!-- Layer 3: Such-Ergebnisse (Vorschläge) – klickbar -->
+          <!-- Layer 3: search results (dashed, clickable) -->
           <button
             v-for="result in column.searches"
             :key="result.id"
@@ -111,7 +125,7 @@ const dayBodyHeightRem = (totalMinutes: number) => (totalMinutes / 60) * 3.5
             :aria-label="`Vorschlag ${result.timeLabel} – Termin anlegen`"
             @click="emit('select-slot', result.id)"
           >
-            <span class="cw-layer-tag cw-layer-tag--search">Vorschlag</span>
+            <span class="cw-search-label">Vorschlag</span>
             <span class="cw-layer-time">{{ result.timeLabel }}</span>
           </button>
         </div>
@@ -223,25 +237,29 @@ const dayBodyHeightRem = (totalMinutes: number) => (totalMinutes / 60) * 3.5
   pointer-events: none;
 }
 
-/* Layer 1: Belegt (Stundenpläne) */
+/* ── Layer 0: per-member coloured fills ──────────────────────── */
+.cw-fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 0;
+  border-radius: 0.25rem;
+  background: color-mix(in srgb, var(--fill-color) 22%, transparent);
+  pointer-events: none;
+}
+
+/* ── Layer 1: avatar stacks (no background, no text) ─────────── */
 .cw-busy {
   position: absolute;
   left: 0;
   right: 0;
   z-index: 1;
-  background: color-mix(in srgb, var(--color-primary-glow) 60%, transparent);
-  border: 0.0625rem solid color-mix(in srgb, var(--color-primary-light) 50%, transparent);
-  border-radius: 0.375rem;
-  padding: 0.25rem 0.375rem;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  justify-content: flex-end;
+  padding: 0.125rem 0.25rem;
+  pointer-events: none;
   overflow: hidden;
-}
-
-.cw-busy-time {
-  font-size: 0.66rem;
-  color: var(--color-text-muted);
 }
 
 .cw-members {
@@ -260,42 +278,63 @@ const dayBodyHeightRem = (totalMinutes: number) => (totalMinutes / 60) * 3.5
   display: inline-grid;
   place-items: center;
   box-shadow: 0 0 0 0.0625rem color-mix(in srgb, #000 12%, transparent);
+  flex-shrink: 0;
 }
 
 .cw-avatar--more {
   background: var(--color-text-muted);
 }
 
-/* Layer 2: Termine */
+/* ── Layer 2: team appointments ──────────────────────────────── */
 .cw-appointment {
   position: absolute;
-  left: 0.375rem;
-  right: 0.375rem;
   z-index: 2;
-  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
-  border-left: 0.1875rem solid var(--color-primary);
-  border-top: 0.0625rem solid var(--color-primary-light);
-  border-right: 0.0625rem solid var(--color-primary-light);
-  border-bottom: 0.0625rem solid var(--color-primary-light);
+  /* solid coloured bar: opaque primary-tinted background */
+  background: color-mix(in srgb, var(--color-primary) 14%, var(--color-surface));
+  border-left: 0.25rem solid var(--color-primary);
   border-radius: 0.25rem;
   padding: 0.25rem 0.375rem;
   display: flex;
   flex-direction: column;
   gap: 0.125rem;
   overflow: hidden;
+  /* reset button defaults */
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+  transition: background 0.12s ease, box-shadow 0.12s ease;
 }
 
-.cw-appointment-title {
-  font-size: 0.72rem;
+.cw-appointment:hover {
+  background: color-mix(in srgb, var(--color-primary) 22%, var(--color-surface));
+}
+
+.cw-appointment:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 0.125rem var(--color-primary);
+}
+
+.cw-apt-time {
+  font-size: 0.66rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  line-height: 1.2;
+  flex-shrink: 0;
+}
+
+.cw-apt-title {
+  font-size: 0.68rem;
   color: var(--color-text);
   line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* Layer 3: Such-Ergebnisse (klickbar) */
+/* ── Layer 3: search results ─────────────────────────────────── */
 .cw-search {
   position: absolute;
-  left: 0;
-  right: 0;
   z-index: 3;
   border: 0.125rem dashed var(--color-success-border, #16a34a);
   background: color-mix(in srgb, var(--color-success-bg, #16a34a) 22%, transparent);
@@ -327,15 +366,11 @@ const dayBodyHeightRem = (totalMinutes: number) => (totalMinutes / 60) * 3.5
   transform: translateY(0.0625rem);
 }
 
-.cw-layer-tag {
+.cw-search-label {
   font-size: 0.58rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--color-primary);
-}
-
-.cw-layer-tag--search {
   color: var(--color-success, #16a34a);
 }
 

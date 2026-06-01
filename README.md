@@ -79,52 +79,9 @@ Danach kannst du mit `npm run dev` das Frontend starten.
 
 Hinweis: Ohne eigenes SMTP nutzt Supabase den eingebauten Mail-Versand (mit Limits).
 
-### 9. Auth-Bypass für lokale Entwicklung (optional)
-
-Für Entwicklung ohne Magic-Link-Login kannst du den Auth-Bypass aktivieren:
-
-```bash
-# frontend/.env.local
-VITE_AUTH_BYPASS=true
-```
-
-Mit `VITE_AUTH_BYPASS=true` wird beim App-Start automatisch ein synthetischer Demo-User
-eingeloggt (kein echtes Supabase-Konto, keine E-Mail). Im Login-Formular kannst du Vor-
-und Nachname eingeben, um den Demo-User umzubenennen. Ein gelbes Banner
-"Development Mode: Auth-Bypass aktiv" bestätigt, dass der Bypass aktiv ist.
-
-Wie es intern funktioniert (implementiert in `frontend/src/composables/appController/auth.ts`):
-
-```typescript
-// Prüft ob Bypass aktiv ist (nur in DEV-Build wirksam)
-function isAuthBypassEnabled(): boolean {
-  if (!import.meta.env.DEV) return false
-  return import.meta.env.VITE_AUTH_BYPASS === 'true'
-}
-
-// Erstellt synthetischen User-Stub (Demo-E-Mail für RPC-Kompatibilität)
-function createDemoUser(): any {
-  return {
-    id: 'demo-user-local-dev',
-    email: 'alex.beispiel@htwg-konstanz.de',
-    user_metadata: { first_name: 'Demo', last_name: 'User', full_name: 'Demo User' },
-    // ... restliche Pflichtfelder
-  }
-}
-
-// Logging — nur wenn Bypass aktiv
-function bypassLog(message: string, ...args: unknown[]) {
-  if (isAuthBypassEnabled()) {
-    console.log(`[Auth-Bypass] ${message}`, ...args)
-  }
-}
-```
-
-`initAuth()` setzt den Demo-User sofort beim App-Start (kein Login-Screen).
-`sendMagicLink()` überschreibt den Namen mit dem eingegebenen Vor-/Nachnamen.
-`App.vue` zeigt das Banner via `v-if="isAuthBypassEnabled && currentUser"`.
-
-**Wichtig:** Bypass ist nur im Vite-Dev-Build aktiv (`import.meta.env.DEV`). In Production-Builds wird er vom Compiler wegoptimiert.
+Die Anmeldung erfolgt ausschließlich über den Magic-Link. Jede:r Nutzer:in meldet sich
+mit der eigenen E-Mail-Adresse an und arbeitet mit dem eigenen Profil (Studiengang, SPO,
+Modulstatus, Kalender). Es gibt keinen Demo-/Bypass-Modus mehr.
 
 ## Datenbank-Workflow (wichtig für alle!)
 
