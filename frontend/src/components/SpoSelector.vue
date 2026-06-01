@@ -13,16 +13,15 @@ defineEmits<{
 </script>
 
 <template>
-  <div class="dropdown">
-    <label v-if="label" :for="`select-${label}`">{{ label }}</label>
+  <div class="spo-selector">
+    <label v-if="label">{{ label }}</label>
     <div class="select-wrapper">
       <select
-        :id="`select-${label}`"
-        :value="modelValue"
-        :disabled="loading || (!items.length && !modelValue)"
+        :value="modelValue ?? ''"
+        :disabled="loading"
         @change="$emit('update:modelValue', ($event.target as HTMLSelectElement).value || null)"
       >
-        <option value="">{{ placeholder ?? '— Auswählen —' }}</option>
+        <option value="">{{ placeholder ?? '— Bitte auswählen —' }}</option>
         <option v-for="item in items" :key="item.id" :value="item.id">
           {{ item.label }}
         </option>
@@ -33,14 +32,14 @@ defineEmits<{
 </template>
 
 <style scoped>
-.dropdown {
+.spo-selector {
   display: flex;
   flex-direction: column;
-  gap: 0.375em;
+  gap: 6px;
 }
 
 label {
-  font-size: 78%;
+  font-size: 0.78rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -56,31 +55,24 @@ label {
 select {
   appearance: none;
   width: 100%;
-  min-height: 42px;
-  padding: 0.625em 2.5em 0.625em 0.875em;
-  font-size: 95%;
+  padding: 10px 40px 10px 14px;
+  font-size: 0.95rem;
   font-family: inherit;
   color: var(--color-text);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-control);
+  border-radius: 8px;
   cursor: pointer;
   transition: border-color 0.2s, box-shadow 0.2s;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b7280' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 0.875em center;
+  background-position: right 14px center;
 }
 
 select:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 0.2em var(--color-primary-glow);
-}
-
-select:focus-visible {
-  outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 0.2em var(--color-primary-glow);
+  box-shadow: 0 0 0 3px var(--color-primary-glow);
 }
 
 select:disabled {
@@ -90,9 +82,9 @@ select:disabled {
 
 .select-spinner {
   position: absolute;
-  right: 2.25em;
-  width: 0.875em;
-  height: 0.875em;
+  right: 36px;
+  width: 14px;
+  height: 14px;
   border: 2px solid var(--color-border);
   border-top-color: var(--color-primary);
   border-radius: 50%;

@@ -12,6 +12,7 @@ export interface WeekEvent {
   startTime: string
   endTime: string
   status: WeekEventStatus
+  isHidden?: boolean
 }
 
 export interface NormalizedWeekEvent extends WeekEvent {
@@ -25,4 +26,30 @@ export interface ScheduleDay {
   weekdayLabel: string
   dateLabel: string
   isToday: boolean
+}
+
+export interface UserEvent {
+  id: string
+  lsf_event_id: string | null
+  title: string
+  subtitle: string | null
+  day_index: number
+  start_time: string
+  end_time: string
+  series_id: string
+  status: string
+  created_at: string
+}
+
+export type UserEventRow = {
+  id: string
+  lsf_event_id: string | null
+  title: string
+  subtitle: string | null
+  day_index: number
+  start_time: string
+  end_time: string
+  series_id: string
+  status: string
+  created_at: string
 }

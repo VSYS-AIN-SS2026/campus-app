@@ -21,6 +21,8 @@ const props = withDefaults(defineProps<{
   loading?: boolean
   error?: string | null
   hiddenSeriesItems?: Array<{ seriesId: string; title: string }>
+  hiddenOccurrenceItems?: Array<{ occurrenceId: string; title: string }>
+  showHiddenEvents?: boolean
   weekStart: Date
   startHour?: number
   endHour?: number
@@ -28,6 +30,7 @@ const props = withDefaults(defineProps<{
   loading: false,
   error: null,
   hiddenSeriesItems: () => [],
+  hiddenOccurrenceItems: () => [],
   startHour: 0,
   endHour: 24,
 })
@@ -41,8 +44,13 @@ function toLocalDateKey(value: Date): string {
 
 const emit = defineEmits<{
   'hide-series': [payload: { seriesId: string; title: string }]
+  'hide-occurrence': [occurrenceId: string]
   'show-series': [seriesId: string]
+  'show-occurrence': [occurrenceId: string]
+  'show-all-occurrences': []
   'show-all-series': []
+  'toggle-show-hidden': []
+  'navigate-to-hidden-page': []
 }>()
 
 function getTodayStart(): Date {
@@ -238,12 +246,27 @@ onUnmounted(() => {
           </button>
           <button type="button" class="week-nav-btn app-button" @click="nextWeek">→</button>
         </div>
-        <HiddenSeriesPopover
-          v-if="props.hiddenSeriesItems.length"
-          :items="props.hiddenSeriesItems"
-          @show-series="emit('show-series', $event)"
-          @show-all-series="emit('show-all-series')"
-        />
+        <div v-if="props.hiddenSeriesItems.length || (props.hiddenOccurrenceItems?.length ?? 0) > 0" class="week-hidden-controls">
+          <button
+            v-if="props.hiddenSeriesItems.length"
+            type="button"
+            class="show-hidden-btn app-button"
+            :class="{ 'show-hidden-btn-active': props.showHiddenEvents }"
+            :aria-pressed="props.showHiddenEvents"
+            @click="emit('toggle-show-hidden')"
+          >
+            {{ props.showHiddenEvents ? 'Ausgeblendete verbergen' : 'Ausgeblendete anzeigen' }}
+          </button>
+          <HiddenSeriesPopover
+            :items="props.hiddenSeriesItems"
+            :occurrence-items="props.hiddenOccurrenceItems"
+            @show-series="emit('show-series', $event)"
+            @show-occurrence="emit('show-occurrence', $event)"
+            @show-all-occurrences="emit('show-all-occurrences')"
+            @show-all-series="emit('show-all-series')"
+            @navigate-to-hidden-page="emit('navigate-to-hidden-page')"
+          />
+        </div>
       </div>
       <div id="week-mobile-tabs-slot" class="week-mobile-tabs-slot" />
     </header>
@@ -276,6 +299,7 @@ onUnmounted(() => {
         :now-line-top-percent="nowLineTopPercent"
         @today-visibility-change="isTodayVisibleInViewport = $event"
         @hide-series="emit('hide-series', $event)"
+        @hide-occurrence="emit('hide-occurrence', $event)"
       />
 
       <WeekMobileList
@@ -291,6 +315,7 @@ onUnmounted(() => {
         @selected-year-change="onSelectedYearChange"
         @selected-day-label-change="onMobileSelectedDayLabelChange"
         @hide-series="emit('hide-series', $event)"
+        @hide-occurrence="emit('hide-occurrence', $event)"
       />
     </template>
   </section>
@@ -328,6 +353,24 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: flex-end;
   gap: 0.5rem;
+}
+
+.week-hidden-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.show-hidden-btn {
+  font-size: 0.78rem;
+  opacity: 0.8;
+}
+
+.show-hidden-btn-active {
+  opacity: 1;
+  background: var(--color-primary-glow);
+  border-color: var(--color-primary-light);
+  color: var(--color-primary);
 }
 
 .week-title {
