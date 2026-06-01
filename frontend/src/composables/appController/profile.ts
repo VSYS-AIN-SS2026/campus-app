@@ -9,7 +9,7 @@ import type {
 } from '../../types'
 import type { UserEventRow } from '../../types/schedule'
 import type { AppControllerState } from './state'
-import type { HiddenOccurrenceRow, HiddenSeriesRow } from './shared'
+import type { AcceptedAppointmentRow, HiddenOccurrenceRow, HiddenSeriesRow } from './shared'
 
 export function createProfileController(
   state: AppControllerState,
@@ -121,6 +121,12 @@ export function createProfileController(
     const { data: eventData } = await supabase.rpc('get_demo_user_events')
     if (eventData) {
       state.userEvents.value = eventData as UserEventRow[]
+    }
+
+    // Zugesagte Team-Termine laden, damit sie in der Wochenansicht erscheinen.
+    const { data: appointmentData } = await supabase.rpc('get_my_accepted_appointments')
+    if (appointmentData) {
+      state.acceptedAppointments.value = appointmentData as AcceptedAppointmentRow[]
     }
 
     state.loadedUserId.value = state.currentUser.value.id

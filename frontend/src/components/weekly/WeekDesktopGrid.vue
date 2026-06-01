@@ -41,10 +41,6 @@ function requestHideOccurrence(event: NormalizedWeekEvent) {
   emit('hide-occurrence', event.occurrenceId)
 }
 
-function isSingleWordTitle(title: string) {
-  return !/\s/.test(title.trim())
-}
-
 const gridWrapper = ref<HTMLElement | null>(null)
 const dayColumnsRef = ref<HTMLElement | null>(null)
 const dayColumnRefs = ref<Array<HTMLElement | null>>([])
@@ -213,6 +209,19 @@ defineExpose({
           <span class="day-date">{{ day.dateLabel }}</span>
         </header>
 
+        <!--
+          Off-screen sizer: trägt die vollständigen Titel/Untertitel im Normalfluss,
+          damit die Spalte breit genug wird, um den ganzen Namen anzuzeigen. Die
+          eigentlichen Event-Blöcke sind absolut positioniert und steuern die Breite
+          deshalb nicht selbst.
+        -->
+        <div class="day-sizer" aria-hidden="true">
+          <template v-for="event in eventsByDay[dayIndex]" :key="`sizer-${event.id}`">
+            <span class="day-sizer-title">{{ event.title }}</span>
+            <span v-if="event.subtitle" class="day-sizer-subtitle">{{ event.subtitle }}</span>
+          </template>
+        </div>
+
         <div class="day-body" :style="{ height: `${dayBodyHeightRem}rem` }">
           <div
             v-if="dayIndex === currentDayIndex && nowLineTopPercent !== null"
@@ -235,7 +244,7 @@ defineExpose({
             :style="eventStyle(event.start, event.end)"
           >
             <span class="event-time">{{ event.startTime }}–{{ event.endTime }}</span>
-            <strong class="event-title" :class="{ 'event-title-truncate': isSingleWordTitle(event.title) }">
+            <strong class="event-title">
               {{ event.title }}
             </strong>
             <span v-if="event.subtitle" class="event-subtitle">{{ event.subtitle }}</span>
@@ -280,13 +289,23 @@ defineExpose({
 .time-axis { display: flex; flex-direction: column; position: sticky; left: 0; z-index: 7; min-width: clamp(2.75rem, 5vw, 3.875rem); background: var(--color-surface); box-shadow: 0.625rem 0 0.75rem -0.75rem color-mix(in srgb, var(--color-border) 85%, transparent), 0 0.625rem 0.75rem -0.75rem color-mix(in srgb, var(--color-border) 85%, transparent); overflow-y: hidden; }
 .time-axis-spacer { height: var(--day-header-height); border-bottom: 0.0625rem solid transparent; flex-shrink: 0; }
 .time-label { font-size: 0.72rem; color: var(--color-text-muted); display: flex; align-items: flex-start; padding-top: 0.125rem; box-sizing: border-box; flex-shrink: 0; }
-.day-columns { min-width: max-content; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(clamp(6rem, 14vw, 7.5rem), 1fr); gap: 0.375rem; }
+.day-columns { --day-min-width: clamp(6rem, 14vw, 7.5rem); --day-max-width: 22rem; min-width: max-content; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(max-content, 1fr); gap: 0.375rem; }
 .day-column { border: 0.0625rem solid var(--color-border); border-radius: 0.625rem; overflow: visible; background: var(--color-surface-raised); }
 .day-column-today { border-color: color-mix(in srgb, #ef4444 55%, var(--color-border)); box-shadow: inset 0 0 0 0.0625rem color-mix(in srgb, #ef4444 45%, transparent); }
 .day-header { position: relative; min-height: var(--day-header-height); padding: 0.625rem 0.5rem; border-bottom: 0.0625rem solid var(--color-border); display: flex; flex-direction: column; justify-content: center; gap: 0.125rem; background: var(--color-surface-raised); box-sizing: border-box; }
 .day-header-today { background: var(--color-primary-glow); }
 .day-name { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-muted); }
 .day-date { font-size: 0.84rem; font-weight: 600; color: var(--color-text); }
+/*
+ * Sizer im Normalfluss: 0 hoch (kein vertikaler Einfluss), aber seine Inhaltsbreite
+ * bestimmt die max-content-Breite der Spalte. min-width = Mindestbreite der Spalte,
+ * max-width = Kappung, damit ein extrem langer Titel die Spalte nicht sprengt.
+ */
+.day-sizer { height: 0; overflow: hidden; display: flex; flex-direction: column; padding-inline: 0.5rem; min-width: var(--day-min-width); box-sizing: border-box; }
+.day-sizer-title, .day-sizer-subtitle { white-space: nowrap; max-width: var(--day-max-width); }
+/* padding-right reserviert Platz für die Ausblenden-Buttons oben rechts. */
+.day-sizer-title { font-size: 0.75rem; font-weight: 700; padding-right: 1.75rem; }
+.day-sizer-subtitle { font-size: 0.68rem; }
 .day-body { position: relative; background: var(--color-surface); }
 .slot-line { position: absolute; left: 0; right: 0; border-top: 0.0625rem dashed color-mix(in srgb, var(--color-border) 75%, transparent); }
 .now-line { position: absolute; left: 0; right: 0; border-top: 0.125rem solid #ef4444; z-index: 3; pointer-events: none; }
@@ -299,7 +318,6 @@ defineExpose({
 .event-hidden-label { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-text-muted); margin-top: auto; }
 .event-time { font-size: 0.68rem; color: var(--color-text-muted); }
 .event-title { font-size: 0.75rem; line-height: 1.25; color: var(--color-text); white-space: normal; overflow-wrap: break-word; word-break: normal; max-width: 100%; }
-.event-title-truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .event-subtitle { font-size: 0.68rem; color: var(--color-text-muted); line-height: 1.25; }
 .hide-series-btn { position: absolute; top: 0.25rem; right: 0.25rem; width: 1.25rem; height: 1.25rem; border: 0.0625rem solid color-mix(in srgb, var(--color-border) 85%, transparent); border-radius: 999rem; background: color-mix(in srgb, var(--color-surface) 92%, transparent); color: var(--color-text-muted); font: inherit; font-size: 0.9rem; font-weight: 700; line-height: 1; display: inline-grid; place-items: center; padding: 0; cursor: pointer; opacity: 0; transform: translateY(-0.0625rem); transition: opacity 0.16s ease, transform 0.16s ease, color 0.16s ease, border-color 0.16s ease; }
 .hide-occurrence-btn { position: absolute; top: 0.25rem; right: 1.75rem; width: 1.25rem; height: 1.25rem; border: 0.0625rem solid color-mix(in srgb, var(--color-border) 85%, transparent); border-radius: 999rem; background: color-mix(in srgb, var(--color-surface) 92%, transparent); color: var(--color-text-muted); font: inherit; font-size: 0.95rem; font-weight: 700; line-height: 1; display: inline-grid; place-items: center; padding: 0; cursor: pointer; opacity: 0; transform: translateY(-0.0625rem); transition: opacity 0.16s ease, transform 0.16s ease, color 0.16s ease, border-color 0.16s ease; }
@@ -314,7 +332,7 @@ defineExpose({
 .hide-occurrence-btn:focus-visible { color: var(--color-primary); border-color: var(--color-primary-light); outline: none; }
 @media (max-width: 56.25em) {
   .week-grid-wrapper { grid-template-columns: clamp(2.5rem, 5vw, 3rem) minmax(0, 1fr); }
-  .day-columns { grid-auto-columns: minmax(clamp(5.6rem, 16vw, 6.4rem), 1fr); }
+  .day-columns { --day-min-width: clamp(5.6rem, 16vw, 6.4rem); }
 }
 @media (max-width: 45em) { .week-grid-wrapper { display: none; } }
 </style>

@@ -24,6 +24,7 @@ const props = defineProps<{
     seriesId: string
     occurrenceId?: string
     dayIndex: number
+    date?: string
     title: string
     subtitle?: string
     startTime: string

@@ -13,6 +13,7 @@ import {
   getSpoLabel,
   getStartOfCurrentWeek,
   getStudyProgramLabel,
+  type AcceptedAppointmentRow,
   type HiddenOccurrenceRow,
   getUniqueSposForStudyProgram,
   type HiddenPageEntry,
@@ -21,6 +22,7 @@ import {
   type WeeklyScheduleRpcRow,
   type WeeklyScheduleEvent,
 } from './shared'
+import { localDateKey, localHhMm, localWeekdayIndex } from '../../utils/datetime'
 import type { ModuleStatus } from '../../types'
 
 export function createAppControllerState() {
@@ -93,6 +95,33 @@ export function createAppControllerState() {
   const canEditModuleStatuses = computed(() => !selectionDirty.value && !!userProfile.value?.spo_id)
 
   const weeklyScheduleEvents = ref<WeeklyScheduleEvent[]>([])
+  const acceptedAppointments = ref<AcceptedAppointmentRow[]>([])
+
+  // Zugesagte Team-Termine als datumsgebundene Events für die Wochenansicht.
+  // Start/Ende kommen in UTC und werden in Browser-Zeit auf Tag + Uhrzeit gelegt.
+  const appointmentScheduleEvents = computed<WeeklyScheduleEvent[]>(() =>
+    acceptedAppointments.value
+      .map((row): WeeklyScheduleEvent | null => {
+        const start = new Date(row.starts_at)
+        const end = new Date(row.ends_at)
+        if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+          return null
+        }
+        return {
+          id: `appointment:${row.appointment_id}`,
+          // Leere seriesId -> keine Ausblenden-Aktion und nie als verborgen gewertet.
+          seriesId: '',
+          dayIndex: localWeekdayIndex(start),
+          date: localDateKey(start),
+          title: row.title,
+          subtitle: row.team_name || undefined,
+          startTime: localHhMm(start),
+          endTime: localHhMm(end),
+          status: 'belegt' as ModuleStatus,
+        }
+      })
+      .filter((event): event is WeeklyScheduleEvent => event !== null)
+  )
 
   const allScheduleEvents = computed<WeeklyScheduleEvent[]>(() => {
     const importedEvents: WeeklyScheduleEvent[] = userEvents.value.map(ue => ({
@@ -106,7 +135,7 @@ export function createAppControllerState() {
       endTime: ue.end_time.slice(0, 5),
       status: ue.status as ModuleStatus,
     }))
-    return [...weeklyScheduleEvents.value, ...importedEvents]
+    return [...weeklyScheduleEvents.value, ...importedEvents, ...appointmentScheduleEvents.value]
   })
 
   function applyHiddenSeries(rows: HiddenSeriesRow[]) {
@@ -150,7 +179,12 @@ export function createAppControllerState() {
 
   const displayedWeeklyScheduleEvents = computed<WeeklyScheduleEvent[]>(() => {
     if (!showHiddenEvents.value) return visibleWeeklyScheduleEvents.value
-    return weeklyScheduleEvents.value.map(event => ({ ...event, isHidden: isEventHidden(event) }))
+    // Team-Termine sind nie ausgeblendet und sollen auch in der "Ausgeblendete
+    // anzeigen"-Ansicht weiterhin sichtbar bleiben.
+    return [
+      ...weeklyScheduleEvents.value.map(event => ({ ...event, isHidden: isEventHidden(event) })),
+      ...appointmentScheduleEvents.value,
+    ]
   })
 
   const EVENT_TYPE_LABELS: Record<string, string> = {
@@ -272,6 +306,7 @@ export function createAppControllerState() {
     userProfile.value = null
     modules.value = []
     weeklyScheduleEvents.value = []
+    acceptedAppointments.value = []
     selectedModule.value = null
     loading.value = false
     error.value = null
@@ -292,6 +327,7 @@ export function createAppControllerState() {
   }
 
   return {
+    acceptedAppointments,
     activePlannerView,
     allCategories,
     allHandbooks,
