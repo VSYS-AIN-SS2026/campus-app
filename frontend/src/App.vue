@@ -7,31 +7,16 @@ import LsfEventImportModal from './components/LsfEventImportModal.vue'
 import ModuleDrawer from './components/ModuleDrawer.vue'
 import PlannerViewShell from './components/PlannerViewShell.vue'
 import ProfileSelectionPanel from './components/ProfileSelectionPanel.vue'
-import WeeklySchedule from './components/WeeklySchedule.vue'
 import Sidebar from './components/Sidebar.vue'
 import { useAppController } from './composables/useAppController'
 import { useTeams } from './composables/useTeams'
 
-const { magicLinkRedirectTo, allCategories, activePlannerView, authEmail, authError, authFirstName, authInfo, authLastName, authLoading, authSending, canEditModuleStatuses, categoryError, currentUser, currentUserEmail, demoUserProfile, displayedWeeklyPreviewEvents, displayedWeeklyScheduleEvents, error, hiddenPageEntries, hiddenPageError, hiddenPageLoading, hiddenSeriesItems, isWeeklyPreviewMode, lastHiddenSeries, loadImportedEvents, loading, lsfImportModule, modules, moduleStatusError, profileError, profileInfo, profileSaving, savedSpo, savedStudyProgram, savingCategoryModuleId, savingModuleId, scheduleVisibilityError, scheduleVisibilityInfo, selectedModule, selectedSpoId, selectedStudyProgramId, selectionDirty, showHiddenEvents, spoItems, studyProgramItems, weekStartDate, getSpoLabel, getStudyProgramLabel, hideScheduleSeries, saveModuleCategories, saveModuleStatus, saveStudyProfileSelection, sendMagicLink, showAllScheduleSeries, showScheduleSeries, signOut, undoHideScheduleSeries } = useAppController()
+const { magicLinkRedirectTo, allCategories, activePlannerView, authEmail, authError, authFirstName, authInfo, authLastName, authLoading, authSending, canEditModuleStatuses, categoryError, currentUser, currentUserEmail, userProfile, displayedWeeklyScheduleEvents, error, hiddenOccurrenceItems, hiddenPageEntries, hiddenPageError, hiddenPageLoading, hiddenSeriesItems, lastHiddenSeries, loadImportedEvents, loading, lsfImportModule, modules, moduleStatusError, profileError, profileInfo, profileSaving, savedSpo, savedStudyProgram, savingCategoryModuleId, savingModuleId, scheduleVisibilityError, scheduleVisibilityInfo, selectedModule, selectedSpoId, selectedStudyProgramId, selectionDirty, showHiddenEvents, spoItems, studyProgramItems, weekStartDate, getSpoLabel, getStudyProgramLabel, hideScheduleSeries, saveModuleCategories, saveModuleStatus, saveStudyProfileSelection, sendMagicLink, showAllScheduleSeries, showScheduleSeries, signOut, undoHideScheduleSeries } = useAppController()
 const { invitationCount, fetchMyInvitations} = useTeams()
 
 function toggleShowHiddenEvents() {
   showHiddenEvents.value = !showHiddenEvents.value
 }
-
-// ===================== AUTH-BYPASS-START =====================
-// Skip login screen in dev with VITE_AUTH_BYPASS=true
-const isAuthBypassEnabled = import.meta.env.DEV && import.meta.env.VITE_AUTH_BYPASS === 'true'
-// ===================== AUTH-BYPASS-END =====================
-
-// =====================
-// DEV-BYPASS-START: Demo-User für Preview ohne Login
-// Entferne diesen Block nach dem Development!
-const isDevBypass = typeof window !== 'undefined' && (
-  window.location.search.includes('devpreview=1') || isAuthBypassEnabled
-)
-// =====================
-// DEV-BYPASS-END
 
 type SidebarSection = 'modules' | 'calendar' | 'profile' | 'teams'
 type ThemeMode = 'light' | 'dark'
@@ -62,7 +47,7 @@ const themeMode = ref<ThemeMode>(getInitialThemeMode())
 
 const derivedSidebarSection = computed<SidebarSection>(() => {
   if (isTeamsRoute.value) return 'teams'
-  if (isWeeklyPreviewMode.value || activePlannerView.value === 'week') return 'calendar'
+  if (activePlannerView.value === 'week') return 'calendar'
   return 'modules'
 })
 
@@ -151,12 +136,6 @@ async function onSidebarNavigate(target: SidebarSection) {
     return
   }
 
-  if (target === 'teams') {
-    await nextTick()
-    scrollToSection('teams-section')
-    return
-  } 
-
   activePlannerView.value = 'modules'
   await nextTick()
   scrollToSection('module-header-section')
@@ -172,7 +151,7 @@ async function onSidebarNavigate(target: SidebarSection) {
         </div>
         <div class="header-actions">
           <button
-            v-if="currentUser || isDevBypass || isWeeklyPreviewMode || isTeamsRoute"
+            v-if="currentUser"
             type="button"
             class="sidebar-toggle ghost-button"
             :aria-expanded="sidebarOpen"
@@ -202,13 +181,6 @@ async function onSidebarNavigate(target: SidebarSection) {
       </div>
      </header>
 
-    <!-- ===================== AUTH-BYPASS-START ===================== -->
-    <div v-if="isAuthBypassEnabled && currentUser" class="auth-bypass-banner">
-      <span class="bypass-label">Development Mode: Auth-Bypass aktiv</span>
-      <span class="bypass-user">Benutzer: {{ currentUser.user_metadata?.full_name || 'Demo User' }}</span>
-    </div>
-    <!-- ===================== AUTH-BYPASS-END ===================== -->
-
     <template v-if="activeView === 'hidden'">
       <HiddenPage
         :entries="hiddenPageEntries"
@@ -223,14 +195,14 @@ async function onSidebarNavigate(target: SidebarSection) {
       <div class="app-layout">
         <transition name="sidebar-overlay">
           <div
-            v-if="(currentUser || isDevBypass || isWeeklyPreviewMode || isTeamsRoute) && sidebarOpen"
+            v-if="currentUser && sidebarOpen"
             class="sidebar-overlay"
             aria-hidden="true"
             @click="sidebarOpen = false"
           />
         </transition>
         <Sidebar
-          v-if="currentUser || isDevBypass || isWeeklyPreviewMode || isTeamsRoute"
+          v-if="currentUser"
           id="app-sidebar"
           :active-section="sidebarActiveSection"
           :is-open="sidebarOpen"
@@ -239,33 +211,14 @@ async function onSidebarNavigate(target: SidebarSection) {
         />
         <div class="app-content">
           <main class="app-main">
-            <template v-if="isWeeklyPreviewMode">
-              <section id="planner-section" class="content-section">
-                <WeeklySchedule
-                  :events="displayedWeeklyPreviewEvents"
-                  :hidden-series-items="hiddenSeriesItems"
-                  :show-hidden-events="showHiddenEvents"
-                  :loading="false"
-                  :error="null"
-                  :week-start="weekStartDate"
-                  @hide-series="hideScheduleSeries($event.seriesId, $event.title)"
-                  @show-series="showScheduleSeries"
-                  @show-all-series="showAllScheduleSeries"
-                  @toggle-show-hidden="toggleShowHiddenEvents"
-                  @navigate-to-hidden-page="navigateToHiddenPage"
-                />
-              </section>
-            </template>
-
-            <template v-else-if="authLoading">
+            <template v-if="authLoading">
               <div class="loading-state">
                 <div class="spinner" />
                 <p>Session wird geladen…</p>
               </div>
             </template>
 
-            <!-- ===================== DEV-BYPASS-START ===================== -->
-            <template v-else-if="!currentUser && !isDevBypass && !isAuthBypassEnabled">
+            <template v-else-if="!currentUser">
               <AuthGate
                 :magic-link-redirect-to="magicLinkRedirectTo"
                 :auth-first-name="authFirstName"
@@ -280,7 +233,6 @@ async function onSidebarNavigate(target: SidebarSection) {
                 @submit="sendMagicLink"
               />
             </template>
-            <!-- ===================== DEV-BYPASS-END ===================== -->
             <template v-else-if="isTeamsRoute">
               <RouterView />
             </template>
@@ -288,7 +240,7 @@ async function onSidebarNavigate(target: SidebarSection) {
               <section id="module-header-section" class="content-section">
                 <section id="profile-section" class="content-subsection">
                 <ProfileSelectionPanel
-                  :demo-user-profile="demoUserProfile"
+                  :user-profile="userProfile"
                   :saved-study-program="savedStudyProgram"
                   :saved-spo="savedSpo"
                   :selection-dirty="selectionDirty"
@@ -346,9 +298,8 @@ async function onSidebarNavigate(target: SidebarSection) {
     </template>
   </div>
 
-  <!-- ===================== DEV-BYPASS-START ===================== -->
   <ModuleDrawer
-    v-if="currentUser || isDevBypass"
+    v-if="currentUser"
     :module="selectedModule"
     :categories="allCategories"
     :saving="savingModuleId === selectedModule?.id"
@@ -361,7 +312,6 @@ async function onSidebarNavigate(target: SidebarSection) {
     @update-status="saveModuleStatus"
     @update-categories="saveModuleCategories"
   />
-  <!-- ===================== DEV-BYPASS-END ===================== -->
 
   <LsfEventImportModal
     :module="lsfImportModule"
@@ -379,7 +329,7 @@ async function onSidebarNavigate(target: SidebarSection) {
 
 .app-layout {
   display: flex;
-  /* Adjust for header (3.5rem) + optional bypass banner (~2.5rem in dev) */
+  /* Adjust for header (3.5rem) */
   min-height: calc(100vh - 3.5rem);
   position: relative;
 }
@@ -469,28 +419,4 @@ async function onSidebarNavigate(target: SidebarSection) {
   width: 100%;
   padding-left: 8px;
 }
-
-/* ===================== AUTH-BYPASS-START ===================== */
-.auth-bypass-banner {
-  background: linear-gradient(90deg, var(--color-primary), var(--color-primary-light));
-  color: white;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.8rem;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  box-shadow: 0 2px 8px color-mix(in srgb, var(--color-primary) 30%, transparent);
-}
-
-.bypass-label {
-  flex: 0 0 auto;
-}
-
-.bypass-user {
-  flex: 1 1 auto;
-  opacity: 0.95;
-  font-size: 0.76rem;
-}
-/* ===================== AUTH-BYPASS-END ===================== */
 </style>

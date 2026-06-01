@@ -4,7 +4,7 @@ import SpoSelector from './SpoSelector.vue'
 import type { Spo, StudyProgram, UserProfile } from '../types'
 
 const props = defineProps<{
-  demoUserProfile: UserProfile | null
+  userProfile: UserProfile | null
   savedStudyProgram: StudyProgram | null
   savedSpo: Spo | null
   selectionDirty: boolean
@@ -154,7 +154,7 @@ const saveDisabledHint = computed(() => {
         <div class="selection-toolbar-copy">
           <p class="selection-toolbar-title">Schritt 3: Auswahl speichern</p>
           <p class="helper-copy">
-            Studiengang und SPO werden im Demo-Profil gespeichert.
+            Studiengang und SPO werden in deinem Profil gespeichert.
           </p>
         </div>
 
@@ -164,7 +164,7 @@ const saveDisabledHint = computed(() => {
           :disabled="isSaveDisabled"
           @click="emit('save')"
         >
-          {{ profileSaving ? 'Wird gespeichert…' : 'Im Demo-Profil speichern' }}
+          {{ profileSaving ? 'Wird gespeichert…' : 'Auswahl speichern' }}
         </button>
       </div>
       <p v-if="saveDisabledHint" class="save-disabled-hint">{{ saveDisabledHint }}</p>

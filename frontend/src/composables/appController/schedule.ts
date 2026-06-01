@@ -30,11 +30,6 @@ export function createScheduleController(state: AppControllerState) {
     state.hiddenSeriesTitles.value.set(normalizedSeriesId, normalizedTitle || 'Unbenannte Reihe')
     state.lastHiddenSeries.value = { seriesId: normalizedSeriesId, title: normalizedTitle || 'Unbenannte Reihe' }
 
-    if (state.isWeeklyPreviewMode.value) {
-      state.scheduleVisibilityInfo.value = 'Terminreihe wurde ausgeblendet.'
-      return
-    }
-
     if (!supabase) {
       state.hiddenSeriesIds.value = previousHiddenSeries
       state.hiddenSeriesTitles.value = previousHiddenSeriesTitles
@@ -71,12 +66,6 @@ export function createScheduleController(state: AppControllerState) {
     state.hiddenSeriesIds.value = nextHiddenSeries
     state.hiddenSeriesTitles.value.delete(seriesId)
     state.scheduleVisibilityError.value = null
-
-    if (state.isWeeklyPreviewMode.value) {
-      state.scheduleVisibilityInfo.value = `„${title}“ ist wieder sichtbar.`
-      state.lastHiddenSeries.value = null
-      return
-    }
 
     if (!supabase) {
       state.hiddenSeriesIds.value = previousHiddenSeries
@@ -115,10 +104,6 @@ export function createScheduleController(state: AppControllerState) {
     state.hiddenSeriesIds.value = nextHiddenSeries
     state.hiddenSeriesTitles.value.delete(normalizedSeriesId)
     state.scheduleVisibilityError.value = null
-
-    if (state.isWeeklyPreviewMode.value) {
-      return
-    }
 
     if (!supabase) {
       state.hiddenSeriesIds.value = previousHiddenSeries
@@ -169,10 +154,6 @@ export function createScheduleController(state: AppControllerState) {
     state.hiddenEventIds.value = nextHiddenOccurrenceIds
     state.scheduleVisibilityError.value = null
 
-    if (state.isWeeklyPreviewMode.value) {
-      return
-    }
-
     if (!supabase) {
       state.hiddenEventIds.value = previousHiddenOccurrenceIds
       state.scheduleVisibilityError.value = supabaseConfigError
@@ -201,10 +182,6 @@ export function createScheduleController(state: AppControllerState) {
     nextHiddenOccurrenceIds.delete(normalizedOccurrenceId)
     state.hiddenEventIds.value = nextHiddenOccurrenceIds
     state.scheduleVisibilityError.value = null
-
-    if (state.isWeeklyPreviewMode.value) {
-      return
-    }
 
     if (!supabase) {
       state.hiddenEventIds.value = previousHiddenOccurrenceIds

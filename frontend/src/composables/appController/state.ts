@@ -28,7 +28,7 @@ export function createAppControllerState() {
   const allSpos = ref<Spo[]>([])
   const allHandbooks = ref<ModuleHandbook[]>([])
   const allCategories = ref<Category[]>([])
-  const demoUserProfile = ref<UserProfile | null>(null)
+  const userProfile = ref<UserProfile | null>(null)
 
   const selectedStudyProgramId = ref<string | null>(localStorage.getItem('selectedStudyProgramId') || null)
   const selectedSpoId = ref<string | null>(localStorage.getItem('selectedSpoId') || null)
@@ -72,13 +72,6 @@ export function createAppControllerState() {
   const activePlannerView = ref<PlannerView>('week')
   const weekStartDate = ref<Date>(getStartOfCurrentWeek(new Date()))
 
-  const DEV_WEEKLY_PREVIEW_QUERY_KEY = 'preview'
-  const DEV_WEEKLY_PREVIEW_QUERY_VALUE = 'weekly'
-
-  const isWeeklyPreviewMode = ref(
-    new URLSearchParams(window.location.search).get(DEV_WEEKLY_PREVIEW_QUERY_KEY)?.toLowerCase() === DEV_WEEKLY_PREVIEW_QUERY_VALUE
-  )
-
   const studyProgramItems = computed(() =>
     studyPrograms.value.map(program => ({ id: program.id, label: getStudyProgramLabel(program) }))
   )
@@ -87,25 +80,17 @@ export function createAppControllerState() {
   const spoItems = computed(() => availableSpos.value.map(spo => ({ id: spo.id, label: getSpoLabel(spo) })))
 
   const savedStudyProgram = computed(() =>
-    studyPrograms.value.find(program => program.id === demoUserProfile.value?.study_program_id) ?? null
+    studyPrograms.value.find(program => program.id === userProfile.value?.study_program_id) ?? null
   )
 
-  const savedSpo = computed(() => allSpos.value.find(spo => spo.id === demoUserProfile.value?.spo_id) ?? null)
+  const savedSpo = computed(() => allSpos.value.find(spo => spo.id === userProfile.value?.spo_id) ?? null)
 
   const selectionDirty = computed(() =>
-    (selectedStudyProgramId.value ?? null) !== (demoUserProfile.value?.study_program_id ?? null)
-    || (selectedSpoId.value ?? null) !== (demoUserProfile.value?.spo_id ?? null)
+    (selectedStudyProgramId.value ?? null) !== (userProfile.value?.study_program_id ?? null)
+    || (selectedSpoId.value ?? null) !== (userProfile.value?.spo_id ?? null)
   )
 
-  const canEditModuleStatuses = computed(() => !selectionDirty.value && !!demoUserProfile.value?.spo_id)
-
-  const weeklyPreviewEvents = ref<WeeklyScheduleEvent[]>([
-    { id: 'preview-1', seriesId: 'preview-series-se', dayIndex: 0, title: 'Software Engineering', subtitle: 'V · Raum C203', startTime: '09:15', endTime: '10:45', status: 'belegt' },
-    { id: 'preview-2', seriesId: 'preview-series-db', dayIndex: 1, title: 'Datenbanksysteme', subtitle: 'Ü · Raum B112', startTime: '11:00', endTime: '12:30', status: 'offen' },
-    { id: 'preview-3', seriesId: 'preview-series-sec', dayIndex: 2, title: 'IT-Sicherheit', subtitle: 'V · Online', startTime: '13:30', endTime: '15:00', status: 'abgeschlossen' },
-    { id: 'preview-4', seriesId: 'preview-series-ai', dayIndex: 3, title: 'Künstliche Intelligenz', subtitle: 'Praktikum · Labor L2', startTime: '10:00', endTime: '12:00', status: 'belegt' },
-    { id: 'preview-5', seriesId: 'preview-series-prj', dayIndex: 4, title: 'Projektarbeit', subtitle: 'Team-Slot', startTime: '14:00', endTime: '16:00', status: 'offen' },
-  ])
+  const canEditModuleStatuses = computed(() => !selectionDirty.value && !!userProfile.value?.spo_id)
 
   const weeklyScheduleEvents = ref<WeeklyScheduleEvent[]>([])
 
@@ -158,13 +143,6 @@ export function createAppControllerState() {
     )
   )
 
-  const visibleWeeklyPreviewEvents = computed<WeeklyScheduleEvent[]>(() =>
-    weeklyPreviewEvents.value.filter(event =>
-      !hiddenSeriesIds.value.has(event.seriesId)
-      && (!event.occurrenceId || !hiddenEventIds.value.has(event.occurrenceId))
-    )
-  )
-
   function isEventHidden(event: WeeklyScheduleEvent): boolean {
     return hiddenSeriesIds.value.has(event.seriesId)
       || (!!event.occurrenceId && hiddenEventIds.value.has(event.occurrenceId))
@@ -174,12 +152,6 @@ export function createAppControllerState() {
     if (!showHiddenEvents.value) return visibleWeeklyScheduleEvents.value
     return weeklyScheduleEvents.value.map(event => ({ ...event, isHidden: isEventHidden(event) }))
   })
-
-  const displayedWeeklyPreviewEvents = computed<WeeklyScheduleEvent[]>(() => {
-    if (!showHiddenEvents.value) return visibleWeeklyPreviewEvents.value
-    return weeklyPreviewEvents.value.map(event => ({ ...event, isHidden: isEventHidden(event) }))
-  })
-
 
   const EVENT_TYPE_LABELS: Record<string, string> = {
     lecture: 'Vorlesung',
@@ -237,9 +209,8 @@ export function createAppControllerState() {
   const hiddenPageEntries = computed<HiddenPageEntry[]>(() => {
     const entries: HiddenPageEntry[] = []
     const seenSeries = new Set<string>()
-    const sourceEvents = isWeeklyPreviewMode.value ? weeklyPreviewEvents.value : weeklyScheduleEvents.value
 
-    for (const event of sourceEvents) {
+    for (const event of weeklyScheduleEvents.value) {
       const inSeries = hiddenSeriesIds.value.has(event.seriesId)
       const isSingleOccurrence = !inSeries && !!event.occurrenceId && hiddenEventIds.value.has(event.occurrenceId)
 
@@ -267,7 +238,7 @@ export function createAppControllerState() {
   })
 
   const hiddenOccurrenceItems = computed(() => {
-    const allEvents = [...allScheduleEvents.value, ...weeklyPreviewEvents.value]
+    const allEvents = allScheduleEvents.value
     const byOccurrenceId = new Map(
       allEvents
         .filter(event => !!event.occurrenceId)
@@ -298,7 +269,7 @@ export function createAppControllerState() {
     studyPrograms.value = []
     allSpos.value = []
     allHandbooks.value = []
-    demoUserProfile.value = null
+    userProfile.value = null
     modules.value = []
     weeklyScheduleEvents.value = []
     selectedModule.value = null
@@ -340,7 +311,7 @@ export function createAppControllerState() {
     clearSelectionMessages,
     currentUser,
     currentUserEmail,
-    demoUserProfile,
+    userProfile,
     error,
     hiddenEventIds,
     hiddenOccurrenceItems,
@@ -350,7 +321,6 @@ export function createAppControllerState() {
     hiddenSeriesIds,
     hiddenSeriesItems,
     hiddenSeriesTitles,
-    isWeeklyPreviewMode,
     lastHiddenSeries,
     loadedUserId,
     loading,
@@ -375,11 +345,9 @@ export function createAppControllerState() {
     spoItems,
     studyProgramItems,
     studyPrograms,
-    displayedWeeklyPreviewEvents,
     displayedWeeklyScheduleEvents,
     showHiddenEvents,
     userEvents,
-    visibleWeeklyPreviewEvents,
     visibleWeeklyScheduleEvents,
     weekStartDate,
   }
