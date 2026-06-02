@@ -284,7 +284,7 @@ onUnmounted(() => {
         </div>
         <div v-if="props.hiddenSeriesItems.length || (props.hiddenOccurrenceItems?.length ?? 0) > 0" class="week-hidden-controls">
           <button
-            v-if="props.hiddenSeriesItems.length"
+            v-if="props.hiddenSeriesItems.length || (props.hiddenOccurrenceItems?.length ?? 0) > 0"
             type="button"
             class="show-hidden-btn app-button"
             :class="{ 'show-hidden-btn-active': props.showHiddenEvents }"

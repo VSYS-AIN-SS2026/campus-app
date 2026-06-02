@@ -30,6 +30,8 @@ export function createScheduleController(state: AppControllerState) {
     state.hiddenSeriesIds.value = nextHiddenSeries
     state.hiddenSeriesTitles.value.set(normalizedSeriesId, normalizedTitle || 'Unbenannte Reihe')
     state.lastHiddenSeries.value = { seriesId: normalizedSeriesId, title: normalizedTitle || 'Unbenannte Reihe' }
+    // Nur eine Undo-Quelle gleichzeitig aktiv halten.
+    state.lastHiddenOccurrence.value = null
 
     if (!supabase) {
       state.hiddenSeriesIds.value = previousHiddenSeries
@@ -106,6 +108,11 @@ export function createScheduleController(state: AppControllerState) {
     state.hiddenSeriesTitles.value.delete(normalizedSeriesId)
     state.scheduleVisibilityError.value = null
 
+    // Stale gewordenes Undo-Ziel verwerfen, falls genau diese Reihe gemeint war.
+    if (state.lastHiddenSeries.value?.seriesId === normalizedSeriesId) {
+      state.lastHiddenSeries.value = null
+    }
+
     if (!supabase) {
       state.hiddenSeriesIds.value = previousHiddenSeries
       state.hiddenSeriesTitles.value = previousHiddenSeriesTitles
@@ -175,6 +182,7 @@ export function createScheduleController(state: AppControllerState) {
     nextHiddenOccurrenceIds.add(normalizedOccurrenceId)
     state.hiddenEventIds.value = nextHiddenOccurrenceIds
     state.scheduleVisibilityError.value = null
+    state.scheduleVisibilityInfo.value = null
 
     if (!supabase) {
       state.hiddenEventIds.value = previousHiddenOccurrenceIds
@@ -189,6 +197,27 @@ export function createScheduleController(state: AppControllerState) {
     if (error) {
       state.hiddenEventIds.value = previousHiddenOccurrenceIds
       state.scheduleVisibilityError.value = 'Einzeltermin konnte nicht ausgeblendet werden.'
+      return
+    }
+
+    // Erfolgs-Feedback + Undo-Ziel setzen; nur eine Undo-Quelle aktiv halten.
+    state.scheduleVisibilityInfo.value = 'Termin wurde ausgeblendet.'
+    state.lastHiddenOccurrence.value = normalizedOccurrenceId
+    state.lastHiddenSeries.value = null
+  }
+
+  async function undoHideScheduleOccurrence() {
+    const occurrenceId = state.lastHiddenOccurrence.value
+
+    if (!occurrenceId) {
+      return
+    }
+
+    await showScheduleOccurrence(occurrenceId)
+
+    if (!state.scheduleVisibilityError.value) {
+      state.lastHiddenOccurrence.value = null
+      state.scheduleVisibilityInfo.value = 'Termin ist wieder sichtbar.'
     }
   }
 
@@ -204,6 +233,11 @@ export function createScheduleController(state: AppControllerState) {
     nextHiddenOccurrenceIds.delete(normalizedOccurrenceId)
     state.hiddenEventIds.value = nextHiddenOccurrenceIds
     state.scheduleVisibilityError.value = null
+
+    // Stale gewordenes Undo-Ziel verwerfen, falls genau dieser Termin gemeint war.
+    if (state.lastHiddenOccurrence.value === normalizedOccurrenceId) {
+      state.lastHiddenOccurrence.value = null
+    }
 
     if (!supabase) {
       state.hiddenEventIds.value = previousHiddenOccurrenceIds
@@ -237,6 +271,7 @@ export function createScheduleController(state: AppControllerState) {
     showAllScheduleSeries,
     showScheduleOccurrence,
     showScheduleSeries,
+    undoHideScheduleOccurrence,
     undoHideScheduleSeries,
   }
 }

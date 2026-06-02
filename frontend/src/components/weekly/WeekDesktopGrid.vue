@@ -249,12 +249,13 @@ defineExpose({
             </strong>
             <span v-if="event.subtitle" class="event-subtitle">{{ event.subtitle }}</span>
             <span v-if="event.isHidden" class="event-hidden-label">Ausgeblendet</span>
+            <!-- Reihe ausblenden: gestapelte Zeilen = ganze Terminreihe. -->
             <button
               v-if="event.seriesId"
               type="button"
               class="hide-series-btn"
-              title="Terminreihe ausblenden (alle Termine dieser Reihe)"
-              aria-label="Terminreihe ausblenden (alle Termine dieser Reihe)"
+              title="Ganze Reihe ausblenden"
+              aria-label="Ganze Reihe ausblenden (alle Termine dieser Reihe)"
               @click.stop="requestHideSeries(event)"
             >
               <svg aria-hidden="true" class="hide-action-icon" viewBox="0 0 16 16" fill="none">
@@ -263,17 +264,19 @@ defineExpose({
                 <path d="M5.25 5L10.75 5" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" />
               </svg>
             </button>
+            <!-- Einzeltermin ausblenden: durchgestrichenes Auge = nur diesen Termin verbergen. -->
             <button
               v-if="event.occurrenceId"
               type="button"
               class="hide-occurrence-btn"
-              title="Einzeltermin ausblenden (nur diesen Termin)"
-              aria-label="Einzeltermin ausblenden (nur diesen Termin)"
+              title="Diesen Termin ausblenden"
+              aria-label="Diesen Termin ausblenden (nur dieser Einzeltermin)"
               @click.stop="requestHideOccurrence(event)"
             >
               <svg aria-hidden="true" class="hide-action-icon" viewBox="0 0 16 16" fill="none">
-                <rect x="2.5" y="4" width="11" height="8" rx="1.25" stroke="currentColor" stroke-width="1.25" />
-                <path d="M5 8H11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                <path d="M2.5 8C3.8 5.8 5.7 4.7 8 4.7s4.2 1.1 5.5 3.3c-1.3 2.2-3.2 3.3-5.5 3.3S3.8 10.2 2.5 8Z" stroke="currentColor" stroke-width="1.2" />
+                <circle cx="8" cy="8" r="1.7" stroke="currentColor" stroke-width="1.2" />
+                <path d="M3.2 12.8 12.8 3.2" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" />
               </svg>
             </button>
           </div>
@@ -303,8 +306,8 @@ defineExpose({
  */
 .day-sizer { height: 0; overflow: hidden; display: flex; flex-direction: column; padding-inline: 0.5rem; min-width: var(--day-min-width); box-sizing: border-box; }
 .day-sizer-title, .day-sizer-subtitle { white-space: nowrap; max-width: var(--day-max-width); }
-/* padding-right reserviert Platz für die Ausblenden-Buttons oben rechts. */
-.day-sizer-title { font-size: 0.75rem; font-weight: 700; padding-right: 1.75rem; }
+/* padding-right reserviert Platz für die beiden Ausblenden-Buttons oben rechts. */
+.day-sizer-title { font-size: 0.75rem; font-weight: 700; padding-right: 3.25rem; }
 .day-sizer-subtitle { font-size: 0.68rem; }
 .day-body { position: relative; background: var(--color-surface); }
 .slot-line { position: absolute; left: 0; right: 0; border-top: 0.0625rem dashed color-mix(in srgb, var(--color-border) 75%, transparent); }

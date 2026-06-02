@@ -44,6 +44,7 @@ export function useAppController() {
     hiddenPageLoading: state.hiddenPageLoading,
     hiddenSeriesItems: state.hiddenSeriesItems,
     lastHiddenSeries: state.lastHiddenSeries,
+    lastHiddenOccurrence: state.lastHiddenOccurrence,
     loading: state.loading,
     lsfImportModule: state.lsfImportModule,
     modules: state.modules,
@@ -82,6 +83,7 @@ export function useAppController() {
     showScheduleOccurrence: schedule.showScheduleOccurrence,
     showScheduleSeries: schedule.showScheduleSeries,
     signOut: auth.signOut,
+    undoHideScheduleOccurrence: schedule.undoHideScheduleOccurrence,
     undoHideScheduleSeries: schedule.undoHideScheduleSeries,
   }
 }
