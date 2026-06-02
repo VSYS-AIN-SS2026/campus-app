@@ -9,7 +9,12 @@ import { magicLinkRedirectTo } from '../supabase'
 export function useAppController() {
   const state = createAppControllerState()
 
-  const modules = createModulesController(state)
+  // schedule zuerst: modules braucht clearHiddenForModule für die Hidden-Aufräumung
+  // beim Modulstatus-Wechsel.
+  const schedule = createScheduleController(state)
+  const modules = createModulesController(state, {
+    clearHiddenForModule: schedule.clearHiddenForModule,
+  })
   const profile = createProfileController(state, {
     beginModuleRequest: modules.beginModuleRequest,
     fetchModulesForSpo: modules.fetchModulesForSpo,
@@ -17,7 +22,6 @@ export function useAppController() {
   const auth = createAuthController(state, {
     fetchInitialData: profile.fetchInitialData,
   })
-  const schedule = createScheduleController(state)
 
   profile.installSelectionWatchers()
   auth.bindLifecycle()

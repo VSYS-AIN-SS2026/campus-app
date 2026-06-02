@@ -10,7 +10,12 @@ import {
   shouldReplaceModule,
 } from './shared'
 
-export function createModulesController(state: AppControllerState) {
+export function createModulesController(
+  state: AppControllerState,
+  deps: {
+    clearHiddenForModule: (moduleId: string) => Promise<void>
+  }
+) {
   function setModuleStatus(moduleId: string, status: ModuleStatus) {
     const module = state.modules.value.find(entry => entry.id === moduleId)
     if (!module) return
@@ -176,6 +181,12 @@ export function createModulesController(state: AppControllerState) {
 
     if (status === 'belegt' && currentModule) {
       state.lsfImportModule.value = currentModule
+    }
+
+    // Status verlässt "belegt": ausgeblendete Termine dieses Moduls aufräumen,
+    // damit ihre Hidden-Markierung nicht bestehen bleibt.
+    if (status === 'offen' || status === 'abgeschlossen') {
+      await deps.clearHiddenForModule(moduleId)
     }
 
     await fetchWeeklySchedule()

@@ -183,12 +183,10 @@ export function createAppControllerState() {
 
   const displayedWeeklyScheduleEvents = computed<WeeklyScheduleEvent[]>(() => {
     if (!showHiddenEvents.value) return visibleWeeklyScheduleEvents.value
-    // Team-Termine sind nie ausgeblendet und sollen auch in der "Ausgeblendete
-    // anzeigen"-Ansicht weiterhin sichtbar bleiben.
-    return [
-      ...weeklyScheduleEvents.value.map(event => ({ ...event, isHidden: isEventHidden(event) })),
-      ...appointmentScheduleEvents.value,
-    ]
+    // Im "Ausgeblendete anzeigen"-Modus alle Quellen (Wochenplan, importierte
+    // Events, Team-Termine) zeigen und ausgeblendete Einträge markieren – damit
+    // auch ausgeblendete Team-Termine sichtbar/wieder einblendbar sind.
+    return allScheduleEvents.value.map(event => ({ ...event, isHidden: isEventHidden(event) }))
   })
 
   const EVENT_TYPE_LABELS: Record<string, string> = {
