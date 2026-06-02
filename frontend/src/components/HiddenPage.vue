@@ -24,7 +24,18 @@ const props = defineProps<{
 const emit = defineEmits<{
   back: []
   showSeries: [seriesId: string]
+  showOccurrence: [occurrenceId: string]
 }>()
+
+// Reihe → über series_id wieder einblenden, Einzeltermin → über seine occurrence_id
+// (bei Einzelterminen trägt entry.id die occurrence_id).
+function restoreEntry(entry: HiddenEntry) {
+  if (entry.isSeries) {
+    emit('showSeries', entry.seriesId)
+  } else {
+    emit('showOccurrence', entry.id)
+  }
+}
 
 const sortedEntries = computed(() =>
   [...props.entries].sort((a, b) => a.dayIndex - b.dayIndex || a.startTime.localeCompare(b.startTime))
@@ -79,7 +90,7 @@ const dayKeys = computed(() => Object.keys(groupedByDay.value).map(Number).sort(
               <span v-if="entry.startTime" class="entry-time">{{ entry.startTime }}–{{ entry.endTime }}</span>
               <span class="entry-pattern">{{ entry.isSeries ? 'Wöchentlich' : 'Einmalig' }}</span>
             </div>
-            <button type="button" class="unhide-btn" @click="emit('showSeries', entry.seriesId)">
+            <button type="button" class="unhide-btn" @click="restoreEntry(entry)">
               Einblenden
             </button>
           </div>

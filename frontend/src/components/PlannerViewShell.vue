@@ -15,6 +15,7 @@ const props = defineProps<{
   scheduleVisibilityError: string | null
   scheduleVisibilityInfo: string | null
   lastHiddenSeries: { seriesId: string; title: string } | null
+  lastHiddenOccurrence: string | null
   hiddenSeriesItems: Array<{ seriesId: string; title: string }>
   hiddenOccurrenceItems: Array<{ occurrenceId: string; title: string }>
   showHiddenEvents: boolean
@@ -44,7 +45,7 @@ const emit = defineEmits<{
   'show-all-series': []
   'toggle-show-hidden': []
   'navigate-to-hidden-page': []
-  'undo-hide-series': []
+  'undo-hide': []
   'select-module': [module: ModuleEntry]
 }>()
 </script>
@@ -65,10 +66,10 @@ const emit = defineEmits<{
   <div v-if="scheduleVisibilityInfo" class="success-banner success-banner-inline">
     <span>{{ scheduleVisibilityInfo }}</span>
     <button
-      v-if="lastHiddenSeries"
+      v-if="lastHiddenSeries || lastHiddenOccurrence"
       type="button"
       class="inline-action-button"
-      @click="emit('undo-hide-series')"
+      @click="emit('undo-hide')"
     >
       Rückgängig
     </button>

@@ -1,7 +1,6 @@
 import { supabase, supabaseConfigError } from '../../supabase'
 import type { UserEventRow } from '../../types/schedule'
 import type { AppControllerState } from './state'
-import type { AcceptedAppointmentRow } from './shared'
 
 function normalizeSeriesId(seriesId: string) {
   return seriesId.trim()
@@ -30,6 +29,8 @@ export function createScheduleController(state: AppControllerState) {
     state.hiddenSeriesIds.value = nextHiddenSeries
     state.hiddenSeriesTitles.value.set(normalizedSeriesId, normalizedTitle || 'Unbenannte Reihe')
     state.lastHiddenSeries.value = { seriesId: normalizedSeriesId, title: normalizedTitle || 'Unbenannte Reihe' }
+    // Nur eine Undo-Quelle gleichzeitig aktiv halten.
+    state.lastHiddenOccurrence.value = null
 
     if (!supabase) {
       state.hiddenSeriesIds.value = previousHiddenSeries
@@ -106,6 +107,11 @@ export function createScheduleController(state: AppControllerState) {
     state.hiddenSeriesTitles.value.delete(normalizedSeriesId)
     state.scheduleVisibilityError.value = null
 
+    // Stale gewordenes Undo-Ziel verwerfen, falls genau diese Reihe gemeint war.
+    if (state.lastHiddenSeries.value?.seriesId === normalizedSeriesId) {
+      state.lastHiddenSeries.value = null
+    }
+
     if (!supabase) {
       state.hiddenSeriesIds.value = previousHiddenSeries
       state.hiddenSeriesTitles.value = previousHiddenSeriesTitles
@@ -145,27 +151,9 @@ export function createScheduleController(state: AppControllerState) {
   async function hideScheduleOccurrence(occurrenceId: string) {
     const normalizedOccurrenceId = normalizeOccurrenceId(occurrenceId)
 
-    // Team-Termin: Einladung ablehnen statt ausblenden
-    if (normalizedOccurrenceId.startsWith('appointment:')) {
-      const appointmentId = normalizedOccurrenceId.slice('appointment:'.length)
-      const row = (state.acceptedAppointments.value as AcceptedAppointmentRow[]).find(
-        r => r.appointment_id === appointmentId
-      )
-      if (!row || !supabase) return
-
-      const { error } = await supabase.rpc('respond_to_appointment_invitation', {
-        p_invitation_id: row.invitation_id,
-        p_status: 'declined',
-      })
-
-      if (!error) {
-        state.acceptedAppointments.value = (
-          state.acceptedAppointments.value as AcceptedAppointmentRow[]
-        ).filter(r => r.appointment_id !== appointmentId)
-      }
-      return
-    }
-
+    // Auch Team-Termine (occurrence_id "appointment:<id>") werden hier regulär
+    // ausgeblendet (als hidden markiert), nicht abgelehnt. Das Ablehnen der
+    // Einladung bleibt eine separate Aktion in der Team-Ansicht.
     if (!normalizedOccurrenceId || state.hiddenEventIds.value.has(normalizedOccurrenceId)) {
       return
     }
@@ -175,6 +163,7 @@ export function createScheduleController(state: AppControllerState) {
     nextHiddenOccurrenceIds.add(normalizedOccurrenceId)
     state.hiddenEventIds.value = nextHiddenOccurrenceIds
     state.scheduleVisibilityError.value = null
+    state.scheduleVisibilityInfo.value = null
 
     if (!supabase) {
       state.hiddenEventIds.value = previousHiddenOccurrenceIds
@@ -189,6 +178,27 @@ export function createScheduleController(state: AppControllerState) {
     if (error) {
       state.hiddenEventIds.value = previousHiddenOccurrenceIds
       state.scheduleVisibilityError.value = 'Einzeltermin konnte nicht ausgeblendet werden.'
+      return
+    }
+
+    // Erfolgs-Feedback + Undo-Ziel setzen; nur eine Undo-Quelle aktiv halten.
+    state.scheduleVisibilityInfo.value = 'Termin wurde ausgeblendet.'
+    state.lastHiddenOccurrence.value = normalizedOccurrenceId
+    state.lastHiddenSeries.value = null
+  }
+
+  async function undoHideScheduleOccurrence() {
+    const occurrenceId = state.lastHiddenOccurrence.value
+
+    if (!occurrenceId) {
+      return
+    }
+
+    await showScheduleOccurrence(occurrenceId)
+
+    if (!state.scheduleVisibilityError.value) {
+      state.lastHiddenOccurrence.value = null
+      state.scheduleVisibilityInfo.value = 'Termin ist wieder sichtbar.'
     }
   }
 
@@ -204,6 +214,11 @@ export function createScheduleController(state: AppControllerState) {
     nextHiddenOccurrenceIds.delete(normalizedOccurrenceId)
     state.hiddenEventIds.value = nextHiddenOccurrenceIds
     state.scheduleVisibilityError.value = null
+
+    // Stale gewordenes Undo-Ziel verwerfen, falls genau dieser Termin gemeint war.
+    if (state.lastHiddenOccurrence.value === normalizedOccurrenceId) {
+      state.lastHiddenOccurrence.value = null
+    }
 
     if (!supabase) {
       state.hiddenEventIds.value = previousHiddenOccurrenceIds
@@ -229,7 +244,39 @@ export function createScheduleController(state: AppControllerState) {
     }
   }
 
+  // Räumt alle ausgeblendeten Einträge eines Moduls auf. Wird aufgerufen, wenn der
+  // Modulstatus auf "offen"/"abgeschlossen" wechselt: dann verschwinden die Termine
+  // ohnehin aus dem Wochenplan, und ihre Hidden-Markierung soll nicht "kleben"
+  // bleiben (sonst wären die Termine bei erneutem "belegt" weiterhin ausgeblendet).
+  // Wochenplan-IDs: series_id = "module:<id>", occurrence_id = "<id>:<weekday>:<start>".
+  async function clearHiddenForModule(moduleId: string) {
+    const normalizedModuleId = moduleId.trim()
+
+    if (!normalizedModuleId) {
+      return
+    }
+
+    const seriesId = `module:${normalizedModuleId}`
+    const occurrencePrefix = `${normalizedModuleId}:`
+    const occurrenceIds = Array.from(state.hiddenEventIds.value).filter(
+      (id) => id.startsWith(occurrencePrefix)
+    )
+
+    if (!state.hiddenSeriesIds.value.has(seriesId) && occurrenceIds.length === 0) {
+      return
+    }
+
+    if (state.hiddenSeriesIds.value.has(seriesId)) {
+      await showScheduleSeries(seriesId)
+    }
+
+    for (const occurrenceId of occurrenceIds) {
+      await showScheduleOccurrence(occurrenceId)
+    }
+  }
+
   return {
+    clearHiddenForModule,
     hideScheduleOccurrence,
     hideScheduleSeries,
     loadImportedEvents,
@@ -237,6 +284,7 @@ export function createScheduleController(state: AppControllerState) {
     showAllScheduleSeries,
     showScheduleOccurrence,
     showScheduleSeries,
+    undoHideScheduleOccurrence,
     undoHideScheduleSeries,
   }
 }

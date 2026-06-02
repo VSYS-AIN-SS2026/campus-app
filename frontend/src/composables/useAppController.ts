@@ -9,7 +9,12 @@ import { magicLinkRedirectTo } from '../supabase'
 export function useAppController() {
   const state = createAppControllerState()
 
-  const modules = createModulesController(state)
+  // schedule zuerst: modules braucht clearHiddenForModule für die Hidden-Aufräumung
+  // beim Modulstatus-Wechsel.
+  const schedule = createScheduleController(state)
+  const modules = createModulesController(state, {
+    clearHiddenForModule: schedule.clearHiddenForModule,
+  })
   const profile = createProfileController(state, {
     beginModuleRequest: modules.beginModuleRequest,
     fetchModulesForSpo: modules.fetchModulesForSpo,
@@ -17,7 +22,6 @@ export function useAppController() {
   const auth = createAuthController(state, {
     fetchInitialData: profile.fetchInitialData,
   })
-  const schedule = createScheduleController(state)
 
   profile.installSelectionWatchers()
   auth.bindLifecycle()
@@ -44,6 +48,7 @@ export function useAppController() {
     hiddenPageLoading: state.hiddenPageLoading,
     hiddenSeriesItems: state.hiddenSeriesItems,
     lastHiddenSeries: state.lastHiddenSeries,
+    lastHiddenOccurrence: state.lastHiddenOccurrence,
     loading: state.loading,
     lsfImportModule: state.lsfImportModule,
     modules: state.modules,
@@ -82,6 +87,7 @@ export function useAppController() {
     showScheduleOccurrence: schedule.showScheduleOccurrence,
     showScheduleSeries: schedule.showScheduleSeries,
     signOut: auth.signOut,
+    undoHideScheduleOccurrence: schedule.undoHideScheduleOccurrence,
     undoHideScheduleSeries: schedule.undoHideScheduleSeries,
   }
 }

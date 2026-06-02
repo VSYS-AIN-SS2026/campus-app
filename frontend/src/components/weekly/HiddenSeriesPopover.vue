@@ -16,7 +16,9 @@ const emit = defineEmits<{
 
 const isOpen = ref(false)
 const rootRef = ref<HTMLElement | null>(null)
-const countLabel = computed(() => `${props.items.length} ausgeblendet`)
+// Trigger zeigt die Gesamtzahl (Reihen + Einzeltermine); die Abschnitte im Popover
+// schlüsseln darunter weiter auf.
+const totalCount = computed(() => props.items.length + (props.occurrenceItems?.length ?? 0))
 const occurrenceCountLabel = computed(() => `${props.occurrenceItems?.length ?? 0} ausgeblendet`)
 
 function togglePopover() {
@@ -51,29 +53,31 @@ onUnmounted(() => {
 <template>
   <div ref="rootRef" class="hidden-series">
     <button type="button" class="hidden-series-trigger app-button" @click="togglePopover">
-      Verborgene Reihen · {{ countLabel }}
+      Ausgeblendet · {{ totalCount }}
     </button>
 
-    <section v-if="isOpen" class="hidden-series-popover" role="dialog" aria-label="Verborgene Reihen">
-      <header class="hidden-series-header">
-        <strong>Verborgene Reihen</strong>
-        <button type="button" class="hidden-series-link" @click="emit('show-all-series')">
-          Alle einblenden
-        </button>
-      </header>
-
+    <section v-if="isOpen" class="hidden-series-popover" role="dialog" aria-label="Ausgeblendete Termine">
       <button type="button" class="hidden-series-nav-link" @click="emit('navigate-to-hidden-page')">
         Zur Übersicht →
       </button>
 
-      <ul class="hidden-series-list">
-        <li v-for="item in items" :key="item.seriesId" class="hidden-series-row">
-          <span class="hidden-series-title">{{ item.title }}</span>
-          <button type="button" class="hidden-series-link" @click="emit('show-series', item.seriesId)">
-            Einblenden
+      <template v-if="items.length">
+        <header class="hidden-series-header hidden-series-subheader">
+          <strong>Verborgene Reihen</strong>
+          <button type="button" class="hidden-series-link" @click="emit('show-all-series')">
+            Alle einblenden
           </button>
-        </li>
-      </ul>
+        </header>
+
+        <ul class="hidden-series-list">
+          <li v-for="item in items" :key="item.seriesId" class="hidden-series-row">
+            <span class="hidden-series-title">{{ item.title }}</span>
+            <button type="button" class="hidden-series-link" @click="emit('show-series', item.seriesId)">
+              Einblenden
+            </button>
+          </li>
+        </ul>
+      </template>
 
       <template v-if="props.occurrenceItems?.length">
         <header class="hidden-series-header hidden-series-subheader">

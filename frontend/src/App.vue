@@ -12,7 +12,17 @@ import { useAppController } from './composables/useAppController'
 import { useNotifications } from './composables/useNotifications'
 import { useTeams } from './composables/useTeams'
 
-const { magicLinkRedirectTo, allCategories, activePlannerView, authEmail, authError, authFirstName, authInfo, authLastName, authLoading, authSending, canEditModuleStatuses, categoryError, currentUser, currentUserEmail, userProfile, displayedWeeklyScheduleEvents, error, hiddenOccurrenceItems, hiddenPageEntries, hiddenPageError, hiddenPageLoading, hiddenSeriesItems, lastHiddenSeries, loadImportedEvents, loading, lsfImportModule, modules, moduleStatusError, profileError, profileInfo, profileSaving, savedSpo, savedStudyProgram, savingCategoryModuleId, savingModuleId, scheduleVisibilityError, scheduleVisibilityInfo, selectedModule, selectedSpoId, selectedStudyProgramId, selectionDirty, showHiddenEvents, spoItems, studyProgramItems, weekStartDate, getSpoLabel, getStudyProgramLabel, hideScheduleOccurrence, hideScheduleSeries, saveModuleCategories, saveModuleStatus, saveStudyProfileSelection, sendMagicLink, showAllScheduleSeries, showScheduleSeries, signOut, undoHideScheduleSeries } = useAppController()
+const { magicLinkRedirectTo, allCategories, activePlannerView, authEmail, authError, authFirstName, authInfo, authLastName, authLoading, authSending, canEditModuleStatuses, categoryError, currentUser, currentUserEmail, userProfile, displayedWeeklyScheduleEvents, error, hiddenOccurrenceItems, hiddenPageEntries, hiddenPageError, hiddenPageLoading, hiddenSeriesItems, lastHiddenSeries, lastHiddenOccurrence, loadImportedEvents, loading, lsfImportModule, modules, moduleStatusError, profileError, profileInfo, profileSaving, savedSpo, savedStudyProgram, savingCategoryModuleId, savingModuleId, scheduleVisibilityError, scheduleVisibilityInfo, selectedModule, selectedSpoId, selectedStudyProgramId, selectionDirty, showHiddenEvents, spoItems, studyProgramItems, weekStartDate, getSpoLabel, getStudyProgramLabel, hideScheduleOccurrence, hideScheduleSeries, saveModuleCategories, saveModuleStatus, saveStudyProfileSelection, sendMagicLink, showAllScheduleOccurrences, showAllScheduleSeries, showScheduleOccurrence, showScheduleSeries, signOut, undoHideScheduleOccurrence, undoHideScheduleSeries } = useAppController()
+
+// Eine gemeinsame "Rückgängig"-Aktion für das Erfolgs-Banner: es ist immer
+// höchstens eine Undo-Quelle (Reihe oder Einzeltermin) gesetzt.
+function undoLastHide() {
+  if (lastHiddenSeries.value) {
+    void undoHideScheduleSeries()
+  } else if (lastHiddenOccurrence.value) {
+    void undoHideScheduleOccurrence()
+  }
+}
 const { invitationCount, fetchMyInvitations, subscribeToInvitations, unsubscribeFromInvitations } = useTeams()
 const {
   allNotifications,
@@ -317,6 +327,7 @@ async function onSidebarNavigate(target: SidebarSection) {
         :error="hiddenPageError"
         @back="navigateToMain"
         @show-series="showScheduleSeries"
+        @show-occurrence="showScheduleOccurrence"
       />
     </template>
 
@@ -402,6 +413,7 @@ async function onSidebarNavigate(target: SidebarSection) {
                   :schedule-visibility-error="scheduleVisibilityError"
                   :schedule-visibility-info="scheduleVisibilityInfo"
                   :last-hidden-series="lastHiddenSeries"
+                  :last-hidden-occurrence="lastHiddenOccurrence"
                   :hidden-series-items="hiddenSeriesItems"
                   :hidden-occurrence-items="hiddenOccurrenceItems"
                   :modules="modules"
@@ -412,10 +424,12 @@ async function onSidebarNavigate(target: SidebarSection) {
                   @hide-occurrence="hideScheduleOccurrence($event)"
                   @hide-series="hideScheduleSeries($event.seriesId, $event.title)"
                   @show-series="showScheduleSeries"
+                  @show-occurrence="showScheduleOccurrence"
+                  @show-all-occurrences="showAllScheduleOccurrences"
                   @show-all-series="showAllScheduleSeries"
                   @toggle-show-hidden="toggleShowHiddenEvents"
                   @navigate-to-hidden-page="navigateToHiddenPage"
-                  @undo-hide-series="undoHideScheduleSeries"
+                  @undo-hide="undoLastHide"
                   @select-module="selectedModule = $event"
                 />
                 </section>

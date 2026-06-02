@@ -65,6 +65,10 @@ export function createAppControllerState() {
   const hiddenSeriesTitles = ref<Map<string, string>>(new Map())
   const hiddenEventIds = ref<Set<string>>(new Set())
   const lastHiddenSeries = ref<{ seriesId: string; title: string } | null>(null)
+  // Occurrence-ID des zuletzt ausgeblendeten Einzeltermins – ermöglicht ein
+  // "Rückgängig" analog zu den Terminreihen. Es ist immer höchstens eine der
+  // beiden Undo-Quellen (Reihe oder Einzeltermin) gesetzt.
+  const lastHiddenOccurrence = ref<string | null>(null)
   const userEvents = ref<UserEventRow[]>([])
   const showHiddenEvents = ref(false)
   const hiddenPageLoading = computed(() => !loadedUserId.value && loading.value)
@@ -179,12 +183,10 @@ export function createAppControllerState() {
 
   const displayedWeeklyScheduleEvents = computed<WeeklyScheduleEvent[]>(() => {
     if (!showHiddenEvents.value) return visibleWeeklyScheduleEvents.value
-    // Team-Termine sind nie ausgeblendet und sollen auch in der "Ausgeblendete
-    // anzeigen"-Ansicht weiterhin sichtbar bleiben.
-    return [
-      ...weeklyScheduleEvents.value.map(event => ({ ...event, isHidden: isEventHidden(event) })),
-      ...appointmentScheduleEvents.value,
-    ]
+    // Im "Ausgeblendete anzeigen"-Modus alle Quellen (Wochenplan, importierte
+    // Events, Team-Termine) zeigen und ausgeblendete Einträge markieren – damit
+    // auch ausgeblendete Team-Termine sichtbar/wieder einblendbar sind.
+    return allScheduleEvents.value.map(event => ({ ...event, isHidden: isEventHidden(event) }))
   })
 
   const EVENT_TYPE_LABELS: Record<string, string> = {
@@ -244,7 +246,9 @@ export function createAppControllerState() {
     const entries: HiddenPageEntry[] = []
     const seenSeries = new Set<string>()
 
-    for (const event of weeklyScheduleEvents.value) {
+    // Über alle Quellen (Wochenplan + importierte LSF-Events) laufen, damit auch
+    // ausgeblendete importierte Einzeltermine in der Übersicht auftauchen.
+    for (const event of allScheduleEvents.value) {
       const inSeries = hiddenSeriesIds.value.has(event.seriesId)
       const isSingleOccurrence = !inSeries && !!event.occurrenceId && hiddenEventIds.value.has(event.occurrenceId)
 
@@ -323,6 +327,7 @@ export function createAppControllerState() {
     hiddenSeriesTitles.value = new Map()
     hiddenEventIds.value = new Set()
     lastHiddenSeries.value = null
+    lastHiddenOccurrence.value = null
     showHiddenEvents.value = false
   }
 
@@ -358,6 +363,7 @@ export function createAppControllerState() {
     hiddenSeriesItems,
     hiddenSeriesTitles,
     lastHiddenSeries,
+    lastHiddenOccurrence,
     loadedUserId,
     loading,
     lsfImportModule,
