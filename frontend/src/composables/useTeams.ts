@@ -3,12 +3,15 @@ import { computed, ref } from 'vue'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
 
+// Module-level singletons: shared across all useTeams() callers.
+const invitations = ref<any[]>([])
+const invitationCount = computed(() => invitations.value.length)
+let invChannel: RealtimeChannel | null = null
+
 export function useTeams() {
     const teams = ref<any[]>([])
-    const invitations = ref<any[]>([])
     const loading = ref(false)
     const error = ref<string | null>(null)
-    const invitationCount = computed(() => invitations.value.length)
 
     // teamId -> [userId, ...] (all members per team)
     const allTeamMembers = ref<Map<string, string[]>>(new Map())
@@ -311,9 +314,7 @@ export function useTeams() {
     loading.value = false
   }
 
-  // ===================== Realtime: notifications → refresh invitations =====================
-  let invChannel: RealtimeChannel | null = null
-
+  // ===================== Realtime: team_invitations → refresh invitations =====================
   function subscribeToInvitations(userId: string) {
     const client = getClient()
     if (!client) return
@@ -328,14 +329,18 @@ export function useTeams() {
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'notifications',
-          filter: `recipient_id=eq.${userId}`,
+          table: 'team_invitations',
+          filter: `invited_user_id=eq.${userId}`,
         },
         async () => {
           await fetchMyInvitations()
         },
       )
-      .subscribe()
+      .subscribe((status, err) => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.error('[realtime:my-invitations]', status, err)
+        }
+      })
   }
 
   function unsubscribeFromInvitations() {

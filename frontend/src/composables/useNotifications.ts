@@ -88,7 +88,11 @@ function subscribeToInserts() {
         allNotifications.value.unshift(mapRow(row))
       },
     )
-    .subscribe()
+    .subscribe((status, err) => {
+      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+        console.error('[realtime:notifications-global-inbox]', status, err)
+      }
+    })
 }
 
 function teardownNotifications() {

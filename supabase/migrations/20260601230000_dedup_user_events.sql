@@ -13,12 +13,12 @@
 -- ============================================================
 
 -- ── 1. Duplikate bereinigen ──────────────────────────────────
--- Behalte pro Gruppe den Eintrag mit der kleinsten ID.
+-- Behalte pro Gruppe den ältesten Eintrag (kleinste created_at).
 DELETE FROM public.user_events
 WHERE id NOT IN (
-  SELECT MIN(id)
+  SELECT DISTINCT ON (user_id, series_id, day_index, start_time, end_time) id
   FROM public.user_events
-  GROUP BY user_id, series_id, day_index, start_time, end_time
+  ORDER BY user_id, series_id, day_index, start_time, end_time, created_at ASC
 );
 
 -- ── 2. Unique Index für zukünftige Inserts ───────────────────

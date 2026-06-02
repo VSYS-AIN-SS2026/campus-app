@@ -129,8 +129,10 @@ onUnmounted(() => {
 
 watch(currentUser, (user) => {
   if (user?.id) {
+    subscribeToInserts()
     subscribeToInvitations(user.id)
   } else {
+    teardownNotifications()
     unsubscribeFromInvitations()
   }
 })
