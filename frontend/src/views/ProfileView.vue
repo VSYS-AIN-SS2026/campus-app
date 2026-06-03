@@ -1,0 +1,415 @@
+<script setup lang="ts">
+import { onMounted, ref } from 'vue'
+import { supabase } from '../supabase'
+import { getStudyProgramLabel, getSpoLabel } from '../composables/appController/shared'
+import type { Spo, StudyProgram, UserProfile } from '../types'
+
+const profile = ref<UserProfile | null>(null)
+const studyProgram = ref<StudyProgram | null>(null)
+const spo = ref<Spo | null>(null)
+const loading = ref(true)
+const error = ref<string | null>(null)
+
+const editing = ref(false)
+const editName = ref('')
+const editMatrikelNr = ref('')
+const editEmail = ref('')
+const saving = ref(false)
+const saveError = ref<string | null>(null)
+const saveInfo = ref<string | null>(null)
+
+onMounted(async () => {
+  if (!supabase) {
+    error.value = 'Datenbankverbindung nicht verfügbar.'
+    loading.value = false
+    return
+  }
+
+  const { data, error: rpcError } = await supabase.rpc('get_demo_user_profile').maybeSingle()
+
+  if (rpcError) {
+    error.value = 'Profil konnte nicht geladen werden.'
+    loading.value = false
+    return
+  }
+
+  const typedProfile = data as UserProfile | null
+  profile.value = typedProfile
+
+  if (!typedProfile) {
+    loading.value = false
+    return
+  }
+
+  const [spRes, spoRes] = await Promise.all([
+    typedProfile.study_program_id
+      ? supabase.from('study_programs').select('id, faculty_id, code, name').eq('id', typedProfile.study_program_id).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+    typedProfile.spo_id
+      ? supabase.from('spos').select('id, study_program_id, version_name, valid_from').eq('id', typedProfile.spo_id).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+  ])
+
+  studyProgram.value = spRes.data as StudyProgram | null
+  spo.value = spoRes.data as Spo | null
+  loading.value = false
+})
+
+function startEditing() {
+  editName.value = profile.value?.full_name ?? ''
+  editMatrikelNr.value = profile.value?.matrikel_nr ?? ''
+  editEmail.value = profile.value?.email ?? ''
+  saveError.value = null
+  saveInfo.value = null
+  editing.value = true
+}
+
+function cancelEditing() {
+  editing.value = false
+  saveError.value = null
+}
+
+async function saveProfile() {
+  if (!supabase || !profile.value) return
+
+  const trimmedEmail = editEmail.value.trim().toLowerCase()
+  const emailChanged = trimmedEmail !== profile.value.email
+
+  if (!trimmedEmail) {
+    saveError.value = 'E-Mail-Adresse darf nicht leer sein.'
+    return
+  }
+
+  saving.value = true
+  saveError.value = null
+  saveInfo.value = null
+
+  const { data: { user: authUser } } = await supabase.auth.getUser()
+  const isAuthenticated = !!authUser
+
+  const { data, error: rpcError } = await supabase
+    .rpc('update_user_profile_info', {
+      new_full_name: editName.value.trim(),
+      new_matrikel_nr: editMatrikelNr.value.trim() || null,
+      // For authenticated users the email in auth.users is changed via supabase.auth.updateUser();
+      // public.users.email will be re-synced by resolve_dashboard_user on next load.
+      // For the demo user (no session) we update public.users.email directly via the RPC.
+      new_email: isAuthenticated ? null : trimmedEmail,
+    })
+    .maybeSingle()
+
+  if (rpcError) {
+    saving.value = false
+    saveError.value = rpcError.message.includes('leer')
+      ? 'Name darf nicht leer sein.'
+      : 'Speichern fehlgeschlagen. Bitte versuche es erneut.'
+    return
+  }
+
+  if (isAuthenticated && emailChanged) {
+    const { error: authError } = await supabase.auth.updateUser({ email: trimmedEmail })
+    saving.value = false
+    profile.value = data as UserProfile
+    editing.value = false
+
+    if (authError) {
+      saveError.value = `E-Mail konnte nicht geändert werden: ${authError.message}`
+      return
+    }
+
+    saveInfo.value = `Bestätigungslink wurde an ${trimmedEmail} gesendet. Die E-Mail-Adresse wird nach der Bestätigung aktualisiert.`
+    return
+  }
+
+  saving.value = false
+  profile.value = data as UserProfile
+  editing.value = false
+  saveInfo.value = 'Profil erfolgreich gespeichert.'
+  setTimeout(() => { saveInfo.value = null }, 4000)
+}
+</script>
+
+<template>
+  <div class="profile-page">
+    <header class="page-header">
+      <h1 class="page-title">Mein Profil</h1>
+    </header>
+
+    <div v-if="loading" class="status-text">Profil wird geladen…</div>
+
+    <div v-else-if="error" class="error-banner">{{ error }}</div>
+
+    <div v-else-if="!profile" class="status-text">Kein Profil gefunden.</div>
+
+    <template v-else>
+      <div v-if="saveInfo" class="success-banner">{{ saveInfo }}</div>
+
+      <section class="profile-card" aria-label="Profilinformationen">
+        <div class="card-header">
+          <p class="panel-eyebrow">Persönliche Daten</p>
+          <button
+            v-if="!editing"
+            type="button"
+            class="app-button edit-btn"
+            @click="startEditing"
+          >
+            Bearbeiten
+          </button>
+        </div>
+
+        <!-- View mode -->
+        <dl v-if="!editing" class="profile-grid">
+          <div class="profile-row">
+            <dt class="profile-label">Name</dt>
+            <dd class="profile-value">{{ profile.full_name || '—' }}</dd>
+          </div>
+          <div class="profile-row">
+            <dt class="profile-label">Matrikelnummer</dt>
+            <dd class="profile-value">{{ profile.matrikel_nr || 'Nicht hinterlegt' }}</dd>
+          </div>
+          <div class="profile-row">
+            <dt class="profile-label">E-Mail</dt>
+            <dd class="profile-value">{{ profile.email || '—' }}</dd>
+          </div>
+        </dl>
+
+        <!-- Edit mode -->
+        <form v-else class="edit-form" @submit.prevent="saveProfile">
+          <div class="field">
+            <label for="edit-name" class="field-label">Name</label>
+            <input
+              id="edit-name"
+              v-model="editName"
+              type="text"
+              class="field-input"
+              placeholder="Vor- und Nachname"
+              autocomplete="name"
+              required
+            />
+          </div>
+          <div class="field">
+            <label for="edit-matrikel" class="field-label">Matrikelnummer</label>
+            <input
+              id="edit-matrikel"
+              v-model="editMatrikelNr"
+              type="text"
+              class="field-input"
+              placeholder="z. B. 273245"
+              autocomplete="off"
+            />
+          </div>
+          <div class="field">
+            <label for="edit-email" class="field-label">E-Mail</label>
+            <input
+              id="edit-email"
+              v-model="editEmail"
+              type="email"
+              class="field-input"
+              placeholder="name@beispiel.de"
+              autocomplete="email"
+              required
+            />
+          </div>
+
+          <div v-if="saveError" class="error-banner">{{ saveError }}</div>
+
+          <div class="edit-actions">
+            <button type="submit" class="save-button save-btn-primary" :disabled="saving">
+              {{ saving ? 'Wird gespeichert…' : 'Speichern' }}
+            </button>
+            <button type="button" class="app-button" :disabled="saving" @click="cancelEditing">
+              Abbrechen
+            </button>
+          </div>
+        </form>
+
+        <div class="profile-divider" role="separator" />
+
+        <p class="panel-eyebrow">Studium</p>
+        <dl class="profile-grid">
+          <div class="profile-row">
+            <dt class="profile-label">Studiengang</dt>
+            <dd class="profile-value">
+              {{ studyProgram ? getStudyProgramLabel(studyProgram) : 'Noch nicht ausgewählt' }}
+            </dd>
+          </div>
+          <div class="profile-row">
+            <dt class="profile-label">SPO Version</dt>
+            <dd class="profile-value">
+              {{ spo ? getSpoLabel(spo) : studyProgram ? 'Noch nicht ausgewählt' : '—' }}
+            </dd>
+          </div>
+        </dl>
+      </section>
+    </template>
+  </div>
+</template>
+
+<style scoped>
+.profile-page {
+  padding: var(--space-4xl) var(--space-3xl);
+  width: 100%;
+  max-width: 40rem;
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3xl);
+}
+
+.page-header {
+  margin-bottom: 0;
+}
+
+.page-title {
+  font-size: var(--font-size-xl);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.status-text {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+/* .error-banner and .success-banner are global classes from app.css */
+
+.profile-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  padding: var(--space-3xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3xl);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* .edit-btn extends the global .app-button */
+.edit-btn {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.edit-btn:hover:enabled {
+  background: var(--color-primary-subtle);
+}
+
+.profile-grid {
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-row {
+  display: grid;
+  grid-template-columns: 10rem 1fr;
+  gap: var(--space-3xl);
+  padding: var(--space-xl) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.profile-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.profile-row:first-child {
+  padding-top: 0;
+}
+
+.profile-label {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+}
+
+.profile-value {
+  font-size: var(--font-size-base);
+  font-weight: 500;
+  color: var(--color-text);
+  display: flex;
+  align-items: center;
+}
+
+.profile-divider {
+  border: none;
+  border-top: 1px solid var(--color-border);
+}
+
+.edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3xl);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.field-label {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.field-input {
+  font: inherit;
+  font-size: var(--font-size-base);
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+  border: var(--button-border-width) solid var(--color-border);
+  border-radius: var(--radius-control);
+  padding: var(--button-padding-y) var(--button-padding-x-wide);
+  width: 100%;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease;
+}
+
+.field-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 var(--button-focus-ring-width) var(--color-primary-glow);
+}
+
+.edit-actions {
+  display: flex;
+  gap: var(--space-xl);
+}
+
+/* .save-btn-primary extends the global .save-button with primary fill */
+.save-btn-primary {
+  background: var(--color-primary);
+  color: var(--color-surface);
+  border-color: var(--color-primary);
+}
+
+.save-btn-primary:hover:enabled {
+  background: var(--color-primary-dark);
+  border-color: var(--color-primary-dark);
+}
+
+@media (max-width: 45em) {
+  .profile-page {
+    padding: var(--space-2xl) var(--space-xl);
+  }
+
+  .profile-row {
+    grid-template-columns: 1fr;
+    gap: var(--space-sm);
+  }
+}
+</style>

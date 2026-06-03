@@ -47,6 +47,7 @@ const route = useRoute()
 const router = useRouter()
 const isTeamsRoute = computed(() => route.path.startsWith('/teams'))
 const isOrganisationsRoute = computed(() => route.path.startsWith('/organisations'))
+const isProfileRoute = computed(() => route.path.startsWith('/profile'))
 
 const THEME_STORAGE_KEY = 'themeMode'
 
@@ -109,14 +110,13 @@ function onDocMousedown(e: MouseEvent) {
 const derivedSidebarSection = computed<SidebarSection>(() => {
   if (isTeamsRoute.value) return 'teams'
   if (isOrganisationsRoute.value) return 'organisations'
+  if (isProfileRoute.value) return 'profile'
   if (activePlannerView.value === 'week') return 'calendar'
   return 'modules'
 })
 
 watch(derivedSidebarSection, (section) => {
-  if (sidebarActiveSection.value !== 'profile') {
-    sidebarActiveSection.value = section
-  }
+  sidebarActiveSection.value = section
 }, { immediate: true })
 
 watch(themeMode, (mode) => {
@@ -178,11 +178,16 @@ async function onSidebarNavigate(target: SidebarSection) {
   }
 
   if (target === 'organisations') {
-  router.push('/organisations')
-  return
-}
+    router.push('/organisations')
+    return
+  }
 
-  if (isTeamsRoute.value || isOrganisationsRoute.value) {
+  if (target === 'profile') {
+    router.push('/profile')
+    return
+  }
+
+  if (isTeamsRoute.value || isOrganisationsRoute.value || isProfileRoute.value) {
     await router.push('/')
     await nextTick()
   }
@@ -191,13 +196,6 @@ async function onSidebarNavigate(target: SidebarSection) {
     activePlannerView.value = 'week'
     await nextTick()
     scrollToSection('planner-section')
-
-    return
-  }
-
-  if (target === 'profile') {
-    await nextTick()
-    scrollToSection('profile-section')
 
     return
   }
@@ -380,7 +378,7 @@ async function onSidebarNavigate(target: SidebarSection) {
                 @submit="sendMagicLink"
               />
             </template>
-            <template v-else-if="isTeamsRoute || isOrganisationsRoute">
+            <template v-else-if="isTeamsRoute || isOrganisationsRoute || isProfileRoute">
               <RouterView />
             </template>
             <template v-else>

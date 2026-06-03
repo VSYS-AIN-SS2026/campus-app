@@ -30,6 +30,7 @@ export interface UserProfile {
   email: string
   study_program_id: string | null
   spo_id: string | null
+  matrikel_nr: string | null
   created_at: string
   updated_at: string
 }

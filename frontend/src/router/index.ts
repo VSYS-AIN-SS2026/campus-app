@@ -28,9 +28,14 @@ const router = createRouter({
       ],
     },
     {
-    path: '/organisations',
-    component: () => import('../views/OrganisationsView.vue'),
-  },
+      path: '/organisations',
+      component: () => import('../views/OrganisationsView.vue'),
+    },
+    {
+      path: '/profile',
+      name: 'profile',
+      component: () => import('../views/ProfileView.vue'),
+    },
   ],
 })
 
