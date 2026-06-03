@@ -18,6 +18,10 @@ const saving = ref(false)
 const saveError = ref<string | null>(null)
 const saveInfo = ref<string | null>(null)
 
+const showDeleteConfirm = ref(false)
+const deleting = ref(false)
+const deleteError = ref<string | null>(null)
+
 onMounted(async () => {
   if (!supabase) {
     error.value = 'Datenbankverbindung nicht verfügbar.'
@@ -91,18 +95,19 @@ async function saveProfile() {
     .rpc('update_user_profile_info', {
       new_full_name: editName.value.trim(),
       new_matrikel_nr: editMatrikelNr.value.trim() || null,
-      // For authenticated users the email in auth.users is changed via supabase.auth.updateUser();
-      // public.users.email will be re-synced by resolve_dashboard_user on next load.
-      // For the demo user (no session) we update public.users.email directly via the RPC.
-      new_email: isAuthenticated ? null : trimmedEmail,
+      new_email: trimmedEmail,
     })
     .maybeSingle()
 
   if (rpcError) {
     saving.value = false
-    saveError.value = rpcError.message.includes('leer')
-      ? 'Name darf nicht leer sein.'
-      : 'Speichern fehlgeschlagen. Bitte versuche es erneut.'
+    if (rpcError.message.includes('leer')) {
+      saveError.value = 'Name darf nicht leer sein.'
+    } else if (rpcError.message.includes('email_bereits_vergeben')) {
+      saveError.value = 'Diese E-Mail-Adresse wird bereits von einem anderen Konto verwendet.'
+    } else {
+      saveError.value = 'Speichern fehlgeschlagen. Bitte versuche es erneut.'
+    }
     return
   }
 
@@ -126,6 +131,24 @@ async function saveProfile() {
   editing.value = false
   saveInfo.value = 'Profil erfolgreich gespeichert.'
   setTimeout(() => { saveInfo.value = null }, 4000)
+}
+
+async function deleteProfile() {
+  if (!supabase) return
+
+  deleting.value = true
+  deleteError.value = null
+
+  const { error: rpcError } = await supabase.rpc('delete_user_profile')
+
+  if (rpcError) {
+    deleting.value = false
+    deleteError.value = 'Profil konnte nicht gelöscht werden. Bitte versuche es erneut.'
+    return
+  }
+
+  await supabase.auth.signOut()
+  window.location.reload()
 }
 </script>
 
@@ -241,8 +264,52 @@ async function saveProfile() {
           </div>
         </dl>
       </section>
+
+      <div class="delete-row">
+        <button
+          type="button"
+          class="delete-btn"
+          @click="showDeleteConfirm = true"
+        >
+          Profil löschen
+        </button>
+      </div>
     </template>
   </div>
+
+  <!-- Bestätigungs-Modal -->
+  <Teleport to="body">
+    <div v-if="showDeleteConfirm" class="modal-backdrop" @click.self="showDeleteConfirm = false">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="delete-dialog-title">
+        <h2 id="delete-dialog-title" class="modal-title">Profil wirklich löschen?</h2>
+        <p class="modal-body">
+          Diese Aktion ist <strong>nicht rückgängig</strong> zu machen. Alle deine Daten — Modulstatus,
+          Studiengang, Matrikelnummer und Stundenplan-Einträge — werden dauerhaft gelöscht.
+        </p>
+
+        <div v-if="deleteError" class="error-banner">{{ deleteError }}</div>
+
+        <div class="modal-actions">
+          <button
+            type="button"
+            class="delete-btn"
+            :disabled="deleting"
+            @click="deleteProfile"
+          >
+            {{ deleting ? 'Wird gelöscht…' : 'Ja, Profil löschen' }}
+          </button>
+          <button
+            type="button"
+            class="app-button"
+            :disabled="deleting"
+            @click="showDeleteConfirm = false"
+          >
+            Abbrechen
+          </button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <style scoped>
@@ -402,6 +469,78 @@ async function saveProfile() {
   border-color: var(--color-primary-dark);
 }
 
+.delete-row {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.delete-btn {
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-danger, #e53e3e);
+  background: transparent;
+  border: var(--button-border-width) solid var(--color-danger, #e53e3e);
+  border-radius: var(--radius-control);
+  padding: var(--button-padding-y) var(--button-padding-x-wide);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.delete-btn:hover:enabled {
+  background: var(--color-danger, #e53e3e);
+  color: #fff;
+}
+
+.delete-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Modal */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: var(--space-3xl);
+}
+
+.modal {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3xl);
+  max-width: 30rem;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3xl);
+}
+
+.modal-title {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.modal-body {
+  font-size: var(--font-size-base);
+  color: var(--color-text-muted);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.modal-actions {
+  display: flex;
+  gap: var(--space-xl);
+}
+
 @media (max-width: 45em) {
   .profile-page {
     padding: var(--space-2xl) var(--space-xl);
@@ -410,6 +549,10 @@ async function saveProfile() {
   .profile-row {
     grid-template-columns: 1fr;
     gap: var(--space-sm);
+  }
+
+  .modal-actions {
+    flex-direction: column-reverse;
   }
 }
 </style>
