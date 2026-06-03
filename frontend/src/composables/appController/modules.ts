@@ -1,4 +1,5 @@
 import { supabase, supabaseConfigError } from '../../supabase'
+import { normalizeError } from '../../utils/normalizeError'
 import type { Category, ModuleEntry, ModuleStatus, UserProfile } from '../../types'
 import type { AppControllerState } from './state'
 import {
@@ -304,7 +305,7 @@ export function createModulesController(
 
     if (error) {
       state.loading.value = false
-      state.error.value = error.message
+      state.error.value = normalizeError(error)
       return
     }
 

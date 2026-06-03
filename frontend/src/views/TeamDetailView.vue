@@ -2,6 +2,7 @@
 import { computed, onMounted, provide, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { supabase } from '../supabase'
+import { normalizeError } from '../utils/normalizeError'
 import type { TeamDetail } from '../types/team'
 
 const route = useRoute()
@@ -28,7 +29,7 @@ onMounted(async () => {
   loading.value = false
 
   if (rpcError) {
-    error.value = rpcError.message
+    error.value = normalizeError(rpcError)
     return
   }
 

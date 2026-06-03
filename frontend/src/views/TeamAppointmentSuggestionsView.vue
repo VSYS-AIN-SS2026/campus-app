@@ -3,6 +3,7 @@ import { onMounted, onUnmounted, ref, watch } from 'vue'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { useRoute } from 'vue-router'
 import { supabase } from '../supabase'
+import { normalizeError } from '../utils/normalizeError'
 import CombinedWeekView from '../components/teamWeek/CombinedWeekView.vue'
 import TeamAppointmentSearchForm from '../components/teamWeek/TeamAppointmentSearchForm.vue'
 import AppointmentDetailDialog from '../components/teamWeek/AppointmentDetailDialog.vue'
@@ -136,7 +137,7 @@ async function loadAppointments() {
   })
 
   if (rpcError) {
-    appointmentsError.value = rpcError.message
+    appointmentsError.value = normalizeError(rpcError)
     appointments.value = []
     return
   }
@@ -187,7 +188,7 @@ async function loadMyInvitations() {
   if (!supabase) return
   const { data, error: rpcError } = await supabase.rpc('get_my_appointment_invitations', { p_team_id: teamId })
   if (rpcError) {
-    invitationsError.value = rpcError.message
+    invitationsError.value = normalizeError(rpcError)
     myInvitations.value = []
     return
   }
@@ -226,7 +227,7 @@ async function onAnswer(invitationId: string, status: 'accepted' | 'declined') {
   if (rpcError) {
     // Restore on error
     if (invitation) myInvitations.value.push(invitation)
-    invitationsError.value = rpcError.message
+    invitationsError.value = normalizeError(rpcError)
     return
   }
 
@@ -372,7 +373,7 @@ async function onUpdateAppointment(payload: NewAppointmentInput) {
   editLoading.value = false
 
   if (rpcError) {
-    editError.value = rpcError.message
+    editError.value = normalizeError(rpcError)
     return
   }
 
@@ -393,7 +394,7 @@ async function onDeleteAppointment(id: string) {
   editLoading.value = false
 
   if (rpcError) {
-    editError.value = rpcError.message
+    editError.value = normalizeError(rpcError)
     return
   }
 
@@ -439,7 +440,7 @@ async function onCreate(payload: NewAppointmentInput) {
   createLoading.value = false
 
   if (rpcError) {
-    createError.value = rpcError.message
+    createError.value = normalizeError(rpcError)
     return
   }
 

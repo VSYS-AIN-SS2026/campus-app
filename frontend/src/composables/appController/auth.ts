@@ -1,5 +1,6 @@
 import { onMounted, onUnmounted } from 'vue'
 import { magicLinkRedirectTo, supabase, supabaseConfigError } from '../../supabase'
+import { normalizeError } from '../../utils/normalizeError'
 import type { AppControllerState } from './state'
 
 function getTrimmedString(value: unknown) {
@@ -164,10 +165,10 @@ export function createAuthController(
     state.authSending.value = false
 
     if (error) {
-      const details = [error.message, error.code, error.status?.toString()].filter(Boolean).join(' | ')
-      state.authError.value = details
-        ? `Magic-Link konnte nicht versendet werden: ${details}`
-        : 'Magic-Link konnte nicht versendet werden: Unbekannter Supabase-Fehler.'
+      const normalized = normalizeError(error)
+      state.authError.value = normalized === 'Ein Fehler ist aufgetreten. Bitte versuche es erneut.'
+        ? 'Magic-Link konnte nicht versendet werden. Bitte versuche es erneut.'
+        : normalized
       return
     }
 

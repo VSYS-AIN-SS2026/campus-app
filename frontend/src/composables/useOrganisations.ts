@@ -1,5 +1,6 @@
 import { computed, ref } from 'vue'
 import { supabase } from '../supabase'
+import { normalizeError } from '../utils/normalizeError'
 
 import type {
   NewOrganisationEventInput,
@@ -95,7 +96,7 @@ export function useOrganisations() {
       organisations.value = organisationData ?? []
       memberships.value = membershipData ?? []
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Organisationen konnten nicht geladen werden.'
+      error.value = normalizeError(err, 'Organisationen konnten nicht geladen werden.')
     } finally {
       loading.value = false
     }
@@ -136,7 +137,7 @@ export function useOrganisations() {
       info.value = 'Organisation wurde erstellt.'
       await fetchOrganisations()
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Organisation konnte nicht erstellt werden.'
+      error.value = normalizeError(err, 'Organisation konnte nicht erstellt werden.')
     } finally {
       saving.value = false
     }
@@ -172,7 +173,7 @@ export function useOrganisations() {
       info.value = 'Du bist der Organisation beigetreten.'
       await fetchOrganisations()
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Beitritt fehlgeschlagen.'
+      error.value = normalizeError(err, 'Beitritt fehlgeschlagen.')
     } finally {
       saving.value = false
     }
@@ -200,7 +201,7 @@ export function useOrganisations() {
       info.value = 'Du hast die Organisation verlassen.'
       await fetchOrganisations()
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Organisation konnte nicht verlassen werden.'
+      error.value = normalizeError(err, 'Organisation konnte nicht verlassen werden.')
     } finally {
       saving.value = false
     }
@@ -222,7 +223,7 @@ export function useOrganisations() {
 
       events.value = data ?? []
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Events konnten nicht geladen werden.'
+      error.value = normalizeError(err, 'Events konnten nicht geladen werden.')
     }
   }
 
@@ -244,7 +245,7 @@ export function useOrganisations() {
 
       savedEventIds.value = new Set((data ?? []).map(item => item.event_id))
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Gespeicherte Events konnten nicht geladen werden.'
+      error.value = normalizeError(err, 'Gespeicherte Events konnten nicht geladen werden.')
     }
   }
 
@@ -280,7 +281,7 @@ export function useOrganisations() {
       info.value = 'Event wurde erstellt.'
       await fetchOrganisationEvents()
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Event konnte nicht erstellt werden.'
+      error.value = normalizeError(err, 'Event konnte nicht erstellt werden.')
     } finally {
       saving.value = false
     }
@@ -315,7 +316,7 @@ export function useOrganisations() {
       savedEventIds.value = new Set([...savedEventIds.value, eventId])
       info.value = 'Event wurde gespeichert.'
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Event konnte nicht gespeichert werden.'
+      error.value = normalizeError(err, 'Event konnte nicht gespeichert werden.')
     } finally {
       saving.value = false
     }
@@ -345,7 +346,7 @@ export function useOrganisations() {
       savedEventIds.value = next
       info.value = 'Event wurde entfernt.'
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Event konnte nicht entfernt werden.'
+      error.value = normalizeError(err, 'Event konnte nicht entfernt werden.')
     } finally {
       saving.value = false
     }

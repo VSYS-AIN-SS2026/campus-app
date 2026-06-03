@@ -1,5 +1,6 @@
 import { watch } from 'vue'
 import { supabase, supabaseConfigError } from '../../supabase'
+import { normalizeError } from '../../utils/normalizeError'
 import type {
   Category,
   ModuleHandbook,
@@ -54,10 +55,10 @@ export function createProfileController(
 
     state.loading.value = false
 
-    if (spRes.error) { state.error.value = spRes.error.message; return }
-    if (spoRes.error) { state.error.value = spoRes.error.message; return }
-    if (hbRes.error) { state.error.value = hbRes.error.message; return }
-    if (categoryRes.error) { state.categoryError.value = categoryRes.error.message }
+    if (spRes.error) { state.error.value = normalizeError(spRes.error); return }
+    if (spoRes.error) { state.error.value = normalizeError(spoRes.error); return }
+    if (hbRes.error) { state.error.value = normalizeError(hbRes.error); return }
+    if (categoryRes.error) { state.categoryError.value = 'Kategorien konnten nicht geladen werden.' }
 
     if (hiddenSeriesRes.error) {
       state.scheduleVisibilityError.value = 'Verborgene Terminreihen konnten nicht geladen werden.'

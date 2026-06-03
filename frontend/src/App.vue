@@ -2,6 +2,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterView, useRoute, useRouter } from 'vue-router'
 import AuthGate from './components/AuthGate.vue'
+import ConnectionBanner from './components/ConnectionBanner.vue'
 import HiddenPage from './components/HiddenPage.vue'
 import LsfEventImportModal from './components/LsfEventImportModal.vue'
 import ModuleDrawer from './components/ModuleDrawer.vue'
@@ -9,6 +10,7 @@ import PlannerViewShell from './components/PlannerViewShell.vue'
 import ProfileSelectionPanel from './components/ProfileSelectionPanel.vue'
 import Sidebar from './components/Sidebar.vue'
 import { useAppController } from './composables/useAppController'
+import { useConnectionStatus } from './composables/useConnectionStatus'
 import { useNotifications } from './composables/useNotifications'
 import { useTeams } from './composables/useTeams'
 
@@ -23,6 +25,7 @@ function undoLastHide() {
     void undoHideScheduleOccurrence()
   }
 }
+const { isOnline, justReconnected } = useConnectionStatus()
 const { invitationCount, fetchMyInvitations, subscribeToInvitations, unsubscribeFromInvitations } = useTeams()
 const {
   allNotifications,
@@ -467,6 +470,8 @@ async function onSidebarNavigate(target: SidebarSection) {
     @close="lsfImportModule = null"
     @imported="loadImportedEvents"
   />
+
+  <ConnectionBanner :is-online="isOnline" :just-reconnected="justReconnected" />
 </template>
 
 <style scoped src="./app.css"></style>

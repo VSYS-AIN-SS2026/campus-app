@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { supabase } from '../supabase'
 import { getStudyProgramLabel, getSpoLabel } from '../composables/appController/shared'
+import { normalizeError } from '../utils/normalizeError'
 import type { Spo, StudyProgram, UserProfile } from '../types'
 
 const profile = ref<UserProfile | null>(null)
@@ -118,7 +119,10 @@ async function saveProfile() {
     editing.value = false
 
     if (authError) {
-      saveError.value = `E-Mail konnte nicht geändert werden: ${authError.message}`
+      const normalized = normalizeError(authError)
+      saveError.value = normalized === 'Ein Fehler ist aufgetreten. Bitte versuche es erneut.'
+        ? 'E-Mail konnte nicht geändert werden. Bitte versuche es erneut.'
+        : normalized
       return
     }
 

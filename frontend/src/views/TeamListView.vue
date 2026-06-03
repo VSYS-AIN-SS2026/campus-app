@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getTeamsOverview, type TeamOverview } from '../services/teamService'
+import { normalizeError } from '../utils/normalizeError'
 
 const router = useRouter()
 const teams = ref<TeamOverview[]>([])
@@ -12,8 +13,8 @@ onMounted(async () => {
   loading.value = true
   try {
     teams.value = await getTeamsOverview()
-  } catch (e: any) {
-    error.value = e.message
+  } catch (e: unknown) {
+    error.value = normalizeError(e)
   } finally {
     loading.value = false
   }
