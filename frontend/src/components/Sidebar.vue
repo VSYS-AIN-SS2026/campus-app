@@ -40,12 +40,20 @@
           {{ teamInvitationCount }}
       </span>
     </button>
+    <button
+        type="button"
+        class="sidebar-nav-item"
+        :class="activeSection === 'organisations' ? 'sidebar-nav-item-active' : ''"
+        @click="select('organisations')"
+      >
+        Organisationen
+    </button>
     </nav>
   </aside>
 </template>
 
 <script setup lang="ts">
-type SidebarSection = 'modules' | 'calendar' | 'profile' | 'teams'
+type SidebarSection = 'modules' | 'calendar' | 'profile' | 'teams' | 'organisations'
 
 defineProps<{
   activeSection: SidebarSection

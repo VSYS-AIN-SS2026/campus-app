@@ -27,6 +27,10 @@ const router = createRouter({
         },
       ],
     },
+    {
+    path: '/organisations',
+    component: () => import('../views/OrganisationsView.vue'),
+  },
   ],
 })
 

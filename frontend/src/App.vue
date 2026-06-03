@@ -40,12 +40,13 @@ function toggleShowHiddenEvents() {
   showHiddenEvents.value = !showHiddenEvents.value
 }
 
-type SidebarSection = 'modules' | 'calendar' | 'profile' | 'teams'
+type SidebarSection = 'modules' | 'calendar' | 'profile' | 'teams' | 'organisations'
 type ThemeMode = 'light' | 'dark'
 
 const route = useRoute()
 const router = useRouter()
 const isTeamsRoute = computed(() => route.path.startsWith('/teams'))
+const isOrganisationsRoute = computed(() => route.path.startsWith('/organisations'))
 
 const THEME_STORAGE_KEY = 'themeMode'
 
@@ -107,6 +108,7 @@ function onDocMousedown(e: MouseEvent) {
 
 const derivedSidebarSection = computed<SidebarSection>(() => {
   if (isTeamsRoute.value) return 'teams'
+  if (isOrganisationsRoute.value) return 'organisations'
   if (activePlannerView.value === 'week') return 'calendar'
   return 'modules'
 })
@@ -175,7 +177,12 @@ async function onSidebarNavigate(target: SidebarSection) {
     return
   }
 
-  if (isTeamsRoute.value) {
+  if (target === 'organisations') {
+  router.push('/organisations')
+  return
+}
+
+  if (isTeamsRoute.value || isOrganisationsRoute.value) {
     await router.push('/')
     await nextTick()
   }
@@ -373,7 +380,7 @@ async function onSidebarNavigate(target: SidebarSection) {
                 @submit="sendMagicLink"
               />
             </template>
-            <template v-else-if="isTeamsRoute">
+            <template v-else-if="isTeamsRoute || isOrganisationsRoute">
               <RouterView />
             </template>
             <template v-else>
