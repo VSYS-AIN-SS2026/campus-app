@@ -16,6 +16,9 @@ export interface WeekEvent {
   date?: string
   title: string
   subtitle?: string
+  location?: string
+  description?: string
+  color?: string
   startTime: string
   endTime: string
   status: WeekEventStatus

@@ -22,6 +22,21 @@ const emit = defineEmits<{
   'hide-occurrence': [occurrenceId: string]
 }>()
 
+function hexToRgba(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
+function orgEventStyle(event: NormalizedWeekEvent): Record<string, string> {
+  if (!event.color) return {}
+  return {
+    backgroundColor: hexToRgba(event.color, 0.18),
+    borderColor: hexToRgba(event.color, 0.55),
+  }
+}
+
 function requestHideSeries(event: NormalizedWeekEvent) {
   if (!event.seriesId) {
     return
@@ -241,13 +256,15 @@ defineExpose({
             :key="event.id"
             class="event-block"
             :class="[`event-${event.status}`, { 'event-hidden': event.isHidden }]"
-            :style="eventStyle(event.start, event.end, event.columnIndex, event.columnCount)"
+            :style="[eventStyle(event.start, event.end, event.columnIndex, event.columnCount), orgEventStyle(event)]"
           >
             <span class="event-time">{{ event.startTime }}–{{ event.endTime }}</span>
             <strong class="event-title">
               {{ event.title }}
             </strong>
             <span v-if="event.subtitle" class="event-subtitle">{{ event.subtitle }}</span>
+            <span v-if="event.location" class="event-location">{{ event.location }}</span>
+            <span v-if="event.description" class="event-description">{{ event.description }}</span>
             <span v-if="event.isHidden" class="event-hidden-label">Ausgeblendet</span>
             <!-- Reihe ausblenden: gestapelte Zeilen = ganze Terminreihe. -->
             <button
@@ -322,6 +339,8 @@ defineExpose({
 .event-time { font-size: 0.68rem; color: var(--color-text-muted); }
 .event-title { font-size: 0.75rem; line-height: 1.25; color: var(--color-text); white-space: normal; overflow-wrap: break-word; word-break: normal; max-width: 100%; }
 .event-subtitle { font-size: 0.68rem; color: var(--color-text-muted); line-height: 1.25; }
+.event-location { font-size: 0.65rem; color: var(--color-text-muted); line-height: 1.2; font-style: italic; }
+.event-description { font-size: 0.65rem; color: var(--color-text-muted); line-height: 1.2; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .hide-series-btn { position: absolute; top: 0.25rem; right: 0.25rem; width: 1.25rem; height: 1.25rem; border: 0.0625rem solid color-mix(in srgb, var(--color-border) 85%, transparent); border-radius: 999rem; background: color-mix(in srgb, var(--color-surface) 92%, transparent); color: var(--color-text-muted); font: inherit; font-size: 0.9rem; font-weight: 700; line-height: 1; display: inline-grid; place-items: center; padding: 0; cursor: pointer; opacity: 0; transform: translateY(-0.0625rem); transition: opacity 0.16s ease, transform 0.16s ease, color 0.16s ease, border-color 0.16s ease; }
 .hide-occurrence-btn { position: absolute; top: 0.25rem; right: 1.75rem; width: 1.25rem; height: 1.25rem; border: 0.0625rem solid color-mix(in srgb, var(--color-border) 85%, transparent); border-radius: 999rem; background: color-mix(in srgb, var(--color-surface) 92%, transparent); color: var(--color-text-muted); font: inherit; font-size: 0.95rem; font-weight: 700; line-height: 1; display: inline-grid; place-items: center; padding: 0; cursor: pointer; opacity: 0; transform: translateY(-0.0625rem); transition: opacity 0.16s ease, transform 0.16s ease, color 0.16s ease, border-color 0.16s ease; }
 .hide-action-icon { display: block; width: 0.875rem; height: 0.875rem; }

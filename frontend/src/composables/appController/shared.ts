@@ -30,6 +30,9 @@ export type WeeklyScheduleEvent = {
   date?: string
   title: string
   subtitle?: string
+  location?: string
+  description?: string
+  color?: string
   startTime: string
   endTime: string
   status: ModuleStatus

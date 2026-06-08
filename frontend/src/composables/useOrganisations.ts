@@ -1,5 +1,6 @@
 import { computed, ref } from 'vue'
 import { supabase } from '../supabase'
+import { loadSavedOrgEvents } from './savedOrgEventsStore'
 
 import type {
   NewOrganisationEventInput,
@@ -122,6 +123,7 @@ export function useOrganisations() {
         .insert({
           name,
           description: input.description?.trim() || null,
+          color: input.color ?? null,
           created_by: userId,
         })
 
@@ -313,7 +315,8 @@ export function useOrganisations() {
       }
 
       savedEventIds.value = new Set([...savedEventIds.value, eventId])
-      info.value = 'Event wurde gespeichert.'
+      info.value = 'Event wurde zur Wochenansicht hinzugefügt.'
+      await loadSavedOrgEvents()
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Event konnte nicht gespeichert werden.'
     } finally {
@@ -343,9 +346,43 @@ export function useOrganisations() {
       const next = new Set(savedEventIds.value)
       next.delete(eventId)
       savedEventIds.value = next
-      info.value = 'Event wurde entfernt.'
+      info.value = 'Event wurde aus der Wochenansicht entfernt.'
+      await loadSavedOrgEvents()
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Event konnte nicht entfernt werden.'
+    } finally {
+      saving.value = false
+    }
+  }
+
+  async function deleteOrganisationEvent(eventId: string) {
+    const client = getClient()
+    if (!client) return
+
+    saving.value = true
+    error.value = null
+    info.value = null
+
+    try {
+      const { error: deleteError } = await client
+        .from('organisation_events')
+        .delete()
+        .eq('id', eventId)
+
+      if (deleteError) throw deleteError
+
+      events.value = events.value.filter(e => e.id !== eventId)
+
+      if (savedEventIds.value.has(eventId)) {
+        const next = new Set(savedEventIds.value)
+        next.delete(eventId)
+        savedEventIds.value = next
+        await loadSavedOrgEvents()
+      }
+
+      info.value = 'Event wurde gelöscht.'
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Event konnte nicht gelöscht werden.'
     } finally {
       saving.value = false
     }
@@ -369,6 +406,7 @@ export function useOrganisations() {
     joinOrganisation,
     leaveOrganisation,
     createOrganisationEvent,
+    deleteOrganisationEvent,
     saveEvent,
     unsaveEvent,
   }
