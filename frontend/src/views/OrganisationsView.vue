@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useOrganisations } from '../composables/useOrganisations'
-import type { OrganisationWithState } from '../types/organisations'
 
 const {
   organisationsWithState,
