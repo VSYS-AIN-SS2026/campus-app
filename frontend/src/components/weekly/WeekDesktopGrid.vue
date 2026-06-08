@@ -240,7 +240,7 @@ defineExpose({
             v-for="event in eventsByDay[dayIndex]"
             :key="event.id"
             class="event-block"
-            :class="[`event-${event.status}`, { 'event-hidden': event.isHidden }]"
+            :class="[`event-${event.status}`, { 'event-hidden': event.isHidden, 'event-block--personal': event.eventType === 'personal' }]"
             :style="eventStyle(event.start, event.end, event.columnIndex, event.columnCount)"
           >
             <span class="event-time">{{ event.startTime }}–{{ event.endTime }}</span>
@@ -333,6 +333,7 @@ defineExpose({
 .hide-series-btn:focus-visible,
 .hide-occurrence-btn:hover,
 .hide-occurrence-btn:focus-visible { color: var(--color-primary); border-color: var(--color-primary-light); outline: none; }
+.event-block--personal { background: color-mix(in srgb, var(--color-personal, #7c3aed) 14%, transparent) !important; border-left: 3px solid var(--color-personal, #7c3aed) !important; border-color: color-mix(in srgb, var(--color-personal, #7c3aed) 40%, transparent) !important; }
 @media (max-width: 56.25em) {
   .week-grid-wrapper { grid-template-columns: clamp(2.5rem, 5vw, 3rem) minmax(0, 1fr); }
   .day-columns { --day-min-width: clamp(5.6rem, 16vw, 6.4rem); }

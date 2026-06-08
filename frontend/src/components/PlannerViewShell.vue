@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ModuleEntry } from '../types'
+import type { NewPersonalAppointmentInput } from '../types/personalAppointments'
 import ModuleList from './ModuleList.vue'
 import WeeklySchedule from './WeeklySchedule.vue'
 
@@ -33,6 +34,8 @@ const props = defineProps<{
     status: 'offen' | 'belegt' | 'abgeschlossen'
   }[]
   weekStartDate: Date
+  savingPersonalAppointment?: boolean
+  personalAppointmentError?: string | null
 }>()
 
 const emit = defineEmits<{
@@ -47,6 +50,8 @@ const emit = defineEmits<{
   'navigate-to-hidden-page': []
   'undo-hide': []
   'select-module': [module: ModuleEntry]
+  'create-personal-appointment': [payload: NewPersonalAppointmentInput]
+  'clear-personal-appointment-error': []
 }>()
 </script>
 
@@ -112,6 +117,8 @@ const emit = defineEmits<{
       :loading="loading"
       :error="error"
       :week-start="weekStartDate"
+      :saving-personal-appointment="savingPersonalAppointment"
+      :personal-appointment-error="personalAppointmentError"
       @hide-series="emit('hide-series', $event)"
       @hide-occurrence="emit('hide-occurrence', $event)"
       @show-series="emit('show-series', $event)"
@@ -120,6 +127,8 @@ const emit = defineEmits<{
       @show-all-series="emit('show-all-series')"
       @toggle-show-hidden="emit('toggle-show-hidden')"
       @navigate-to-hidden-page="emit('navigate-to-hidden-page')"
+      @create-personal-appointment="emit('create-personal-appointment', $event)"
+      @clear-personal-appointment-error="emit('clear-personal-appointment-error')"
     />
 
     <ModuleList v-else-if="!loading" :modules="modules" @select="emit('select-module', $event)" />

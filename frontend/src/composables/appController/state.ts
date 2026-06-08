@@ -9,6 +9,7 @@ import type {
   UserProfile,
 } from '../../types'
 import type { UserEventRow } from '../../types/schedule'
+import type { PersonalAppointment } from '../../types/personalAppointments'
 import {
   getSpoLabel,
   getStartOfCurrentWeek,
@@ -100,6 +101,7 @@ export function createAppControllerState() {
 
   const weeklyScheduleEvents = ref<WeeklyScheduleEvent[]>([])
   const acceptedAppointments = ref<AcceptedAppointmentRow[]>([])
+  const personalAppointments = ref<PersonalAppointment[]>([])
 
   // Zugesagte Team-Termine als datumsgebundene Events für die Wochenansicht.
   // Start/Ende kommen in UTC und werden in Browser-Zeit auf Tag + Uhrzeit gelegt.
@@ -139,7 +141,31 @@ export function createAppControllerState() {
       endTime: ue.end_time.slice(0, 5),
       status: ue.status as ModuleStatus,
     }))
-    return [...weeklyScheduleEvents.value, ...importedEvents, ...appointmentScheduleEvents.value]
+
+    const personalEvents: WeeklyScheduleEvent[] = personalAppointments.value
+      .map((pa): WeeklyScheduleEvent | null => {
+        const start = new Date(pa.starts_at)
+        const end = new Date(pa.ends_at)
+        if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+          return null
+        }
+        return {
+          id: `personal:${pa.id}`,
+          seriesId: `personal:${pa.id}`,
+          occurrenceId: `personal:${pa.id}`,
+          dayIndex: localWeekdayIndex(start),
+          date: localDateKey(start),
+          title: pa.title,
+          subtitle: pa.description ?? undefined,
+          startTime: localHhMm(start),
+          endTime: localHhMm(end),
+          status: 'belegt' as ModuleStatus,
+          eventType: 'personal' as const,
+        }
+      })
+      .filter((e): e is WeeklyScheduleEvent => e !== null)
+
+    return [...weeklyScheduleEvents.value, ...importedEvents, ...appointmentScheduleEvents.value, ...personalEvents]
   })
 
   function applyHiddenSeries(rows: HiddenSeriesRow[]) {
@@ -311,6 +337,7 @@ export function createAppControllerState() {
     modules.value = []
     weeklyScheduleEvents.value = []
     acceptedAppointments.value = []
+    personalAppointments.value = []
     selectedModule.value = null
     loading.value = false
     error.value = null
@@ -333,6 +360,7 @@ export function createAppControllerState() {
 
   return {
     acceptedAppointments,
+    personalAppointments,
     activePlannerView,
     allCategories,
     allHandbooks,

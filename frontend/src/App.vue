@@ -12,7 +12,26 @@ import { useAppController } from './composables/useAppController'
 import { useNotifications } from './composables/useNotifications'
 import { useTeams } from './composables/useTeams'
 
-const { magicLinkRedirectTo, allCategories, activePlannerView, authEmail, authError, authFirstName, authInfo, authLastName, authLoading, authSending, canEditModuleStatuses, categoryError, currentUser, currentUserEmail, userProfile, displayedWeeklyScheduleEvents, error, hiddenOccurrenceItems, hiddenPageEntries, hiddenPageError, hiddenPageLoading, hiddenSeriesItems, lastHiddenSeries, lastHiddenOccurrence, loadImportedEvents, loading, lsfImportModule, modules, moduleStatusError, profileError, profileInfo, profileSaving, savedSpo, savedStudyProgram, savingCategoryModuleId, savingModuleId, scheduleVisibilityError, scheduleVisibilityInfo, selectedModule, selectedSpoId, selectedStudyProgramId, selectionDirty, showHiddenEvents, spoItems, studyProgramItems, weekStartDate, getSpoLabel, getStudyProgramLabel, hideScheduleOccurrence, hideScheduleSeries, saveModuleCategories, saveModuleStatus, saveStudyProfileSelection, sendMagicLink, showAllScheduleOccurrences, showAllScheduleSeries, showScheduleOccurrence, showScheduleSeries, signOut, undoHideScheduleOccurrence, undoHideScheduleSeries } = useAppController()
+const { magicLinkRedirectTo, allCategories, activePlannerView, authEmail, authError, authFirstName, authInfo, authLastName, authLoading, authSending, canEditModuleStatuses, categoryError, currentUser, currentUserEmail, userProfile, displayedWeeklyScheduleEvents, error, hiddenOccurrenceItems, hiddenPageEntries, hiddenPageError, hiddenPageLoading, hiddenSeriesItems, lastHiddenSeries, lastHiddenOccurrence, loadImportedEvents, loading, lsfImportModule, modules, moduleStatusError, profileError, profileInfo, profileSaving, savedSpo, savedStudyProgram, savingCategoryModuleId, savingModuleId, scheduleVisibilityError, scheduleVisibilityInfo, selectedModule, selectedSpoId, selectedStudyProgramId, selectionDirty, showHiddenEvents, spoItems, studyProgramItems, weekStartDate, getSpoLabel, getStudyProgramLabel, hideScheduleOccurrence, hideScheduleSeries, saveModuleCategories, saveModuleStatus, saveStudyProfileSelection, sendMagicLink, showAllScheduleOccurrences, showAllScheduleSeries, showScheduleOccurrence, showScheduleSeries, signOut, undoHideScheduleOccurrence, undoHideScheduleSeries, loadPersonalAppointments, createPersonalAppointment } = useAppController()
+
+const savingPersonalAppointment = ref(false)
+const personalAppointmentError = ref<string | null>(null)
+
+async function onCreatePersonalAppointment(input: { title: string; description: string | null; startsAt: string; endsAt: string }) {
+  savingPersonalAppointment.value = true
+  personalAppointmentError.value = null
+  const ok = await createPersonalAppointment(input, weekStartDate.value, (msg) => {
+    personalAppointmentError.value = msg
+  })
+  savingPersonalAppointment.value = false
+  if (ok) {
+    personalAppointmentError.value = null
+  }
+}
+
+watch(weekStartDate, (date) => {
+  void loadPersonalAppointments(date)
+})
 
 // Eine gemeinsame "Rückgängig"-Aktion für das Erfolgs-Banner: es ist immer
 // höchstens eine Undo-Quelle (Reihe oder Einzeltermin) gesetzt.
@@ -427,6 +446,8 @@ async function onSidebarNavigate(target: SidebarSection) {
                   :visible-weekly-schedule-events="displayedWeeklyScheduleEvents"
                   :show-hidden-events="showHiddenEvents"
                   :week-start-date="weekStartDate"
+                  :saving-personal-appointment="savingPersonalAppointment"
+                  :personal-appointment-error="personalAppointmentError"
                   @update:active-planner-view="activePlannerView = $event"
                   @hide-occurrence="hideScheduleOccurrence($event)"
                   @hide-series="hideScheduleSeries($event.seriesId, $event.title)"
@@ -438,6 +459,8 @@ async function onSidebarNavigate(target: SidebarSection) {
                   @navigate-to-hidden-page="navigateToHiddenPage"
                   @undo-hide="undoLastHide"
                   @select-module="selectedModule = $event"
+                  @create-personal-appointment="onCreatePersonalAppointment($event)"
+                  @clear-personal-appointment-error="personalAppointmentError = null"
                 />
                 </section>
 

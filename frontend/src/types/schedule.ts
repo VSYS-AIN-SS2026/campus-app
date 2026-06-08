@@ -20,6 +20,7 @@ export interface WeekEvent {
   endTime: string
   status: WeekEventStatus
   isHidden?: boolean
+  eventType?: 'personal'
 }
 
 export interface NormalizedWeekEvent extends WeekEvent {

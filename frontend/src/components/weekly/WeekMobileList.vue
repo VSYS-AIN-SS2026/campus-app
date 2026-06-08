@@ -411,7 +411,7 @@ onUnmounted(() => {
             v-for="event in selectedEvents"
             :key="`mobile-evt-${event.id}`"
             class="mobile-event"
-            :class="[`event-${event.status}`, { 'event-hidden': event.isHidden }]"
+            :class="[`event-${event.status}`, { 'event-hidden': event.isHidden, 'event-block--personal': event.eventType === 'personal' }]"
             :style="{ ...props.eventStyle(event.start, event.end), position: 'absolute', left: '0.25rem', right: '0.25rem' }"
           >
             <strong class="event-title" :class="{ 'event-title-truncate': isSingleWordTitle(event.title) }">
@@ -504,6 +504,7 @@ onUnmounted(() => {
 .mobile-event-action-occurrence { right: 1.875rem; }
 .mobile-event-action-icon { display: block; width: 0.875rem; height: 0.875rem; }
 .mobile-event-action:hover { border-color: var(--color-primary); }
+.event-block--personal { background: color-mix(in srgb, var(--color-personal, #7c3aed) 14%, transparent) !important; border-left: 3px solid var(--color-personal, #7c3aed) !important; border-color: color-mix(in srgb, var(--color-personal, #7c3aed) 40%, transparent) !important; }
 @media (max-width: 45em) {
   .mobile-days { display: grid; grid-template-columns: 1fr; gap: 0.625rem; }
 }

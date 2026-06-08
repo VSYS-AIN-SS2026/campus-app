@@ -8,8 +8,10 @@ import type {
   UserProfile,
 } from '../../types'
 import type { UserEventRow } from '../../types/schedule'
+import type { PersonalAppointment } from '../../types/personalAppointments'
 import type { AppControllerState } from './state'
 import type { AcceptedAppointmentRow, HiddenOccurrenceRow, HiddenSeriesRow } from './shared'
+import { localDateKey } from '../../utils/datetime'
 
 export function createProfileController(
   state: AppControllerState,
@@ -127,6 +129,14 @@ export function createProfileController(
     const { data: appointmentData } = await supabase.rpc('get_my_accepted_appointments')
     if (appointmentData) {
       state.acceptedAppointments.value = appointmentData as AcceptedAppointmentRow[]
+    }
+
+    // Persönliche Termine für die aktuelle Woche laden.
+    const { data: personalData } = await supabase.rpc('get_my_personal_appointments', {
+      p_week_start: localDateKey(state.weekStartDate.value),
+    })
+    if (personalData) {
+      state.personalAppointments.value = personalData as PersonalAppointment[]
     }
 
     state.loadedUserId.value = state.currentUser.value.id
