@@ -173,6 +173,7 @@ export function useOrganisations() {
 
       info.value = 'Du bist der Organisation beigetreten.'
       await fetchOrganisations()
+      await fetchOrganisationEvents()
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Beitritt fehlgeschlagen.'
     } finally {
@@ -191,6 +192,23 @@ export function useOrganisations() {
     try {
       const userId = await getCurrentUserId()
 
+      // Gespeicherte Events dieser Org aus der Wochenansicht entfernen
+      const orgEventIds = events.value
+        .filter(e => e.organisation_id === organisationId)
+        .map(e => e.id)
+
+      if (orgEventIds.length > 0) {
+        await client
+          .from('saved_organisation_events')
+          .delete()
+          .in('event_id', orgEventIds)
+          .eq('user_id', userId)
+
+        const next = new Set(savedEventIds.value)
+        for (const id of orgEventIds) next.delete(id)
+        savedEventIds.value = next
+      }
+
       const { error: deleteError } = await client
         .from('organisation_members')
         .delete()
@@ -201,6 +219,8 @@ export function useOrganisations() {
 
       info.value = 'Du hast die Organisation verlassen.'
       await fetchOrganisations()
+      await fetchOrganisationEvents()
+      await loadSavedOrgEvents()
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Organisation konnte nicht verlassen werden.'
     } finally {
