@@ -2,6 +2,7 @@ export type Organisation = {
   id: string
   name: string
   description: string | null
+  color: string | null
   created_by: string
   created_at: string
 }
@@ -33,6 +34,7 @@ export type OrganisationWithState = Organisation & {
 export type NewOrganisationInput = {
   name: string
   description?: string
+  color?: string
 }
 
 export type NewOrganisationEventInput = {

@@ -70,6 +70,21 @@ function normalizeIndex(index: number) {
   return Math.min(Math.max(index, 0), props.days.length - 1)
 }
 
+function hexToRgba(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
+function orgEventStyle(event: NormalizedWeekEvent): Record<string, string> {
+  if (!event.color) return {}
+  return {
+    backgroundColor: hexToRgba(event.color, 0.18),
+    borderColor: hexToRgba(event.color, 0.55),
+  }
+}
+
 function scrollActiveTabIntoView() {
   const tabElement = dayTabRefs.value[activeDayIndex.value]
 
@@ -412,13 +427,15 @@ onUnmounted(() => {
             :key="`mobile-evt-${event.id}`"
             class="mobile-event"
             :class="[`event-${event.status}`, { 'event-hidden': event.isHidden }]"
-            :style="{ ...props.eventStyle(event.start, event.end), position: 'absolute', left: '0.25rem', right: '0.25rem' }"
+            :style="{ ...props.eventStyle(event.start, event.end), ...orgEventStyle(event), position: 'absolute', left: '0.25rem', right: '0.25rem' }"
           >
             <strong class="event-title" :class="{ 'event-title-truncate': isSingleWordTitle(event.title) }">
               {{ event.title }}
             </strong>
             <span class="mobile-event-range">{{ event.startTime }}–{{ event.endTime }}</span>
             <span v-if="event.subtitle" class="event-subtitle">{{ event.subtitle }}</span>
+            <span v-if="event.location" class="event-location">{{ event.location }}</span>
+            <span v-if="event.description" class="event-description">{{ event.description }}</span>
             <span v-if="event.isHidden" class="event-hidden-label">Ausgeblendet</span>
             <!-- Reihe ausblenden: gestapelte Zeilen = ganze Terminreihe. -->
             <button
@@ -499,6 +516,8 @@ onUnmounted(() => {
 .event-title { font-size: 0.75rem; line-height: 1.25; color: var(--color-text); white-space: normal; overflow-wrap: break-word; word-break: normal; max-width: 100%; }
 .event-title-truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .event-subtitle { font-size: 0.68rem; color: var(--color-text-muted); line-height: 1.25; }
+.event-location { font-size: 0.65rem; color: var(--color-text-muted); line-height: 1.2; font-style: italic; }
+.event-description { font-size: 0.65rem; color: var(--color-text-muted); line-height: 1.2; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .mobile-event-action { position: absolute; top: 0.25rem; width: 1.375rem; height: 1.375rem; border: 0.0625rem solid var(--color-border); background: var(--color-surface); color: var(--color-text); border-radius: 999rem; font: inherit; font-size: 0.92rem; font-weight: 700; line-height: 1; padding: 0; display: inline-grid; place-items: center; }
 .mobile-event-action-series { right: 0.25rem; }
 .mobile-event-action-occurrence { right: 1.875rem; }

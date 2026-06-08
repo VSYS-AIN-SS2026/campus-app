@@ -24,6 +24,7 @@ import {
 } from './shared'
 import { localDateKey, localHhMm, localWeekdayIndex } from '../../utils/datetime'
 import type { ModuleStatus } from '../../types'
+import { savedOrgEventsData, clearSavedOrgEvents } from '../savedOrgEventsStore'
 
 export function createAppControllerState() {
   const studyPrograms = ref<StudyProgram[]>([])
@@ -127,6 +128,33 @@ export function createAppControllerState() {
       .filter((event): event is WeeklyScheduleEvent => event !== null)
   )
 
+  // Gespeicherte Organisations-Events als datumsgebundene Events für die Wochenansicht.
+  const organisationScheduleEvents = computed<WeeklyScheduleEvent[]>(() =>
+    savedOrgEventsData.value
+      .map((row): WeeklyScheduleEvent | null => {
+        const start = new Date(row.starts_at)
+        const end = new Date(row.ends_at)
+        if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+          return null
+        }
+        return {
+          id: `org-event:${row.event_id}`,
+          seriesId: '',
+          dayIndex: localWeekdayIndex(start),
+          date: localDateKey(start),
+          title: row.title,
+          subtitle: row.organisation_name,
+          location: row.location ?? undefined,
+          description: row.description ?? undefined,
+          color: row.organisation_color ?? undefined,
+          startTime: localHhMm(start),
+          endTime: localHhMm(end),
+          status: 'belegt' as ModuleStatus,
+        }
+      })
+      .filter((event): event is WeeklyScheduleEvent => event !== null)
+  )
+
   const allScheduleEvents = computed<WeeklyScheduleEvent[]>(() => {
     const importedEvents: WeeklyScheduleEvent[] = userEvents.value.map(ue => ({
       id: ue.id,
@@ -139,7 +167,7 @@ export function createAppControllerState() {
       endTime: ue.end_time.slice(0, 5),
       status: ue.status as ModuleStatus,
     }))
-    return [...weeklyScheduleEvents.value, ...importedEvents, ...appointmentScheduleEvents.value]
+    return [...weeklyScheduleEvents.value, ...importedEvents, ...appointmentScheduleEvents.value, ...organisationScheduleEvents.value]
   })
 
   function applyHiddenSeries(rows: HiddenSeriesRow[]) {
@@ -311,6 +339,7 @@ export function createAppControllerState() {
     modules.value = []
     weeklyScheduleEvents.value = []
     acceptedAppointments.value = []
+    clearSavedOrgEvents()
     selectedModule.value = null
     loading.value = false
     error.value = null

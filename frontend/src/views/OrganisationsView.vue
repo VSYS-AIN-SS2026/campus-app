@@ -18,12 +18,14 @@ const {
   joinOrganisation,
   leaveOrganisation,
   createOrganisationEvent,
+  deleteOrganisationEvent,
   saveEvent,
   unsaveEvent,
 } = useOrganisations()
 
 const organisationName = ref('')
 const organisationDescription = ref('')
+const organisationColor = ref('#6366f1')
 const showOrganisationForm = ref(false)
 const showEventForm = ref(false)
 
@@ -56,6 +58,10 @@ function getOrganisationName(organisationId: string) {
   return organisationsWithState.value.find(item => item.id === organisationId)?.name ?? 'Organisation'
 }
 
+function isEventOwner(organisationId: string) {
+  return organisationsWithState.value.some(o => o.id === organisationId && o.isOwner)
+}
+
 function formatDateTime(value: string) {
   return new Intl.DateTimeFormat('de-DE', {
     day: '2-digit',
@@ -70,11 +76,13 @@ async function submitOrganisation() {
   await createOrganisation({
     name: organisationName.value,
     description: organisationDescription.value,
+    color: organisationColor.value,
   })
 
   if (!error.value) {
     organisationName.value = ''
     organisationDescription.value = ''
+    organisationColor.value = '#6366f1'
     showOrganisationForm.value = false
   }
 }
@@ -166,6 +174,18 @@ onMounted(async () => {
               rows="3"
               placeholder="Kurzbeschreibung der Organisation"
             />
+          </label>
+
+          <label class="color-label">
+            Farbe in der Wochenansicht
+            <div class="color-picker-row">
+              <input
+                v-model="organisationColor"
+                type="color"
+                class="color-input"
+              />
+              <span class="color-preview" :style="{ background: organisationColor }">{{ organisationColor }}</span>
+            </div>
           </label>
 
           <button type="submit" class="primary-button" :disabled="saving">
@@ -320,7 +340,7 @@ onMounted(async () => {
             :key="event.id"
             class="event-card"
           >
-            <div>
+            <div class="event-card-info">
               <h3>{{ event.title }}</h3>
               <p class="muted">{{ getOrganisationName(event.organisation_id) }}</p>
               <p>
@@ -330,25 +350,37 @@ onMounted(async () => {
               <p v-if="event.description">{{ event.description }}</p>
             </div>
 
-            <button
-              v-if="!savedEventIds.has(event.id)"
-              type="button"
-              class="secondary-button"
-              :disabled="saving"
-              @click="saveEvent(event.id)"
-            >
-              Speichern
-            </button>
+            <div class="event-card-actions">
+              <button
+                v-if="!savedEventIds.has(event.id)"
+                type="button"
+                class="secondary-button"
+                :disabled="saving"
+                @click="saveEvent(event.id)"
+              >
+                Zur Wochenansicht hinzufügen
+              </button>
 
-            <button
-              v-else
-              type="button"
-              class="secondary-button"
-              :disabled="saving"
-              @click="unsaveEvent(event.id)"
-            >
-              Entfernen
-            </button>
+              <button
+                v-else
+                type="button"
+                class="secondary-button"
+                :disabled="saving"
+                @click="unsaveEvent(event.id)"
+              >
+                Aus Wochenansicht entfernen
+              </button>
+
+              <button
+                v-if="isEventOwner(event.organisation_id)"
+                type="button"
+                class="danger-button"
+                :disabled="saving"
+                @click="deleteOrganisationEvent(event.id)"
+              >
+                Löschen
+              </button>
+            </div>
           </article>
         </div>
       </section>
@@ -537,6 +569,69 @@ textarea {
   margin: 0;
 }
 
+.event-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.event-card-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-start;
+  flex-shrink: 0;
+}
+
+.danger-button {
+  border: 0.0625rem solid var(--color-error-border, #fca5a5);
+  border-radius: 999px;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  padding: 0.625rem 0.9rem;
+  background: var(--color-error-bg, #fef2f2);
+  color: var(--color-error, #dc2626);
+}
+
+.danger-button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.color-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.color-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.color-input {
+  width: 2.75rem;
+  height: 2.25rem;
+  padding: 0.125rem;
+  border: 0.0625rem solid var(--color-border);
+  border-radius: 0.5rem;
+  background: var(--color-surface-raised);
+  cursor: pointer;
+}
+
+.color-preview {
+  border-radius: 999px;
+  padding: 0.2rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.35);
+  letter-spacing: 0.04em;
+}
+
 @media (max-width: 45em) {
   .form-grid,
   .organisation-card,
@@ -547,6 +642,11 @@ textarea {
   .organisation-card,
   .event-card {
     flex-direction: column;
+  }
+
+  .event-card-actions {
+    flex-direction: row;
+    flex-wrap: wrap;
   }
 }
 </style>
