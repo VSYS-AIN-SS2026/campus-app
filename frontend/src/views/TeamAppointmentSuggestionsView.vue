@@ -43,12 +43,13 @@ const members = ref<CombinedWeekMember[]>([])
 const memberSlots = ref<MemberScheduleSlot[]>([])
 const scheduleLoading = ref(false)
 
-async function loadTeamSchedule() {
+async function loadTeamSchedule(showLoader = false) {
   if (!supabase) return
-  scheduleLoading.value = true
+  if (showLoader) scheduleLoading.value = true
+  const monday = mondayOf(weekStart.value)
   const { data, error: err } = await supabase.rpc('get_team_week_schedule', {
     p_team_id: teamId,
-    p_week_start: localDateKey(mondayOf(weekStart.value)),
+    p_week_start: localDateKey(monday),
     p_time_zone: BROWSER_TIME_ZONE,
   })
   scheduleLoading.value = false
@@ -453,7 +454,7 @@ async function onCreate(payload: NewAppointmentInput) {
 onMounted(async () => {
   const { data: { user } } = await supabase!.auth.getUser()
   currentUserId.value = user?.id ?? null
-  void loadTeamSchedule()
+  void loadTeamSchedule(true)
   void loadAppointments()
   void loadMyInvitations()
   setupInvitationsRealtime()
