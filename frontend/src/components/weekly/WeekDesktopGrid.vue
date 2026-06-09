@@ -42,6 +42,21 @@ function requestHideOccurrence(event: NormalizedWeekEvent) {
   emit('hide-occurrence', event.occurrenceId)
 }
 
+function hexToRgba(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
+function orgEventStyle(event: NormalizedWeekEvent): Record<string, string> {
+  if (!event.color) return {}
+  return {
+    backgroundColor: hexToRgba(event.color, 0.18),
+    borderColor: hexToRgba(event.color, 0.55),
+  }
+}
+
 const confirmDeleteId = ref<string | null>(null)
 
 function requestDeletePersonal(event: NormalizedWeekEvent) {

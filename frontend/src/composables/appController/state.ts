@@ -234,7 +234,7 @@ export function createAppControllerState() {
       return events
     })
 
-    return [...weeklyScheduleEvents.value, ...importedEvents, ...appointmentScheduleEvents.value, ...personalEvents]
+    return [...weeklyScheduleEvents.value, ...importedEvents, ...appointmentScheduleEvents.value, ...organisationScheduleEvents.value, ...personalEvents]
   })
 
   function applyHiddenSeries(rows: HiddenSeriesRow[]) {
