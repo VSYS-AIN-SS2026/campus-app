@@ -80,13 +80,6 @@ jobs:
             VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}
             VITE_MAGIC_LINK_REDIRECT_URL=${{ vars.VITE_MAGIC_LINK_REDIRECT_URL }}
 
-      - name: Debug SSH secrets present
-        run: |
-          echo "host set: ${{ secrets.DROPLET_HOST != '' }}"
-          echo "user set: ${{ secrets.DROPLET_USER != '' }}"
-          echo "key set:  ${{ secrets.DROPLET_SSH_KEY != '' }}"
-          echo "port set: ${{ secrets.DROPLET_SSH_PORT != '' }}"
-
       - name: Deploy to droplet (run restart.sh)
         uses: appleboy/ssh-action@v1
         with:
@@ -94,4 +87,4 @@ jobs:
           username: ${{ secrets.DROPLET_USER }}
           key: ${{ secrets.DROPLET_SSH_KEY }}
           port: ${{ secrets.DROPLET_SSH_PORT || 22 }}
-          script: bash /campus-app/restart.sh
+          script: cd /campus-app && bash restart.sh
