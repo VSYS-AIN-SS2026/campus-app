@@ -15,6 +15,7 @@ const {
   fetchOrganisationEvents,
   fetchSavedEvents,
   createOrganisation,
+  deleteOrganisation,
   joinOrganisation,
   leaveOrganisation,
   createOrganisationEvent,
@@ -28,6 +29,32 @@ const organisationDescription = ref('')
 const organisationColor = ref('#6366f1')
 const showOrganisationForm = ref(false)
 const showEventForm = ref(false)
+const confirmDeleteOrgId = ref<string | null>(null)
+
+const confirmDeleteOrgName = computed(() => {
+  if (!confirmDeleteOrgId.value) return ''
+  return organisationsWithState.value.find(o => o.id === confirmDeleteOrgId.value)?.name ?? ''
+})
+
+function startDeleteOrg(orgId: string) {
+  confirmDeleteOrgId.value = orgId
+}
+
+function cancelDeleteOrg() {
+  confirmDeleteOrgId.value = null
+}
+
+async function executeDeleteOrg() {
+  if (!confirmDeleteOrgId.value) return
+  const deletedId = confirmDeleteOrgId.value
+  await deleteOrganisation(deletedId)
+  if (!error.value) {
+    confirmDeleteOrgId.value = null
+    if (selectedOrganisationId.value === deletedId) {
+      selectedOrganisationId.value = ownedOrganisations.value[0]?.id ?? null
+    }
+  }
+}
 
 const selectedOrganisationId = ref<string | null>(null)
 const eventTitle = ref('')
@@ -35,6 +62,14 @@ const eventDescription = ref('')
 const eventLocation = ref('')
 const eventStartsAt = ref('')
 const eventEndsAt = ref('')
+
+const minEventDateTime = computed(() => {
+  // Reaktiviert, wenn das Formular geöffnet wird, damit ein frischer Wert erscheint.
+  if (!showEventForm.value) return ''
+  const now = new Date()
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`
+})
 
 const ownedOrganisations = computed(() => {
   return organisationsWithState.value.filter(organisation => organisation.isOwner)
@@ -236,6 +271,16 @@ onMounted(async () => {
               >
                 Verlassen
               </button>
+
+              <button
+                v-if="organisation.isOwner"
+                type="button"
+                class="danger-button"
+                :disabled="saving"
+                @click="startDeleteOrg(organisation.id)"
+              >
+                Löschen
+              </button>
             </div>
           </article>
         </div>
@@ -308,12 +353,12 @@ onMounted(async () => {
           <div class="form-grid">
             <label>
               Start
-              <input v-model="eventStartsAt" type="datetime-local" required />
+              <input v-model="eventStartsAt" type="datetime-local" required :min="minEventDateTime" />
             </label>
 
             <label>
               Ende
-              <input v-model="eventEndsAt" type="datetime-local" required />
+              <input v-model="eventEndsAt" type="datetime-local" required :min="eventStartsAt || minEventDateTime" />
             </label>
           </div>
 
@@ -385,6 +430,40 @@ onMounted(async () => {
         </div>
       </section>
     </template>
+
+    <Teleport to="body">
+      <div
+        v-if="confirmDeleteOrgId"
+        class="confirm-overlay"
+        @click.self="cancelDeleteOrg"
+      >
+        <div class="confirm-dialog" role="dialog" aria-modal="true">
+          <h3>Organisation löschen?</h3>
+          <p>
+            Möchtest du <strong>{{ confirmDeleteOrgName }}</strong> wirklich löschen?
+            Alle Events der Organisation werden ebenfalls gelöscht.
+            Diese Aktion kann nicht rückgängig gemacht werden.
+          </p>
+          <div class="confirm-actions">
+            <button
+              type="button"
+              class="secondary-button"
+              @click="cancelDeleteOrg"
+            >
+              Abbrechen
+            </button>
+            <button
+              type="button"
+              class="danger-button"
+              :disabled="saving"
+              @click="executeDeleteOrg"
+            >
+              Endgültig löschen
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </section>
 </template>
 
@@ -648,5 +727,48 @@ textarea {
     flex-direction: row;
     flex-wrap: wrap;
   }
+}
+
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.confirm-dialog {
+  background: var(--color-surface);
+  border: 0.0625rem solid var(--color-border);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  max-width: 28rem;
+  width: 90%;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  box-shadow: 0 0.5rem 2rem rgba(0, 0, 0, 0.2);
+}
+
+.confirm-dialog h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.confirm-dialog p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  line-height: 1.6;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
 }
 </style>

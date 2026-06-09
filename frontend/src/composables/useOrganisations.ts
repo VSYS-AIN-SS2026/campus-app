@@ -270,6 +270,32 @@ export function useOrganisations() {
     }
   }
 
+  async function deleteOrganisation(organisationId: string) {
+    const client = getClient()
+    if (!client) return
+
+    saving.value = true
+    error.value = null
+    info.value = null
+
+    try {
+      const { error: rpcError } = await client.rpc('delete_organisation', {
+        p_organisation_id: organisationId,
+      })
+
+      if (rpcError) throw rpcError
+
+      info.value = 'Organisation wurde gelöscht.'
+      await fetchOrganisations()
+      await fetchOrganisationEvents()
+      await loadSavedOrgEvents()
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Organisation konnte nicht gelöscht werden.'
+    } finally {
+      saving.value = false
+    }
+  }
+
   async function createOrganisationEvent(input: NewOrganisationEventInput) {
     const client = getClient()
     if (!client) return
@@ -283,6 +309,14 @@ export function useOrganisations() {
 
       if (input.title.trim().length < 2) {
         throw new Error('Der Event-Titel muss mindestens 2 Zeichen lang sein.')
+      }
+
+      if (new Date(input.startsAt) <= new Date()) {
+        throw new Error('Das Start-Datum darf nicht in der Vergangenheit liegen.')
+      }
+
+      if (new Date(input.endsAt) <= new Date(input.startsAt)) {
+        throw new Error('Das End-Datum muss nach dem Start-Datum liegen.')
       }
 
       const { error: insertError } = await client
@@ -423,6 +457,7 @@ export function useOrganisations() {
     fetchOrganisationEvents,
     fetchSavedEvents,
     createOrganisation,
+    deleteOrganisation,
     joinOrganisation,
     leaveOrganisation,
     createOrganisationEvent,
