@@ -137,8 +137,12 @@ const { hourSlots, totalMinutes, formatTimeLabel } = useWeeklySchedule(
 // (totalMinutes / 60) * 3.5 rem, so 1 minute = 3.5/60 rem.
 const REM_PER_MIN = 3.5 / 60
 function eventStyleRem(start: number, end: number) {
-  const startOffset = Math.max((start - props.startHour * 60) * REM_PER_MIN, 0)
-  const height = Math.max((end - start) * REM_PER_MIN, 1.5)
+  const gridStart = props.startHour * 60
+  const gridEnd = props.endHour * 60
+  const effectiveStart = Math.max(start, gridStart)
+  const effectiveEnd = Math.min(end, gridEnd)
+  const startOffset = (effectiveStart - gridStart) * REM_PER_MIN
+  const height = Math.max((effectiveEnd - effectiveStart) * REM_PER_MIN, 1.5)
   return { top: `${startOffset}rem`, height: `${height}rem` }
 }
 

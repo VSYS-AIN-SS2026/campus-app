@@ -142,28 +142,68 @@ export function createAppControllerState() {
       status: ue.status as ModuleStatus,
     }))
 
-    const personalEvents: WeeklyScheduleEvent[] = personalAppointments.value
-      .map((pa): WeeklyScheduleEvent | null => {
-        const start = new Date(pa.starts_at)
-        const end = new Date(pa.ends_at)
-        if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
-          return null
-        }
-        return {
+    const personalEvents: WeeklyScheduleEvent[] = personalAppointments.value.flatMap((pa): WeeklyScheduleEvent[] => {
+      const start = new Date(pa.starts_at)
+      const end = new Date(pa.ends_at)
+      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return []
+
+      const startDateKey = localDateKey(start)
+      const endDateKey = localDateKey(end)
+
+      if (startDateKey === endDateKey) {
+        return [{
           id: `personal:${pa.id}`,
           seriesId: `personal:${pa.id}`,
           occurrenceId: `personal:${pa.id}`,
           dayIndex: localWeekdayIndex(start),
-          date: localDateKey(start),
+          date: startDateKey,
           title: pa.title,
           subtitle: pa.description ?? undefined,
           startTime: localHhMm(start),
           endTime: localHhMm(end),
           status: 'belegt' as ModuleStatus,
           eventType: 'personal' as const,
+        }]
+      }
+
+      // Multi-day appointment: split into one segment per calendar day.
+      // First day runs from startTime to 24:00; middle days from 00:00 to 24:00;
+      // last day from 00:00 to endTime. This also fixes overnight appointments
+      // (<24h but crossing midnight) that would otherwise be filtered out by the
+      // end <= start time-of-day guard in useWeeklySchedule.
+      const events: WeeklyScheduleEvent[] = []
+      const cursor = new Date(start.getFullYear(), start.getMonth(), start.getDate())
+
+      while (localDateKey(cursor) <= endDateKey) {
+        const dateKey = localDateKey(cursor)
+        const isFirst = dateKey === startDateKey
+        const isLast = dateKey === endDateKey
+
+        const segStartTime = isFirst ? localHhMm(start) : '00:00'
+        const segEndTime = isLast ? localHhMm(end) : '24:00'
+
+        // Skip last-day segment that ends exactly at midnight (zero duration).
+        if (!(isLast && segEndTime === '00:00')) {
+          events.push({
+            id: isFirst ? `personal:${pa.id}` : `personal:${pa.id}:${dateKey}`,
+            seriesId: `personal:${pa.id}`,
+            occurrenceId: `personal:${pa.id}`,
+            dayIndex: localWeekdayIndex(cursor),
+            date: dateKey,
+            title: pa.title,
+            subtitle: pa.description ?? undefined,
+            startTime: segStartTime,
+            endTime: segEndTime,
+            status: 'belegt' as ModuleStatus,
+            eventType: 'personal' as const,
+          })
         }
-      })
-      .filter((e): e is WeeklyScheduleEvent => e !== null)
+
+        cursor.setDate(cursor.getDate() + 1)
+      }
+
+      return events
+    })
 
     return [...weeklyScheduleEvents.value, ...importedEvents, ...appointmentScheduleEvents.value, ...personalEvents]
   })

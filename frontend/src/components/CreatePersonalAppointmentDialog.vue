@@ -35,13 +35,19 @@ watch(() => props.open, (isOpen) => {
 })
 
 const titleError = computed(() => (title.value.trim() === '' ? 'Titel ist erforderlich.' : null))
+const futureError = computed(() => {
+  if (!startInput.value) return null
+  return new Date(startInput.value) <= new Date()
+    ? 'Der Start muss in der Zukunft liegen.'
+    : null
+})
 const timeError = computed(() =>
   startInput.value && endInput.value && endInput.value <= startInput.value
     ? 'Das Ende muss nach dem Start liegen.'
     : null,
 )
 const isValid = computed(
-  () => !titleError.value && !timeError.value && !!startInput.value && !!endInput.value,
+  () => !titleError.value && !futureError.value && !timeError.value && !!startInput.value && !!endInput.value,
 )
 
 function onSubmit() {
@@ -90,6 +96,7 @@ function onSubmit() {
         </div>
 
         <p v-if="titleError" class="dialog__error">{{ titleError }}</p>
+        <p v-if="futureError" class="dialog__error">{{ futureError }}</p>
         <p v-if="timeError" class="dialog__error">{{ timeError }}</p>
         <p v-if="error" class="dialog__error" role="alert">{{ error }}</p>
 
