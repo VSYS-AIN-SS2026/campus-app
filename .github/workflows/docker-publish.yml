@@ -79,6 +79,8 @@ jobs:
             VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}
             VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}
             VITE_MAGIC_LINK_REDIRECT_URL=${{ vars.VITE_MAGIC_LINK_REDIRECT_URL }}
+            VITE_STATUS_PAGE_SLUG=${{ vars.VITE_STATUS_PAGE_SLUG }}
+            VITE_STATUS_PAGE_URL=${{ vars.VITE_STATUS_PAGE_URL }}
 
       - name: Deploy to droplet (run restart.sh)
         uses: appleboy/ssh-action@v1

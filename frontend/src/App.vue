@@ -8,6 +8,7 @@ import ModuleDrawer from './components/ModuleDrawer.vue'
 import PlannerViewShell from './components/PlannerViewShell.vue'
 import ProfileSelectionPanel from './components/ProfileSelectionPanel.vue'
 import Sidebar from './components/Sidebar.vue'
+import StatusBanner from './components/StatusBanner.vue'
 import { useAppController } from './composables/useAppController'
 import { useNotifications } from './composables/useNotifications'
 import { useTeams } from './composables/useTeams'
@@ -233,6 +234,7 @@ async function onSidebarNavigate(target: SidebarSection) {
 </script>
 <template>
   <div class="app-shell">
+    <StatusBanner />
     <header class="app-header">
       <div class="header-inner">
         <div class="brand">

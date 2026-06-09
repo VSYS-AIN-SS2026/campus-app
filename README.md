@@ -187,9 +187,19 @@ campus-app/
 ├── supabase/
 │   ├── config.toml        # Supabase Konfiguration
 │   └── migrations/        # Alle Datenbank-Änderungen (SQL)
+├── deploy/                 # Droplet-Stack (Frontend + Uptime Kuma) → deploy/README.md
 ├── package.json            # Root-Scripts für Frontend und Supabase
 └── README.md
 ```
+
+## Status & Monitoring
+
+Eine self-hosted **Uptime Kuma**-Instanz auf dem Droplet überwacht die Datenbank
+(Supabase) und den Client-Server (Frontend) und speist das In-App-Status-Banner.
+Setup, Compose-Stack und die Monitor-Konfiguration stehen in
+[`deploy/README.md`](deploy/README.md). Das Frontend fragt den Status
+same-origin über `/api/status-page/<slug>` ab und zeigt bei einer Störung ein
+Banner. Konfiguration über `VITE_STATUS_PAGE_SLUG` / `VITE_STATUS_PAGE_URL`.
 
 ## Links
 
