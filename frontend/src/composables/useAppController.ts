@@ -51,6 +51,7 @@ export function useAppController() {
     hiddenSeriesItems: state.hiddenSeriesItems,
     lastHiddenSeries: state.lastHiddenSeries,
     lastHiddenOccurrence: state.lastHiddenOccurrence,
+    lastDeletedPersonalAppointment: state.lastDeletedPersonalAppointment,
     loading: state.loading,
     lsfImportModule: state.lsfImportModule,
     modules: state.modules,
@@ -94,5 +95,6 @@ export function useAppController() {
     loadPersonalAppointments: personalAppointmentsCtrl.loadPersonalAppointments,
     createPersonalAppointment: personalAppointmentsCtrl.createPersonalAppointment,
     deletePersonalAppointment: personalAppointmentsCtrl.deletePersonalAppointment,
+    undoDeletePersonalAppointment: personalAppointmentsCtrl.undoDeletePersonalAppointment,
   }
 }

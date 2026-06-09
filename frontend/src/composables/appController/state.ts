@@ -70,6 +70,7 @@ export function createAppControllerState() {
   // "Rückgängig" analog zu den Terminreihen. Es ist immer höchstens eine der
   // beiden Undo-Quellen (Reihe oder Einzeltermin) gesetzt.
   const lastHiddenOccurrence = ref<string | null>(null)
+  const lastDeletedPersonalAppointment = ref<PersonalAppointment | null>(null)
   const userEvents = ref<UserEventRow[]>([])
   const showHiddenEvents = ref(false)
   const hiddenPageLoading = computed(() => !loadedUserId.value && loading.value)
@@ -395,6 +396,7 @@ export function createAppControllerState() {
     hiddenEventIds.value = new Set()
     lastHiddenSeries.value = null
     lastHiddenOccurrence.value = null
+    lastDeletedPersonalAppointment.value = null
     showHiddenEvents.value = false
   }
 
@@ -432,6 +434,7 @@ export function createAppControllerState() {
     hiddenSeriesTitles,
     lastHiddenSeries,
     lastHiddenOccurrence,
+    lastDeletedPersonalAppointment,
     loadedUserId,
     loading,
     lsfImportModule,

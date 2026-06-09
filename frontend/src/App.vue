@@ -12,7 +12,7 @@ import { useAppController } from './composables/useAppController'
 import { useNotifications } from './composables/useNotifications'
 import { useTeams } from './composables/useTeams'
 
-const { magicLinkRedirectTo, allCategories, activePlannerView, authEmail, authError, authFirstName, authInfo, authLastName, authLoading, authSending, canEditModuleStatuses, categoryError, currentUser, currentUserEmail, userProfile, displayedWeeklyScheduleEvents, error, hiddenOccurrenceItems, hiddenPageEntries, hiddenPageError, hiddenPageLoading, hiddenSeriesItems, lastHiddenSeries, lastHiddenOccurrence, loadImportedEvents, loading, lsfImportModule, modules, moduleStatusError, profileError, profileInfo, profileSaving, savedSpo, savedStudyProgram, savingCategoryModuleId, savingModuleId, scheduleVisibilityError, scheduleVisibilityInfo, selectedModule, selectedSpoId, selectedStudyProgramId, selectionDirty, showHiddenEvents, spoItems, studyProgramItems, weekStartDate, getSpoLabel, getStudyProgramLabel, hideScheduleOccurrence, hideScheduleSeries, saveModuleCategories, saveModuleStatus, saveStudyProfileSelection, sendMagicLink, showAllScheduleOccurrences, showAllScheduleSeries, showScheduleOccurrence, showScheduleSeries, signOut, undoHideScheduleOccurrence, undoHideScheduleSeries, loadPersonalAppointments, createPersonalAppointment } = useAppController()
+const { magicLinkRedirectTo, allCategories, activePlannerView, authEmail, authError, authFirstName, authInfo, authLastName, authLoading, authSending, canEditModuleStatuses, categoryError, currentUser, currentUserEmail, userProfile, displayedWeeklyScheduleEvents, error, hiddenOccurrenceItems, hiddenPageEntries, hiddenPageError, hiddenPageLoading, hiddenSeriesItems, lastHiddenSeries, lastHiddenOccurrence, lastDeletedPersonalAppointment, loadImportedEvents, loading, lsfImportModule, modules, moduleStatusError, profileError, profileInfo, profileSaving, savedSpo, savedStudyProgram, savingCategoryModuleId, savingModuleId, scheduleVisibilityError, scheduleVisibilityInfo, selectedModule, selectedSpoId, selectedStudyProgramId, selectionDirty, showHiddenEvents, spoItems, studyProgramItems, weekStartDate, getSpoLabel, getStudyProgramLabel, hideScheduleOccurrence, hideScheduleSeries, saveModuleCategories, saveModuleStatus, saveStudyProfileSelection, sendMagicLink, showAllScheduleOccurrences, showAllScheduleSeries, showScheduleOccurrence, showScheduleSeries, signOut, undoHideScheduleOccurrence, undoHideScheduleSeries, loadPersonalAppointments, createPersonalAppointment, deletePersonalAppointment, undoDeletePersonalAppointment } = useAppController()
 
 const savingPersonalAppointment = ref(false)
 const personalAppointmentError = ref<string | null>(null)
@@ -40,7 +40,14 @@ function undoLastHide() {
     void undoHideScheduleSeries()
   } else if (lastHiddenOccurrence.value) {
     void undoHideScheduleOccurrence()
+  } else if (lastDeletedPersonalAppointment.value) {
+    void undoDeletePersonalAppointment(weekStartDate.value)
   }
+}
+
+function onDeletePersonalAppointment(occurrenceId: string) {
+  const id = occurrenceId.replace(/^personal:/, '')
+  void deletePersonalAppointment(id, weekStartDate.value)
 }
 const { invitationCount, fetchMyInvitations, subscribeToInvitations, unsubscribeFromInvitations } = useTeams()
 const {
@@ -440,6 +447,7 @@ async function onSidebarNavigate(target: SidebarSection) {
                   :schedule-visibility-info="scheduleVisibilityInfo"
                   :last-hidden-series="lastHiddenSeries"
                   :last-hidden-occurrence="lastHiddenOccurrence"
+                  :last-deleted-personal-appointment="lastDeletedPersonalAppointment"
                   :hidden-series-items="hiddenSeriesItems"
                   :hidden-occurrence-items="hiddenOccurrenceItems"
                   :modules="modules"
@@ -461,6 +469,7 @@ async function onSidebarNavigate(target: SidebarSection) {
                   @select-module="selectedModule = $event"
                   @create-personal-appointment="onCreatePersonalAppointment($event)"
                   @clear-personal-appointment-error="personalAppointmentError = null"
+                  @delete-personal-appointment="onDeletePersonalAppointment($event)"
                 />
                 </section>
 

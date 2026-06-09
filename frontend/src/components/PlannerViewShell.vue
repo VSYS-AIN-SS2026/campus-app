@@ -17,6 +17,7 @@ const props = defineProps<{
   scheduleVisibilityInfo: string | null
   lastHiddenSeries: { seriesId: string; title: string } | null
   lastHiddenOccurrence: string | null
+  lastDeletedPersonalAppointment: { id: string; title: string } | null
   hiddenSeriesItems: Array<{ seriesId: string; title: string }>
   hiddenOccurrenceItems: Array<{ occurrenceId: string; title: string }>
   showHiddenEvents: boolean
@@ -52,6 +53,7 @@ const emit = defineEmits<{
   'select-module': [module: ModuleEntry]
   'create-personal-appointment': [payload: NewPersonalAppointmentInput]
   'clear-personal-appointment-error': []
+  'delete-personal-appointment': [occurrenceId: string]
 }>()
 </script>
 
@@ -71,7 +73,7 @@ const emit = defineEmits<{
   <div v-if="scheduleVisibilityInfo" class="success-banner success-banner-inline">
     <span>{{ scheduleVisibilityInfo }}</span>
     <button
-      v-if="lastHiddenSeries || lastHiddenOccurrence"
+      v-if="lastHiddenSeries || lastHiddenOccurrence || lastDeletedPersonalAppointment"
       type="button"
       class="inline-action-button"
       @click="emit('undo-hide')"
@@ -129,6 +131,7 @@ const emit = defineEmits<{
       @navigate-to-hidden-page="emit('navigate-to-hidden-page')"
       @create-personal-appointment="emit('create-personal-appointment', $event)"
       @clear-personal-appointment-error="emit('clear-personal-appointment-error')"
+      @delete-personal-appointment="emit('delete-personal-appointment', $event)"
     />
 
     <ModuleList v-else-if="!loading" :modules="modules" @select="emit('select-module', $event)" />

@@ -20,6 +20,7 @@ const emit = defineEmits<{
   'reach-end-edge': []
   'hide-series': [payload: { seriesId: string; title: string }]
   'hide-occurrence': [occurrenceId: string]
+  'delete-personal': [occurrenceId: string]
 }>()
 
 function requestHideSeries(event: NormalizedWeekEvent) {
@@ -39,6 +40,18 @@ function requestHideOccurrence(event: NormalizedWeekEvent) {
   }
 
   emit('hide-occurrence', event.occurrenceId)
+}
+
+const confirmDeleteId = ref<string | null>(null)
+
+function requestDeletePersonal(event: NormalizedWeekEvent) {
+  confirmDeleteId.value = event.id
+}
+
+function commitDeletePersonal(event: NormalizedWeekEvent) {
+  confirmDeleteId.value = null
+  if (!event.occurrenceId) return
+  emit('delete-personal', event.occurrenceId)
 }
 
 const gridWrapper = ref<HTMLElement | null>(null)
@@ -188,7 +201,7 @@ defineExpose({
 </script>
 
 <template>
-  <div ref="gridWrapper" class="week-grid-wrapper" @scroll="onGridScroll">
+  <div ref="gridWrapper" class="week-grid-wrapper" @scroll="onGridScroll" @click="confirmDeleteId = null">
     <aside class="time-axis">
       <div class="time-axis-spacer" aria-hidden="true" />
       <span v-for="slot in hourSlots" :key="slot" class="time-label" :style="{ height: `${hourIntervalHeightRem}rem` }">
@@ -249,9 +262,13 @@ defineExpose({
             </strong>
             <span v-if="event.subtitle" class="event-subtitle">{{ event.subtitle }}</span>
             <span v-if="event.isHidden" class="event-hidden-label">Ausgeblendet</span>
-            <!-- Reihe ausblenden: gestapelte Zeilen = ganze Terminreihe. -->
+            <!--
+              Reihe ausblenden: gestapelte Zeilen = ganze Terminreihe.
+              Für persönliche Termine deaktiviert – persönliche Termine haben keine
+              Wiederholungsreihe, der Button wäre identisch mit "Ausblenden".
+            -->
             <button
-              v-if="event.seriesId"
+              v-if="event.seriesId && event.eventType !== 'personal'"
               type="button"
               class="hide-series-btn"
               title="Ganze Reihe ausblenden"
@@ -266,7 +283,7 @@ defineExpose({
             </button>
             <!-- Einzeltermin ausblenden: durchgestrichenes Auge = nur diesen Termin verbergen. -->
             <button
-              v-if="event.occurrenceId"
+              v-if="event.occurrenceId && confirmDeleteId !== event.id"
               type="button"
               class="hide-occurrence-btn"
               title="Diesen Termin ausblenden"
@@ -279,6 +296,27 @@ defineExpose({
                 <path d="M3.2 12.8 12.8 3.2" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" />
               </svg>
             </button>
+            <!-- Termin löschen (nur für persönliche Termine) -->
+            <template v-if="event.eventType === 'personal'">
+              <button
+                v-if="confirmDeleteId !== event.id"
+                type="button"
+                class="hide-series-btn"
+                title="Termin löschen"
+                aria-label="Termin löschen"
+                @click.stop="requestDeletePersonal(event)"
+              >
+                <svg aria-hidden="true" class="hide-action-icon" viewBox="0 0 16 16" fill="none">
+                  <path d="M3 4.5h10M6 4.5V3.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 .5.5v1M4.5 4.5 5 12.5h6l.5-8" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" />
+                  <path d="M7 7v3.5M9 7v3.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" />
+                </svg>
+              </button>
+              <!-- Löschen bestätigen -->
+              <div v-else class="delete-confirm">
+                <button type="button" class="delete-confirm-btn delete-confirm-yes" title="Wirklich löschen" @click.stop="commitDeletePersonal(event)">✓</button>
+                <button type="button" class="delete-confirm-btn delete-confirm-no" title="Abbrechen" @click.stop="confirmDeleteId = null">✕</button>
+              </div>
+            </template>
           </div>
         </div>
       </article>
@@ -334,6 +372,12 @@ defineExpose({
 .hide-occurrence-btn:hover,
 .hide-occurrence-btn:focus-visible { color: var(--color-primary); border-color: var(--color-primary-light); outline: none; }
 .event-block--personal { background: color-mix(in srgb, var(--color-personal, #7c3aed) 14%, transparent) !important; border-left: 3px solid var(--color-personal, #7c3aed) !important; border-color: color-mix(in srgb, var(--color-personal, #7c3aed) 40%, transparent) !important; }
+.delete-confirm { position: absolute; top: 0.25rem; right: 0.25rem; display: flex; flex-direction: row-reverse; gap: 0.125rem; opacity: 1; }
+.delete-confirm-btn { width: 1.25rem; height: 1.25rem; border-radius: 999rem; font: inherit; font-size: 0.65rem; font-weight: 700; line-height: 1; display: inline-grid; place-items: center; padding: 0; cursor: pointer; border: 0.0625rem solid; }
+.delete-confirm-yes { background: color-mix(in srgb, #dc2626 15%, var(--color-surface)); border-color: color-mix(in srgb, #dc2626 60%, transparent); color: #dc2626; }
+.delete-confirm-yes:hover { background: #dc2626; color: #fff; }
+.delete-confirm-no { background: color-mix(in srgb, var(--color-surface) 92%, transparent); border-color: color-mix(in srgb, var(--color-border) 85%, transparent); color: var(--color-text-muted); }
+.delete-confirm-no:hover { border-color: var(--color-border); color: var(--color-text); }
 @media (max-width: 56.25em) {
   .week-grid-wrapper { grid-template-columns: clamp(2.5rem, 5vw, 3rem) minmax(0, 1fr); }
   .day-columns { --day-min-width: clamp(5.6rem, 16vw, 6.4rem); }

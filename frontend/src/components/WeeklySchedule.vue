@@ -90,6 +90,7 @@ const emit = defineEmits<{
   'navigate-to-hidden-page': []
   'create-personal-appointment': [payload: NewPersonalAppointmentInput]
   'clear-personal-appointment-error': []
+  'delete-personal-appointment': [occurrenceId: string]
 }>()
 
 const personalDialogOpen = ref(false)
@@ -369,6 +370,7 @@ onUnmounted(() => {
         @today-visibility-change="isTodayVisibleInViewport = $event"
         @hide-series="emit('hide-series', $event)"
         @hide-occurrence="emit('hide-occurrence', $event)"
+        @delete-personal="emit('delete-personal-appointment', $event)"
       />
 
       <WeekMobileList
@@ -385,6 +387,7 @@ onUnmounted(() => {
         @selected-day-label-change="onMobileSelectedDayLabelChange"
         @hide-series="emit('hide-series', $event)"
         @hide-occurrence="emit('hide-occurrence', $event)"
+        @delete-personal="emit('delete-personal-appointment', $event)"
       />
     </template>
 
