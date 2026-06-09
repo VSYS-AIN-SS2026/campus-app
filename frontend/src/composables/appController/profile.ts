@@ -8,9 +8,11 @@ import type {
   UserProfile,
 } from '../../types'
 import type { UserEventRow } from '../../types/schedule'
+import type { PersonalAppointment } from '../../types/personalAppointments'
 import type { AppControllerState } from './state'
 import type { AcceptedAppointmentRow, HiddenOccurrenceRow, HiddenSeriesRow } from './shared'
 import { loadSavedOrgEvents } from '../savedOrgEventsStore'
+import { localDateKey } from '../../utils/datetime'
 
 export function createProfileController(
   state: AppControllerState,
@@ -129,9 +131,6 @@ export function createProfileController(
     if (appointmentData) {
       state.acceptedAppointments.value = appointmentData as AcceptedAppointmentRow[]
     }
-
-    // Gespeicherte Organisations-Events laden, damit sie in der Wochenansicht erscheinen.
-    await loadSavedOrgEvents()
 
     state.loadedUserId.value = state.currentUser.value.id
   }

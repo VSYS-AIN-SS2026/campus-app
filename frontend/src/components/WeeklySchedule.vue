@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import CreatePersonalAppointmentDialog from './CreatePersonalAppointmentDialog.vue'
 import HiddenSeriesPopover from './weekly/HiddenSeriesPopover.vue'
 import WeekDesktopGrid from './weekly/WeekDesktopGrid.vue'
 import WeekMobileList from './weekly/WeekMobileList.vue'
 import { useWeeklySchedule } from '../composables/useWeeklySchedule'
 import type { ScheduleDay, WeekEvent } from '../types/schedule'
+import type { NewPersonalAppointmentInput } from '../types/personalAppointments'
 
 type WeekDesktopGridExpose = {
   scrollToDay: (index: number) => void
@@ -26,6 +28,8 @@ const props = withDefaults(defineProps<{
   weekStart: Date
   startHour?: number
   endHour?: number
+  savingPersonalAppointment?: boolean
+  personalAppointmentError?: string | null
 }>(), {
   loading: false,
   error: null,
@@ -35,6 +39,8 @@ const props = withDefaults(defineProps<{
   // werden nur eingeblendet, wenn dort tatsächlich Termine/Vorlesungen liegen.
   startHour: 8,
   endHour: 18,
+  savingPersonalAppointment: false,
+  personalAppointmentError: null,
 })
 
 // Früheste Start- und späteste Endzeit der aktuell sichtbaren Woche (Minuten ab
@@ -82,7 +88,26 @@ const emit = defineEmits<{
   'show-all-series': []
   'toggle-show-hidden': []
   'navigate-to-hidden-page': []
+  'create-personal-appointment': [payload: NewPersonalAppointmentInput]
+  'clear-personal-appointment-error': []
+  'delete-personal-appointment': [occurrenceId: string]
 }>()
+
+const personalDialogOpen = ref(false)
+const personalDialogPending = ref(false)
+
+watch(
+  () => props.savingPersonalAppointment,
+  (saving) => {
+    if (!personalDialogPending.value) return
+    if (!saving && !props.personalAppointmentError) {
+      personalDialogOpen.value = false
+      personalDialogPending.value = false
+    } else if (!saving) {
+      personalDialogPending.value = false
+    }
+  }
+)
 
 function getTodayStart(): Date {
   const now = new Date()
@@ -281,6 +306,15 @@ onUnmounted(() => {
             Heute
           </button>
           <button type="button" class="week-nav-btn app-button" @click="nextWeek">→</button>
+          <button
+            type="button"
+            class="week-nav-btn add-personal-btn app-button"
+            aria-label="Eigenen Termin anlegen"
+            title="Eigenen Termin anlegen"
+            @click="personalDialogOpen = true; emit('clear-personal-appointment-error')"
+          >
+            + Termin
+          </button>
         </div>
         <div v-if="props.hiddenSeriesItems.length || (props.hiddenOccurrenceItems?.length ?? 0) > 0" class="week-hidden-controls">
           <button
@@ -336,6 +370,7 @@ onUnmounted(() => {
         @today-visibility-change="isTodayVisibleInViewport = $event"
         @hide-series="emit('hide-series', $event)"
         @hide-occurrence="emit('hide-occurrence', $event)"
+        @delete-personal="emit('delete-personal-appointment', $event)"
       />
 
       <WeekMobileList
@@ -352,8 +387,17 @@ onUnmounted(() => {
         @selected-day-label-change="onMobileSelectedDayLabelChange"
         @hide-series="emit('hide-series', $event)"
         @hide-occurrence="emit('hide-occurrence', $event)"
+        @delete-personal="emit('delete-personal-appointment', $event)"
       />
     </template>
+
+    <CreatePersonalAppointmentDialog
+      :open="personalDialogOpen"
+      :loading="savingPersonalAppointment"
+      :error="personalAppointmentError"
+      @close="personalDialogOpen = false; personalDialogPending = false"
+      @submit="personalDialogPending = true; emit('create-personal-appointment', $event)"
+    />
   </section>
 </template>
 
@@ -457,6 +501,18 @@ onUnmounted(() => {
 
 .week-nav-btn-today {
   min-width: var(--button-today-min-width);
+}
+
+.add-personal-btn {
+  background: color-mix(in srgb, var(--color-personal, #7c3aed) 12%, var(--color-surface-raised));
+  border-color: color-mix(in srgb, var(--color-personal, #7c3aed) 40%, var(--color-border));
+  color: var(--color-personal, #7c3aed);
+  font-weight: 600;
+}
+
+.add-personal-btn:hover {
+  background: color-mix(in srgb, var(--color-personal, #7c3aed) 18%, var(--color-surface-raised));
+  border-color: var(--color-personal, #7c3aed);
 }
 
 .week-state {

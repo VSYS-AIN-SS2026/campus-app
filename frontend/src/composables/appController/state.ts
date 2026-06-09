@@ -9,6 +9,7 @@ import type {
   UserProfile,
 } from '../../types'
 import type { UserEventRow } from '../../types/schedule'
+import type { PersonalAppointment } from '../../types/personalAppointments'
 import {
   getSpoLabel,
   getStartOfCurrentWeek,
@@ -70,6 +71,7 @@ export function createAppControllerState() {
   // "Rückgängig" analog zu den Terminreihen. Es ist immer höchstens eine der
   // beiden Undo-Quellen (Reihe oder Einzeltermin) gesetzt.
   const lastHiddenOccurrence = ref<string | null>(null)
+  const lastDeletedPersonalAppointment = ref<PersonalAppointment | null>(null)
   const userEvents = ref<UserEventRow[]>([])
   const showHiddenEvents = ref(false)
   const hiddenPageLoading = computed(() => !loadedUserId.value && loading.value)
@@ -101,6 +103,7 @@ export function createAppControllerState() {
 
   const weeklyScheduleEvents = ref<WeeklyScheduleEvent[]>([])
   const acceptedAppointments = ref<AcceptedAppointmentRow[]>([])
+  const personalAppointments = ref<PersonalAppointment[]>([])
 
   // Zugesagte Team-Termine als datumsgebundene Events für die Wochenansicht.
   // Start/Ende kommen in UTC und werden in Browser-Zeit auf Tag + Uhrzeit gelegt.
@@ -167,7 +170,71 @@ export function createAppControllerState() {
       endTime: ue.end_time.slice(0, 5),
       status: ue.status as ModuleStatus,
     }))
-    return [...weeklyScheduleEvents.value, ...importedEvents, ...appointmentScheduleEvents.value, ...organisationScheduleEvents.value]
+
+    const personalEvents: WeeklyScheduleEvent[] = personalAppointments.value.flatMap((pa): WeeklyScheduleEvent[] => {
+      const start = new Date(pa.starts_at)
+      const end = new Date(pa.ends_at)
+      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return []
+
+      const startDateKey = localDateKey(start)
+      const endDateKey = localDateKey(end)
+
+      if (startDateKey === endDateKey) {
+        return [{
+          id: `personal:${pa.id}`,
+          seriesId: `personal:${pa.id}`,
+          occurrenceId: `personal:${pa.id}`,
+          dayIndex: localWeekdayIndex(start),
+          date: startDateKey,
+          title: pa.title,
+          subtitle: pa.description ?? undefined,
+          startTime: localHhMm(start),
+          endTime: localHhMm(end),
+          status: 'belegt' as ModuleStatus,
+          eventType: 'personal' as const,
+        }]
+      }
+
+      // Multi-day appointment: split into one segment per calendar day.
+      // First day runs from startTime to 24:00; middle days from 00:00 to 24:00;
+      // last day from 00:00 to endTime. This also fixes overnight appointments
+      // (<24h but crossing midnight) that would otherwise be filtered out by the
+      // end <= start time-of-day guard in useWeeklySchedule.
+      const events: WeeklyScheduleEvent[] = []
+      const cursor = new Date(start.getFullYear(), start.getMonth(), start.getDate())
+
+      while (localDateKey(cursor) <= endDateKey) {
+        const dateKey = localDateKey(cursor)
+        const isFirst = dateKey === startDateKey
+        const isLast = dateKey === endDateKey
+
+        const segStartTime = isFirst ? localHhMm(start) : '00:00'
+        const segEndTime = isLast ? localHhMm(end) : '24:00'
+
+        // Skip last-day segment that ends exactly at midnight (zero duration).
+        if (!(isLast && segEndTime === '00:00')) {
+          events.push({
+            id: isFirst ? `personal:${pa.id}` : `personal:${pa.id}:${dateKey}`,
+            seriesId: `personal:${pa.id}`,
+            occurrenceId: `personal:${pa.id}`,
+            dayIndex: localWeekdayIndex(cursor),
+            date: dateKey,
+            title: pa.title,
+            subtitle: pa.description ?? undefined,
+            startTime: segStartTime,
+            endTime: segEndTime,
+            status: 'belegt' as ModuleStatus,
+            eventType: 'personal' as const,
+          })
+        }
+
+        cursor.setDate(cursor.getDate() + 1)
+      }
+
+      return events
+    })
+
+    return [...weeklyScheduleEvents.value, ...importedEvents, ...appointmentScheduleEvents.value, ...personalEvents]
   })
 
   function applyHiddenSeries(rows: HiddenSeriesRow[]) {
@@ -339,7 +406,7 @@ export function createAppControllerState() {
     modules.value = []
     weeklyScheduleEvents.value = []
     acceptedAppointments.value = []
-    clearSavedOrgEvents()
+    personalAppointments.value = []
     selectedModule.value = null
     loading.value = false
     error.value = null
@@ -357,11 +424,13 @@ export function createAppControllerState() {
     hiddenEventIds.value = new Set()
     lastHiddenSeries.value = null
     lastHiddenOccurrence.value = null
+    lastDeletedPersonalAppointment.value = null
     showHiddenEvents.value = false
   }
 
   return {
     acceptedAppointments,
+    personalAppointments,
     activePlannerView,
     allCategories,
     allHandbooks,
@@ -393,6 +462,7 @@ export function createAppControllerState() {
     hiddenSeriesTitles,
     lastHiddenSeries,
     lastHiddenOccurrence,
+    lastDeletedPersonalAppointment,
     loadedUserId,
     loading,
     lsfImportModule,

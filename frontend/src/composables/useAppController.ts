@@ -1,5 +1,6 @@
 import { createAuthController } from './appController/auth'
 import { createModulesController } from './appController/modules'
+import { createPersonalAppointmentsController } from './appController/personalAppointments'
 import { createProfileController } from './appController/profile'
 import { createScheduleController } from './appController/schedule'
 import { getSpoLabel, getStudyProgramLabel } from './appController/shared'
@@ -12,6 +13,7 @@ export function useAppController() {
   // schedule zuerst: modules braucht clearHiddenForModule für die Hidden-Aufräumung
   // beim Modulstatus-Wechsel.
   const schedule = createScheduleController(state)
+  const personalAppointmentsCtrl = createPersonalAppointmentsController(state)
   const modules = createModulesController(state, {
     clearHiddenForModule: schedule.clearHiddenForModule,
   })
@@ -49,6 +51,7 @@ export function useAppController() {
     hiddenSeriesItems: state.hiddenSeriesItems,
     lastHiddenSeries: state.lastHiddenSeries,
     lastHiddenOccurrence: state.lastHiddenOccurrence,
+    lastDeletedPersonalAppointment: state.lastDeletedPersonalAppointment,
     loading: state.loading,
     lsfImportModule: state.lsfImportModule,
     modules: state.modules,
@@ -89,5 +92,9 @@ export function useAppController() {
     signOut: auth.signOut,
     undoHideScheduleOccurrence: schedule.undoHideScheduleOccurrence,
     undoHideScheduleSeries: schedule.undoHideScheduleSeries,
+    loadPersonalAppointments: personalAppointmentsCtrl.loadPersonalAppointments,
+    createPersonalAppointment: personalAppointmentsCtrl.createPersonalAppointment,
+    deletePersonalAppointment: personalAppointmentsCtrl.deletePersonalAppointment,
+    undoDeletePersonalAppointment: personalAppointmentsCtrl.undoDeletePersonalAppointment,
   }
 }

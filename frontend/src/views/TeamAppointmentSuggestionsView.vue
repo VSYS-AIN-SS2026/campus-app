@@ -48,6 +48,8 @@ async function loadTeamSchedule() {
   scheduleLoading.value = true
   const { data, error: err } = await supabase.rpc('get_team_week_schedule', {
     p_team_id: teamId,
+    p_week_start: localDateKey(mondayOf(weekStart.value)),
+    p_time_zone: BROWSER_TIME_ZONE,
   })
   scheduleLoading.value = false
   if (err || !data) return
@@ -302,12 +304,13 @@ function teardownInvitationsRealtime() {
   authStateUnsub = null
 }
 
-// Wochenwechsel: Suchergebnisse verwerfen, Termine der neuen Woche laden.
+// Wochenwechsel: Suchergebnisse verwerfen, Termine und persönliche Slots neu laden.
 watch(weekStart, () => {
   searchResults.value = []
   searchPerformed.value = false
   error.value = null
   void loadAppointments()
+  void loadTeamSchedule()
 })
 
 async function onSearch(params: FreeSlotSearchParams) {

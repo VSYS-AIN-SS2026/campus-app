@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ModuleEntry } from '../types'
+import type { NewPersonalAppointmentInput } from '../types/personalAppointments'
 import ModuleList from './ModuleList.vue'
 import WeeklySchedule from './WeeklySchedule.vue'
 
@@ -16,6 +17,7 @@ const props = defineProps<{
   scheduleVisibilityInfo: string | null
   lastHiddenSeries: { seriesId: string; title: string } | null
   lastHiddenOccurrence: string | null
+  lastDeletedPersonalAppointment: { id: string; title: string } | null
   hiddenSeriesItems: Array<{ seriesId: string; title: string }>
   hiddenOccurrenceItems: Array<{ occurrenceId: string; title: string }>
   showHiddenEvents: boolean
@@ -33,6 +35,8 @@ const props = defineProps<{
     status: 'offen' | 'belegt' | 'abgeschlossen'
   }[]
   weekStartDate: Date
+  savingPersonalAppointment?: boolean
+  personalAppointmentError?: string | null
 }>()
 
 const emit = defineEmits<{
@@ -47,6 +51,9 @@ const emit = defineEmits<{
   'navigate-to-hidden-page': []
   'undo-hide': []
   'select-module': [module: ModuleEntry]
+  'create-personal-appointment': [payload: NewPersonalAppointmentInput]
+  'clear-personal-appointment-error': []
+  'delete-personal-appointment': [occurrenceId: string]
 }>()
 </script>
 
@@ -66,7 +73,7 @@ const emit = defineEmits<{
   <div v-if="scheduleVisibilityInfo" class="success-banner success-banner-inline">
     <span>{{ scheduleVisibilityInfo }}</span>
     <button
-      v-if="lastHiddenSeries || lastHiddenOccurrence"
+      v-if="lastHiddenSeries || lastHiddenOccurrence || lastDeletedPersonalAppointment"
       type="button"
       class="inline-action-button"
       @click="emit('undo-hide')"
@@ -112,6 +119,8 @@ const emit = defineEmits<{
       :loading="loading"
       :error="error"
       :week-start="weekStartDate"
+      :saving-personal-appointment="savingPersonalAppointment"
+      :personal-appointment-error="personalAppointmentError"
       @hide-series="emit('hide-series', $event)"
       @hide-occurrence="emit('hide-occurrence', $event)"
       @show-series="emit('show-series', $event)"
@@ -120,6 +129,9 @@ const emit = defineEmits<{
       @show-all-series="emit('show-all-series')"
       @toggle-show-hidden="emit('toggle-show-hidden')"
       @navigate-to-hidden-page="emit('navigate-to-hidden-page')"
+      @create-personal-appointment="emit('create-personal-appointment', $event)"
+      @clear-personal-appointment-error="emit('clear-personal-appointment-error')"
+      @delete-personal-appointment="emit('delete-personal-appointment', $event)"
     />
 
     <ModuleList v-else-if="!loading" :modules="modules" @select="emit('select-module', $event)" />
