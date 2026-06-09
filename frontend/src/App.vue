@@ -32,7 +32,7 @@ async function onCreatePersonalAppointment(input: { title: string; description: 
 
 watch(weekStartDate, (date) => {
   void loadPersonalAppointments(date)
-})
+}, { immediate: true })
 
 // Eine gemeinsame "Rückgängig"-Aktion für das Erfolgs-Banner: es ist immer
 // höchstens eine Undo-Quelle (Reihe oder Einzeltermin) gesetzt.
