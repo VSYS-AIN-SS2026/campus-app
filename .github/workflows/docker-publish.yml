@@ -7,10 +7,17 @@ name: Build & Publish Frontend Image
 # Image:  ghcr.io/vsys-ain-ss2026/campus-app
 # Tags:   latest, sha-<commit>, main
 #
+# Nach dem Push wird per SSH in den Droplet deployed: /campus-app/restart.sh
+# zieht das neue Image und startet den Container neu.
+#
 # Konfiguration (Settings → Secrets and variables → Actions):
 #   Secrets:
 #     VITE_SUPABASE_URL        Supabase Projekt-URL
 #     VITE_SUPABASE_ANON_KEY   Supabase anon/publishable Key (Browser-sicher)
+#     DROPLET_HOST             IP / Hostname des Droplets
+#     DROPLET_USER             SSH-Benutzer (z.B. deploy oder root)
+#     DROPLET_SSH_KEY          Privater SSH-Key (PEM, ganzer Inhalt)
+#     DROPLET_SSH_PORT         (optional) SSH-Port, Default 22
 #   Variables:
 #     VITE_MAGIC_LINK_REDIRECT_URL   Redirect-URL des Deployments
 #                                    (z.B. https://campus-app.example.org)
@@ -72,3 +79,12 @@ jobs:
             VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}
             VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}
             VITE_MAGIC_LINK_REDIRECT_URL=${{ vars.VITE_MAGIC_LINK_REDIRECT_URL }}
+
+      - name: Deploy to droplet (run restart.sh)
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DROPLET_HOST }}
+          username: ${{ secrets.DROPLET_USER }}
+          key: ${{ secrets.DROPLET_SSH_KEY }}
+          port: ${{ secrets.DROPLET_SSH_PORT || 22 }}
+          script: bash /campus-app/restart.sh
