@@ -7,6 +7,7 @@ import LsfEventImportModal from './components/LsfEventImportModal.vue'
 import ModuleDrawer from './components/ModuleDrawer.vue'
 import PlannerViewShell from './components/PlannerViewShell.vue'
 import ProfileSelectionPanel from './components/ProfileSelectionPanel.vue'
+import PwaPrompt from './components/PwaPrompt.vue'
 import Sidebar from './components/Sidebar.vue'
 import { useAppController } from './composables/useAppController'
 import { useNotifications } from './composables/useNotifications'
@@ -467,6 +468,8 @@ async function onSidebarNavigate(target: SidebarSection) {
     @close="lsfImportModule = null"
     @imported="loadImportedEvents"
   />
+
+  <PwaPrompt />
 </template>
 
 <style scoped src="./app.css"></style>

@@ -3,7 +3,11 @@
     "allow": [
       "Bash(npm create *)",
       "Bash(npm install *)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(ssh -T -p 443 git@ssh.github.com)",
+      "Bash(ssh-add -l)",
+      "Bash(ssh -T -p 443 -i ~/.ssh/dentdesk -o IdentitiesOnly=yes git@ssh.github.com)",
+      "Bash(ssh -vT -p 443 -i ~/.ssh/dentdesk -o IdentitiesOnly=yes git@ssh.github.com)"
     ]
   }
 }
