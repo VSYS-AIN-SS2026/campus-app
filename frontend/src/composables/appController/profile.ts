@@ -132,6 +132,9 @@ export function createProfileController(
       state.acceptedAppointments.value = appointmentData as AcceptedAppointmentRow[]
     }
 
+    // Gespeicherte Organisations-Events laden, damit sie in der Wochenansicht erscheinen.
+    await loadSavedOrgEvents()
+
     state.loadedUserId.value = state.currentUser.value.id
   }
 

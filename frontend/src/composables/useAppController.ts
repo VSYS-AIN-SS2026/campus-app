@@ -16,6 +16,7 @@ export function useAppController() {
   const personalAppointmentsCtrl = createPersonalAppointmentsController(state)
   const modules = createModulesController(state, {
     clearHiddenForModule: schedule.clearHiddenForModule,
+    loadImportedEvents: schedule.loadImportedEvents,
   })
   const profile = createProfileController(state, {
     beginModuleRequest: modules.beginModuleRequest,
