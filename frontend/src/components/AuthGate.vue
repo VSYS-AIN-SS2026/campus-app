@@ -7,6 +7,7 @@ defineProps<{
   authSending: boolean
   authError: string | null
   authInfo: string | null
+  bypassEnabled?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -14,6 +15,7 @@ const emit = defineEmits<{
   'update:authLastName': [value: string]
   'update:authEmail': [value: string]
   submit: []
+  bypass: []
 }>()
 </script>
 
@@ -68,7 +70,7 @@ const emit = defineEmits<{
           type="email"
           autocomplete="email"
           placeholder="name@beispiel.de"
-          required
+          :required="!bypassEnabled"
           @input="emit('update:authEmail', ($event.target as HTMLInputElement).value)"
         >
       </div>
@@ -86,6 +88,16 @@ const emit = defineEmits<{
         </p>
       </div>
     </form>
+
+    <div v-if="bypassEnabled" class="auth-dev-bypass">
+      <span class="auth-dev-bypass-label">Nur lokal (Dev)</span>
+      <button type="button" class="app-button" @click="emit('bypass')">
+        Als Demo-User fortfahren
+      </button>
+      <p class="auth-redirect-hint">
+        Überspringt den Magic-Link und lädt die Demo-Daten. In Production deaktiviert.
+      </p>
+    </div>
   </section>
 
   <div v-if="authError" class="error-banner">
@@ -210,6 +222,23 @@ const emit = defineEmits<{
   color: var(--color-text-muted);
   line-height: 1.5;
   margin: 0;
+}
+
+.auth-dev-bypass {
+  padding: var(--space-xl) var(--space-3xl) var(--space-3xl);
+  border-top: 0.0625rem dashed var(--color-border);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-md);
+}
+
+.auth-dev-bypass-label {
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--color-text-muted);
 }
 
 @media (max-width: 45em) {

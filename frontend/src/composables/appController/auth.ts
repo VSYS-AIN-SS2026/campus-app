@@ -1,5 +1,5 @@
 import { onMounted, onUnmounted } from 'vue'
-import { magicLinkRedirectTo, supabase, supabaseConfigError } from '../../supabase'
+import { authBypassEnabled, magicLinkRedirectTo, supabase, supabaseConfigError } from '../../supabase'
 import type { AppControllerState } from './state'
 
 function getTrimmedString(value: unknown) {
@@ -175,6 +175,33 @@ export function createAuthController(
     state.authInfo.value = `Magic-Link versendet an ${normalizedEmail}. Öffne die E-Mail und klicke auf den Link.`
   }
 
+  // Development-only: continue as the demo user without a magic link. The
+  // *_demo_user_* RPCs are granted to `anon` and key off this fixed e-mail,
+  // so the app loads demo data exactly like a normal session would.
+  async function continueAsDemoUser() {
+    if (!authBypassEnabled) {
+      return
+    }
+
+    const firstName = state.authFirstName.value.trim() || 'Alex'
+    const lastName = state.authLastName.value.trim() || 'Beispiel'
+
+    state.authError.value = null
+    state.authInfo.value = null
+    state.currentUser.value = {
+      id: 'demo-user',
+      email: 'alex.beispiel@htwg-konstanz.de',
+      user_metadata: {
+        first_name: firstName,
+        last_name: lastName,
+        full_name: `${firstName} ${lastName}`,
+      },
+    }
+    state.authLoading.value = false
+    state.loadedUserId.value = null
+    await deps.fetchInitialData()
+  }
+
   async function signOut() {
     state.authError.value = null
     state.authInfo.value = null
@@ -251,6 +278,7 @@ export function createAuthController(
   return {
     bindLifecycle,
     sendMagicLink,
+    continueAsDemoUser,
     signOut,
   }
 }

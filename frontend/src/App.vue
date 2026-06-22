@@ -13,7 +13,7 @@ import { useAppController } from './composables/useAppController'
 import { useNotifications } from './composables/useNotifications'
 import { useTeams } from './composables/useTeams'
 
-const { magicLinkRedirectTo, allCategories, activePlannerView, authEmail, authError, authFirstName, authInfo, authLastName, authLoading, authSending, canEditModuleStatuses, categoryError, currentUser, currentUserEmail, userProfile, displayedWeeklyScheduleEvents, error, hiddenOccurrenceItems, hiddenPageEntries, hiddenPageError, hiddenPageLoading, hiddenSeriesItems, lastHiddenSeries, lastHiddenOccurrence, loadImportedEvents, loading, lsfImportModule, modules, moduleStatusError, profileError, profileInfo, profileSaving, savedSpo, savedStudyProgram, savingCategoryModuleId, savingModuleId, scheduleVisibilityError, scheduleVisibilityInfo, selectedModule, selectedSpoId, selectedStudyProgramId, selectionDirty, showHiddenEvents, spoItems, studyProgramItems, weekStartDate, getSpoLabel, getStudyProgramLabel, hideScheduleOccurrence, hideScheduleSeries, saveModuleCategories, saveModuleStatus, saveStudyProfileSelection, sendMagicLink, showAllScheduleOccurrences, showAllScheduleSeries, showScheduleOccurrence, showScheduleSeries, signOut, undoHideScheduleOccurrence, undoHideScheduleSeries } = useAppController()
+const { magicLinkRedirectTo, allCategories, activePlannerView, authEmail, authError, authFirstName, authInfo, authLastName, authLoading, authSending, authBypassEnabled, canEditModuleStatuses, categoryError, currentUser, currentUserEmail, userProfile, displayedWeeklyScheduleEvents, error, hiddenOccurrenceItems, hiddenPageEntries, hiddenPageError, hiddenPageLoading, hiddenSeriesItems, lastHiddenSeries, lastHiddenOccurrence, loadImportedEvents, loading, lsfImportModule, modules, moduleStatusError, profileError, profileInfo, profileSaving, savedSpo, savedStudyProgram, savingCategoryModuleId, savingModuleId, scheduleVisibilityError, scheduleVisibilityInfo, selectedModule, selectedSpoId, selectedStudyProgramId, selectionDirty, showHiddenEvents, spoItems, studyProgramItems, weekStartDate, getSpoLabel, getStudyProgramLabel, hideScheduleOccurrence, hideScheduleSeries, saveModuleCategories, saveModuleStatus, saveStudyProfileSelection, sendMagicLink, continueAsDemoUser, showAllScheduleOccurrences, showAllScheduleSeries, showScheduleOccurrence, showScheduleSeries, signOut, undoHideScheduleOccurrence, undoHideScheduleSeries } = useAppController()
 
 // Eine gemeinsame "Rückgängig"-Aktion für das Erfolgs-Banner: es ist immer
 // höchstens eine Undo-Quelle (Reihe oder Einzeltermin) gesetzt.
@@ -373,10 +373,12 @@ async function onSidebarNavigate(target: SidebarSection) {
                 :auth-sending="authSending"
                 :auth-error="authError"
                 :auth-info="authInfo"
+                :bypass-enabled="authBypassEnabled"
                 @update:auth-first-name="authFirstName = $event"
                 @update:auth-last-name="authLastName = $event"
                 @update:auth-email="authEmail = $event"
                 @submit="sendMagicLink"
+                @bypass="continueAsDemoUser"
               />
             </template>
             <template v-else-if="isTeamsRoute || isOrganisationsRoute || isProfileRoute">
