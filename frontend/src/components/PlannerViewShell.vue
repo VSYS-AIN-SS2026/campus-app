@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import type { ModuleEntry } from '../types'
 import type { NewPersonalAppointmentInput } from '../types/personalAppointments'
 import ModuleList from './ModuleList.vue'
+import ModuleStatusList from './ModuleStatusList.vue'
 import WeeklySchedule from './WeeklySchedule.vue'
 
 const props = defineProps<{
@@ -55,6 +57,8 @@ const emit = defineEmits<{
   'clear-personal-appointment-error': []
   'delete-personal-appointment': [occurrenceId: string]
 }>()
+
+const moduleGrouping = ref<'semester' | 'status'>('semester')
 </script>
 
 <template>
@@ -134,7 +138,37 @@ const emit = defineEmits<{
       @delete-personal-appointment="emit('delete-personal-appointment', $event)"
     />
 
-    <ModuleList v-else-if="!loading" :modules="modules" @select="emit('select-module', $event)" />
+    <template v-else-if="!loading">
+      <div class="planner-view-switch module-grouping-switch" role="tablist" aria-label="Modulgruppierung">
+        <button
+          type="button"
+          class="planner-view-button"
+          :class="moduleGrouping === 'semester' ? 'planner-view-button-active' : ''"
+          @click="moduleGrouping = 'semester'"
+        >
+          Nach Semester
+        </button>
+        <button
+          type="button"
+          class="planner-view-button"
+          :class="moduleGrouping === 'status' ? 'planner-view-button-active' : ''"
+          @click="moduleGrouping = 'status'"
+        >
+          Nach Status
+        </button>
+      </div>
+
+      <ModuleList
+        v-if="moduleGrouping === 'semester'"
+        :modules="modules"
+        @select="emit('select-module', $event)"
+      />
+      <ModuleStatusList
+        v-else
+        :modules="modules"
+        @select="emit('select-module', $event)"
+      />
+    </template>
 
     <div v-else class="loading-state">
       <div class="spinner" />
@@ -152,3 +186,11 @@ const emit = defineEmits<{
     <p>Wähle eine SPO aus, um die zugehörigen Module anzuzeigen.</p>
   </div>
 </template>
+
+<style scoped>
+.module-grouping-switch {
+  display: flex;
+  width: fit-content;
+  margin: 0.55em 0 0.9em;
+}
+</style>
