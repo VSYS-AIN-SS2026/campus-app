@@ -346,6 +346,10 @@ Hinweise:
   SG-Events des Semesters.
 - Block-/terminlose Module (z. B. mehrtägige Workshops) werden angelegt, haben
   aber keine Wochentermine.
+- Im CI läuft der SG-Import automatisch als eigener Job (`studium-generale`) im
+  [`lsf-import.yml`](.github/workflows/lsf-import.yml)-Workflow — beim
+  Semester-Refresh (1. März / 1. Oktober) und bei einem vollständigen manuellen
+  Lauf (ohne einzelnen Studiengang).
 
 ---
 
