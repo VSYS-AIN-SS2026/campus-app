@@ -1,0 +1,20 @@
+# ──────────────────────────────────────────────────────────────
+# Deployment stack for the droplet (/campus-app): the frontend only.
+#
+# Runs the frontend image (built + pushed by CI to GHCR). Uptime Kuma is
+# deployed *independently* in ./monitoring so the status page stays up even
+# when this client container is down. See ./README.md.
+#
+#   docker compose pull && docker compose up -d
+#
+# TLS is terminated by the existing front proxy on the droplet, which routes
+# the app domain → campus-app:80 (this container, host port 8080).
+# ──────────────────────────────────────────────────────────────
+
+services:
+  campus-app:
+    image: ghcr.io/vsys-ain-ss2026/campus-app:latest
+    restart: unless-stopped
+    # Published so the existing front proxy can reach the SPA.
+    ports:
+      - "8080:80"

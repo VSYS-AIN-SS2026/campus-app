@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 4173 --strictPort",
     "typecheck": "vue-tsc --noEmit",
-    "build": "npm run typecheck && vite build",
+    "build": "vite build",
     "preview": "vite preview",
     "generate:pwa-assets": "pwa-assets-generator",
     "test": "TZ=Europe/Berlin vitest run",

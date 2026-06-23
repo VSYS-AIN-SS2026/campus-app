@@ -3,6 +3,7 @@ import { onMounted, onUnmounted, ref, watch } from 'vue'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { useRoute } from 'vue-router'
 import { supabase } from '../supabase'
+import { normalizeError } from '../utils/normalizeError'
 import CombinedWeekView from '../components/teamWeek/CombinedWeekView.vue'
 import TeamAppointmentSearchForm from '../components/teamWeek/TeamAppointmentSearchForm.vue'
 import AppointmentDetailDialog from '../components/teamWeek/AppointmentDetailDialog.vue'
@@ -43,11 +44,14 @@ const members = ref<CombinedWeekMember[]>([])
 const memberSlots = ref<MemberScheduleSlot[]>([])
 const scheduleLoading = ref(false)
 
-async function loadTeamSchedule() {
+async function loadTeamSchedule(showLoader = false) {
   if (!supabase) return
-  scheduleLoading.value = true
+  if (showLoader) scheduleLoading.value = true
+  const monday = mondayOf(weekStart.value)
   const { data, error: err } = await supabase.rpc('get_team_week_schedule', {
     p_team_id: teamId,
+    p_week_start: localDateKey(monday),
+    p_time_zone: BROWSER_TIME_ZONE,
   })
   scheduleLoading.value = false
   if (err || !data) return
@@ -136,7 +140,7 @@ async function loadAppointments() {
   })
 
   if (rpcError) {
-    appointmentsError.value = rpcError.message
+    appointmentsError.value = normalizeError(rpcError)
     appointments.value = []
     return
   }
@@ -187,7 +191,7 @@ async function loadMyInvitations() {
   if (!supabase) return
   const { data, error: rpcError } = await supabase.rpc('get_my_appointment_invitations', { p_team_id: teamId })
   if (rpcError) {
-    invitationsError.value = rpcError.message
+    invitationsError.value = normalizeError(rpcError)
     myInvitations.value = []
     return
   }
@@ -226,7 +230,7 @@ async function onAnswer(invitationId: string, status: 'accepted' | 'declined') {
   if (rpcError) {
     // Restore on error
     if (invitation) myInvitations.value.push(invitation)
-    invitationsError.value = rpcError.message
+    invitationsError.value = normalizeError(rpcError)
     return
   }
 
@@ -302,12 +306,13 @@ function teardownInvitationsRealtime() {
   authStateUnsub = null
 }
 
-// Wochenwechsel: Suchergebnisse verwerfen, Termine der neuen Woche laden.
+// Wochenwechsel: Suchergebnisse verwerfen, Termine und persönliche Slots neu laden.
 watch(weekStart, () => {
   searchResults.value = []
   searchPerformed.value = false
   error.value = null
   void loadAppointments()
+  void loadTeamSchedule()
 })
 
 async function onSearch(params: FreeSlotSearchParams) {
@@ -372,7 +377,7 @@ async function onUpdateAppointment(payload: NewAppointmentInput) {
   editLoading.value = false
 
   if (rpcError) {
-    editError.value = rpcError.message
+    editError.value = normalizeError(rpcError)
     return
   }
 
@@ -393,7 +398,7 @@ async function onDeleteAppointment(id: string) {
   editLoading.value = false
 
   if (rpcError) {
-    editError.value = rpcError.message
+    editError.value = normalizeError(rpcError)
     return
   }
 
@@ -439,7 +444,7 @@ async function onCreate(payload: NewAppointmentInput) {
   createLoading.value = false
 
   if (rpcError) {
-    createError.value = rpcError.message
+    createError.value = normalizeError(rpcError)
     return
   }
 
@@ -450,7 +455,7 @@ async function onCreate(payload: NewAppointmentInput) {
 onMounted(async () => {
   const { data: { user } } = await supabase!.auth.getUser()
   currentUserId.value = user?.id ?? null
-  void loadTeamSchedule()
+  void loadTeamSchedule(true)
   void loadAppointments()
   void loadMyInvitations()
   setupInvitationsRealtime()

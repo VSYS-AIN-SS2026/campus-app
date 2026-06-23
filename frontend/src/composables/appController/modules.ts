@@ -1,4 +1,5 @@
 import { supabase, supabaseConfigError } from '../../supabase'
+import { normalizeError } from '../../utils/normalizeError'
 import type { Category, ModuleEntry, ModuleStatus, UserProfile } from '../../types'
 import type { AppControllerState } from './state'
 import {
@@ -14,6 +15,7 @@ export function createModulesController(
   state: AppControllerState,
   deps: {
     clearHiddenForModule: (moduleId: string) => Promise<void>
+    loadImportedEvents: () => Promise<void>
   }
 ) {
   function setModuleStatus(moduleId: string, status: ModuleStatus) {
@@ -183,10 +185,15 @@ export function createModulesController(
       state.lsfImportModule.value = currentModule
     }
 
-    // Status verlässt "belegt": ausgeblendete Termine dieses Moduls aufräumen,
-    // damit ihre Hidden-Markierung nicht bestehen bleibt.
+    // Status verlässt "belegt": importierte Termine löschen und Hidden-Markierungen aufräumen.
     if (status === 'offen' || status === 'abgeschlossen') {
-      await deps.clearHiddenForModule(moduleId)
+      await supabase.rpc('delete_demo_user_events_for_module', {
+        p_module_id: moduleId,
+      })
+      await Promise.all([
+        deps.loadImportedEvents(),
+        deps.clearHiddenForModule(moduleId),
+      ])
     }
 
     await fetchWeeklySchedule()
@@ -274,6 +281,48 @@ export function createModulesController(
     state.profileInfo.value = 'Studiengang und SPO wurden in deinem Profil gespeichert.'
   }
 
+  // Studium-Generale modules aren't part of any SPO handbook — they're a
+  // separate catalog (tagged with the "Studium Generale" category). Load them
+  // so they can be folded into the module list + progress alongside SPO modules.
+  async function fetchSgModuleEntries(requestId: number): Promise<ModuleEntry[]> {
+    if (!supabase) return []
+
+    const { data: cat } = await supabase
+      .from('categories')
+      .select('id')
+      .eq('name', 'Studium Generale')
+      .maybeSingle()
+
+    if (!cat || !isActiveModuleRequest(requestId)) return []
+
+    const { data, error } = await supabase
+      .from('module_category_entries')
+      .select(`
+        modules!inner (
+          id, code, name, coordinator, start_semester, version, details,
+          is_mandatory, is_specialization, specialization_name, language,
+          courses (*)
+        )
+      `)
+      .eq('category_id', cat.id)
+
+    if (error || !isActiveModuleRequest(requestId)) return []
+
+    const seen = new Map<string, ModuleEntry>()
+    for (const row of (data as any[]) ?? []) {
+      const module = (row as any).modules
+      if (!module || seen.has(module.id)) continue
+      seen.set(module.id, {
+        ...module,
+        recommended_semester: null,
+        categories: [],
+        courses: module.courses ?? [],
+        module_status: 'offen',
+      } as ModuleEntry)
+    }
+    return Array.from(seen.values())
+  }
+
   async function fetchModules(handbookIds: string[], requestId: number) {
     state.loading.value = true
     state.error.value = null
@@ -289,6 +338,7 @@ export function createModulesController(
       .from('module_handbook_entries')
       .select(`
       recommended_semester,
+      ects,
       modules!module_handbook_entries_module_id_fkey (
         id, code, name, coordinator, start_semester, version, details,
         is_mandatory, is_specialization, specialization_name, language,
@@ -304,18 +354,28 @@ export function createModulesController(
 
     if (error) {
       state.loading.value = false
-      state.error.value = error.message
+      state.error.value = normalizeError(error)
       return
     }
 
     const uniqueModules = new Map<string, ModuleEntry>()
 
     for (const row of data as any[]) {
+      const base = row.modules
+      // ECTS is per-SPO: a module can be reweighted across SPO versions (e.g.
+      // SOMO is 6 in AIN SPO 3.1 but 7 in SPO 4), so it lives on the handbook
+      // entry, not the shared module row. Override the module's total with this
+      // SPO's value when present — moduleEcts() reads details.ects_total_computed.
+      const details =
+        typeof row.ects === 'number'
+          ? { ...(base?.details ?? {}), ects_total_computed: row.ects }
+          : base?.details
       const module = {
-        ...row.modules,
+        ...base,
+        details,
         recommended_semester: row.recommended_semester,
         categories: [],
-        courses: row.modules?.courses ?? [],
+        courses: base?.courses ?? [],
         module_status: 'offen',
       } as ModuleEntry
 
@@ -326,7 +386,11 @@ export function createModulesController(
       }
     }
 
-    state.modules.value = Array.from(uniqueModules.values())
+    const sgModules = await fetchSgModuleEntries(requestId)
+    if (!isActiveModuleRequest(requestId)) {
+      return
+    }
+    state.modules.value = [...Array.from(uniqueModules.values()), ...sgModules]
 
     const moduleIds = state.modules.value.map(module => module.id)
 

@@ -1,0 +1,33 @@
+# ──────────────────────────────────────────────────────────────
+# Independent monitoring stack for the droplet (/campus-app/monitoring).
+#
+# A self-hosted Uptime Kuma instance that monitors the database (Supabase)
+# and the client server (the frontend), and feeds the in-app status banner.
+#
+# Deployed and restarted *separately* from the app so the status page stays
+# reachable even when the campus-app container is down — that is the whole
+# point of monitoring the client server.
+#
+#   docker compose pull && docker compose up -d
+#
+# TLS is terminated by the existing front proxy on the droplet, which routes
+# status.<domain> → 127.0.0.1:3001 (this container). See ../README.md for the
+# vhost + CORS snippet and the first-run monitor setup.
+# ──────────────────────────────────────────────────────────────
+
+services:
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    restart: unless-stopped
+    volumes:
+      - uptime-kuma-data:/app/data
+    # Loopback-only host port: reached by the host's front proxy (status
+    # subdomain) and by the browser's direct health poll via that proxy.
+    ports:
+      - "127.0.0.1:3001:3001"
+
+volumes:
+  uptime-kuma-data:
+    # Fixed name (not prefixed by the compose project dir) so the volume is
+    # stable across moves/renames of this stack.
+    name: uptime-kuma-data

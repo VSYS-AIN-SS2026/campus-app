@@ -1,5 +1,6 @@
 import { computed, ref } from 'vue'
 import { supabase } from '../supabase'
+import { normalizeError } from '../utils/normalizeError'
 import { loadSavedOrgEvents } from './savedOrgEventsStore'
 
 import type {
@@ -96,7 +97,7 @@ export function useOrganisations() {
       organisations.value = organisationData ?? []
       memberships.value = membershipData ?? []
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Organisationen konnten nicht geladen werden.'
+      error.value = normalizeError(err, 'Organisationen konnten nicht geladen werden.')
     } finally {
       loading.value = false
     }
@@ -138,7 +139,7 @@ export function useOrganisations() {
       info.value = 'Organisation wurde erstellt.'
       await fetchOrganisations()
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Organisation konnte nicht erstellt werden.'
+      error.value = normalizeError(err, 'Organisation konnte nicht erstellt werden.')
     } finally {
       saving.value = false
     }
@@ -175,7 +176,7 @@ export function useOrganisations() {
       await fetchOrganisations()
       await fetchOrganisationEvents()
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Beitritt fehlgeschlagen.'
+      error.value = normalizeError(err, 'Beitritt fehlgeschlagen.')
     } finally {
       saving.value = false
     }
@@ -222,7 +223,7 @@ export function useOrganisations() {
       await fetchOrganisationEvents()
       await loadSavedOrgEvents()
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Organisation konnte nicht verlassen werden.'
+      error.value = normalizeError(err, 'Organisation konnte nicht verlassen werden.')
     } finally {
       saving.value = false
     }
@@ -244,7 +245,7 @@ export function useOrganisations() {
 
       events.value = data ?? []
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Events konnten nicht geladen werden.'
+      error.value = normalizeError(err, 'Events konnten nicht geladen werden.')
     }
   }
 
@@ -266,7 +267,33 @@ export function useOrganisations() {
 
       savedEventIds.value = new Set((data ?? []).map(item => item.event_id))
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Gespeicherte Events konnten nicht geladen werden.'
+      error.value = normalizeError(err, 'Gespeicherte Events konnten nicht geladen werden.')
+    }
+  }
+
+  async function deleteOrganisation(organisationId: string) {
+    const client = getClient()
+    if (!client) return
+
+    saving.value = true
+    error.value = null
+    info.value = null
+
+    try {
+      const { error: rpcError } = await client.rpc('delete_organisation', {
+        p_organisation_id: organisationId,
+      })
+
+      if (rpcError) throw rpcError
+
+      info.value = 'Organisation wurde gelöscht.'
+      await fetchOrganisations()
+      await fetchOrganisationEvents()
+      await loadSavedOrgEvents()
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Organisation konnte nicht gelöscht werden.'
+    } finally {
+      saving.value = false
     }
   }
 
@@ -283,6 +310,14 @@ export function useOrganisations() {
 
       if (input.title.trim().length < 2) {
         throw new Error('Der Event-Titel muss mindestens 2 Zeichen lang sein.')
+      }
+
+      if (new Date(input.startsAt) <= new Date()) {
+        throw new Error('Das Start-Datum darf nicht in der Vergangenheit liegen.')
+      }
+
+      if (new Date(input.endsAt) <= new Date(input.startsAt)) {
+        throw new Error('Das End-Datum muss nach dem Start-Datum liegen.')
       }
 
       const { error: insertError } = await client
@@ -302,7 +337,7 @@ export function useOrganisations() {
       info.value = 'Event wurde erstellt.'
       await fetchOrganisationEvents()
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Event konnte nicht erstellt werden.'
+      error.value = normalizeError(err, 'Event konnte nicht erstellt werden.')
     } finally {
       saving.value = false
     }
@@ -338,7 +373,7 @@ export function useOrganisations() {
       info.value = 'Event wurde zur Wochenansicht hinzugefügt.'
       await loadSavedOrgEvents()
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Event konnte nicht gespeichert werden.'
+      error.value = normalizeError(err, 'Event konnte nicht gespeichert werden.')
     } finally {
       saving.value = false
     }
@@ -369,7 +404,7 @@ export function useOrganisations() {
       info.value = 'Event wurde aus der Wochenansicht entfernt.'
       await loadSavedOrgEvents()
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Event konnte nicht entfernt werden.'
+      error.value = normalizeError(err, 'Event konnte nicht entfernt werden.')
     } finally {
       saving.value = false
     }
@@ -423,6 +458,7 @@ export function useOrganisations() {
     fetchOrganisationEvents,
     fetchSavedEvents,
     createOrganisation,
+    deleteOrganisation,
     joinOrganisation,
     leaveOrganisation,
     createOrganisationEvent,

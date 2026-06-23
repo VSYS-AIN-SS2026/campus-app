@@ -2,6 +2,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterView, useRoute, useRouter } from 'vue-router'
 import AuthGate from './components/AuthGate.vue'
+import ConnectionBanner from './components/ConnectionBanner.vue'
 import HiddenPage from './components/HiddenPage.vue'
 import LsfEventImportModal from './components/LsfEventImportModal.vue'
 import ModuleDrawer from './components/ModuleDrawer.vue'
@@ -9,11 +10,32 @@ import PlannerViewShell from './components/PlannerViewShell.vue'
 import ProfileSelectionPanel from './components/ProfileSelectionPanel.vue'
 import PwaPrompt from './components/PwaPrompt.vue'
 import Sidebar from './components/Sidebar.vue'
+import StatusBanner from './components/StatusBanner.vue'
 import { useAppController } from './composables/useAppController'
+import { useConnectionStatus } from './composables/useConnectionStatus'
 import { useNotifications } from './composables/useNotifications'
 import { useTeams } from './composables/useTeams'
 
-const { magicLinkRedirectTo, allCategories, activePlannerView, authEmail, authError, authFirstName, authInfo, authLastName, authLoading, authSending, authBypassEnabled, canEditModuleStatuses, categoryError, currentUser, currentUserEmail, userProfile, displayedWeeklyScheduleEvents, error, hiddenOccurrenceItems, hiddenPageEntries, hiddenPageError, hiddenPageLoading, hiddenSeriesItems, lastHiddenSeries, lastHiddenOccurrence, loadImportedEvents, loading, lsfImportModule, modules, moduleStatusError, profileError, profileInfo, profileSaving, savedSpo, savedStudyProgram, savingCategoryModuleId, savingModuleId, scheduleVisibilityError, scheduleVisibilityInfo, selectedModule, selectedSpoId, selectedStudyProgramId, selectionDirty, showHiddenEvents, spoItems, studyProgramItems, weekStartDate, getSpoLabel, getStudyProgramLabel, hideScheduleOccurrence, hideScheduleSeries, saveModuleCategories, saveModuleStatus, saveStudyProfileSelection, sendMagicLink, continueAsDemoUser, showAllScheduleOccurrences, showAllScheduleSeries, showScheduleOccurrence, showScheduleSeries, signOut, undoHideScheduleOccurrence, undoHideScheduleSeries } = useAppController()
+const { magicLinkRedirectTo, allCategories, activePlannerView, authEmail, authError, authFirstName, authInfo, authLastName, authLoading, authSending, authBypassEnabled, canEditModuleStatuses, categoryError, currentUser, currentUserEmail, userProfile, displayedWeeklyScheduleEvents, error, hiddenOccurrenceItems, hiddenPageEntries, hiddenPageError, hiddenPageLoading, hiddenSeriesItems, lastHiddenSeries, lastHiddenOccurrence, lastDeletedPersonalAppointment, loadImportedEvents, loading, lsfImportModule, modules, moduleStatusError, profileError, profileInfo, profileSaving, savedSpo, savedStudyProgram, savingCategoryModuleId, savingModuleId, scheduleVisibilityError, scheduleVisibilityInfo, selectedModule, selectedSpoId, selectedStudyProgramId, selectionDirty, showHiddenEvents, spoItems, studyProgramItems, weekStartDate, getSpoLabel, getStudyProgramLabel, hideScheduleOccurrence, hideScheduleSeries, saveModuleCategories, saveModuleStatus, saveStudyProfileSelection, sendMagicLink, continueAsDemoUser, showAllScheduleOccurrences, showAllScheduleSeries, showScheduleOccurrence, showScheduleSeries, signOut, undoHideScheduleOccurrence, undoHideScheduleSeries, loadPersonalAppointments, createPersonalAppointment, deletePersonalAppointment, undoDeletePersonalAppointment } = useAppController()
+
+const savingPersonalAppointment = ref(false)
+const personalAppointmentError = ref<string | null>(null)
+
+async function onCreatePersonalAppointment(input: { title: string; description: string | null; startsAt: string; endsAt: string }) {
+  savingPersonalAppointment.value = true
+  personalAppointmentError.value = null
+  const ok = await createPersonalAppointment(input, weekStartDate.value, (msg) => {
+    personalAppointmentError.value = msg
+  })
+  savingPersonalAppointment.value = false
+  if (ok) {
+    personalAppointmentError.value = null
+  }
+}
+
+watch(weekStartDate, (date) => {
+  void loadPersonalAppointments(date)
+}, { immediate: true })
 
 // Eine gemeinsame "Rückgängig"-Aktion für das Erfolgs-Banner: es ist immer
 // höchstens eine Undo-Quelle (Reihe oder Einzeltermin) gesetzt.
@@ -22,7 +44,15 @@ function undoLastHide() {
     void undoHideScheduleSeries()
   } else if (lastHiddenOccurrence.value) {
     void undoHideScheduleOccurrence()
+  } else if (lastDeletedPersonalAppointment.value) {
+    void undoDeletePersonalAppointment(weekStartDate.value)
   }
+}
+const { isOnline, justReconnected } = useConnectionStatus()
+
+function onDeletePersonalAppointment(occurrenceId: string) {
+  const id = occurrenceId.replace(/^personal:/, '')
+  void deletePersonalAppointment(id, weekStartDate.value)
 }
 const { invitationCount, fetchMyInvitations, subscribeToInvitations, unsubscribeFromInvitations } = useTeams()
 const {
@@ -208,6 +238,7 @@ async function onSidebarNavigate(target: SidebarSection) {
 </script>
 <template>
   <div class="app-shell">
+    <StatusBanner />
     <header class="app-header">
       <div class="header-inner">
         <div class="brand">
@@ -422,12 +453,15 @@ async function onSidebarNavigate(target: SidebarSection) {
                   :schedule-visibility-info="scheduleVisibilityInfo"
                   :last-hidden-series="lastHiddenSeries"
                   :last-hidden-occurrence="lastHiddenOccurrence"
+                  :last-deleted-personal-appointment="lastDeletedPersonalAppointment"
                   :hidden-series-items="hiddenSeriesItems"
                   :hidden-occurrence-items="hiddenOccurrenceItems"
                   :modules="modules"
                   :visible-weekly-schedule-events="displayedWeeklyScheduleEvents"
                   :show-hidden-events="showHiddenEvents"
                   :week-start-date="weekStartDate"
+                  :saving-personal-appointment="savingPersonalAppointment"
+                  :personal-appointment-error="personalAppointmentError"
                   @update:active-planner-view="activePlannerView = $event"
                   @hide-occurrence="hideScheduleOccurrence($event)"
                   @hide-series="hideScheduleSeries($event.seriesId, $event.title)"
@@ -439,6 +473,9 @@ async function onSidebarNavigate(target: SidebarSection) {
                   @navigate-to-hidden-page="navigateToHiddenPage"
                   @undo-hide="undoLastHide"
                   @select-module="selectedModule = $event"
+                  @create-personal-appointment="onCreatePersonalAppointment($event)"
+                  @clear-personal-appointment-error="personalAppointmentError = null"
+                  @delete-personal-appointment="onDeletePersonalAppointment($event)"
                 />
                 </section>
 
@@ -472,6 +509,8 @@ async function onSidebarNavigate(target: SidebarSection) {
   />
 
   <PwaPrompt />
+
+  <ConnectionBanner :is-online="isOnline" :just-reconnected="justReconnected" />
 </template>
 
 <style scoped src="./app.css"></style>

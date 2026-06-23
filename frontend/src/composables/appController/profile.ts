@@ -1,5 +1,6 @@
 import { watch } from 'vue'
 import { supabase, supabaseConfigError } from '../../supabase'
+import { normalizeError } from '../../utils/normalizeError'
 import type {
   Category,
   ModuleHandbook,
@@ -8,9 +9,11 @@ import type {
   UserProfile,
 } from '../../types'
 import type { UserEventRow } from '../../types/schedule'
+import type { PersonalAppointment } from '../../types/personalAppointments'
 import type { AppControllerState } from './state'
 import type { AcceptedAppointmentRow, HiddenOccurrenceRow, HiddenSeriesRow } from './shared'
 import { loadSavedOrgEvents } from '../savedOrgEventsStore'
+import { localDateKey } from '../../utils/datetime'
 
 export function createProfileController(
   state: AppControllerState,
@@ -55,10 +58,10 @@ export function createProfileController(
 
     state.loading.value = false
 
-    if (spRes.error) { state.error.value = spRes.error.message; return }
-    if (spoRes.error) { state.error.value = spoRes.error.message; return }
-    if (hbRes.error) { state.error.value = hbRes.error.message; return }
-    if (categoryRes.error) { state.categoryError.value = categoryRes.error.message }
+    if (spRes.error) { state.error.value = normalizeError(spRes.error); return }
+    if (spoRes.error) { state.error.value = normalizeError(spoRes.error); return }
+    if (hbRes.error) { state.error.value = normalizeError(hbRes.error); return }
+    if (categoryRes.error) { state.categoryError.value = 'Kategorien konnten nicht geladen werden.' }
 
     if (hiddenSeriesRes.error) {
       state.scheduleVisibilityError.value = 'Verborgene Terminreihen konnten nicht geladen werden.'

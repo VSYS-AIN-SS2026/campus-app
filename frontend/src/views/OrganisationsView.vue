@@ -14,6 +14,7 @@ const {
   fetchOrganisationEvents,
   fetchSavedEvents,
   createOrganisation,
+  deleteOrganisation,
   joinOrganisation,
   leaveOrganisation,
   createOrganisationEvent,
@@ -22,12 +23,45 @@ const {
   unsaveEvent,
 } = useOrganisations()
 
+// ── Ansichtsmodus ─────────────────────────────────────────────
+const viewMode = ref<'mine' | 'all'>('mine')
+
+// ── Formulare ─────────────────────────────────────────────────
 const organisationName = ref('')
 const organisationDescription = ref('')
 const organisationColor = ref('#6366f1')
 const showOrganisationForm = ref(false)
 const showEventForm = ref(false)
 
+// ── Org löschen (Bestätigung) ─────────────────────────────────
+const confirmDeleteOrgId = ref<string | null>(null)
+
+const confirmDeleteOrgName = computed(() => {
+  if (!confirmDeleteOrgId.value) return ''
+  return organisationsWithState.value.find(o => o.id === confirmDeleteOrgId.value)?.name ?? ''
+})
+
+function startDeleteOrg(orgId: string) {
+  confirmDeleteOrgId.value = orgId
+}
+
+function cancelDeleteOrg() {
+  confirmDeleteOrgId.value = null
+}
+
+async function executeDeleteOrg() {
+  if (!confirmDeleteOrgId.value) return
+  const deletedId = confirmDeleteOrgId.value
+  await deleteOrganisation(deletedId)
+  if (!error.value) {
+    confirmDeleteOrgId.value = null
+    if (selectedOrganisationId.value === deletedId) {
+      selectedOrganisationId.value = ownedOrganisations.value[0]?.id ?? null
+    }
+  }
+}
+
+// ── Event-Formular ────────────────────────────────────────────
 const selectedOrganisationId = ref<string | null>(null)
 const eventTitle = ref('')
 const eventDescription = ref('')
@@ -35,26 +69,39 @@ const eventLocation = ref('')
 const eventStartsAt = ref('')
 const eventEndsAt = ref('')
 
-const ownedOrganisations = computed(() => {
-  return organisationsWithState.value.filter(organisation => organisation.isOwner)
+const minEventDateTime = computed(() => {
+  if (!showEventForm.value) return ''
+  const now = new Date()
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`
 })
 
-const selectedOrganisation = computed(() => {
-  return organisationsWithState.value.find(
-    organisation => organisation.id === selectedOrganisationId.value,
-  )
-})
+// ── Computed-Listen ───────────────────────────────────────────
+const ownedOrganisations = computed(() =>
+  organisationsWithState.value.filter(o => o.isOwner),
+)
 
-const visibleEvents = computed(() => {
-  return events.value.filter(event => {
-    return organisationsWithState.value.some(
-      organisation => organisation.id === event.organisation_id && organisation.isMember,
-    )
-  })
-})
+const myOrganisations = computed(() =>
+  organisationsWithState.value.filter(o => o.isMember),
+)
 
+const selectedOrganisation = computed(() =>
+  organisationsWithState.value.find(o => o.id === selectedOrganisationId.value),
+)
+
+const myEvents = computed(() =>
+  events.value.filter(e =>
+    organisationsWithState.value.some(o => o.id === e.organisation_id && o.isMember),
+  ),
+)
+
+// ── Hilfsfunktionen ───────────────────────────────────────────
 function getOrganisationName(organisationId: string) {
-  return organisationsWithState.value.find(item => item.id === organisationId)?.name ?? 'Organisation'
+  return organisationsWithState.value.find(o => o.id === organisationId)?.name ?? 'Organisation'
+}
+
+function isOrgMember(organisationId: string) {
+  return organisationsWithState.value.some(o => o.id === organisationId && o.isMember)
 }
 
 function isEventOwner(organisationId: string) {
@@ -63,21 +110,18 @@ function isEventOwner(organisationId: string) {
 
 function formatDateTime(value: string) {
   return new Intl.DateTimeFormat('de-DE', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
   }).format(new Date(value))
 }
 
+// ── Formulare absenden ────────────────────────────────────────
 async function submitOrganisation() {
   await createOrganisation({
     name: organisationName.value,
     description: organisationDescription.value,
     color: organisationColor.value,
   })
-
   if (!error.value) {
     organisationName.value = ''
     organisationDescription.value = ''
@@ -87,10 +131,7 @@ async function submitOrganisation() {
 }
 
 async function submitEvent() {
-  if (!selectedOrganisationId.value) {
-    return
-  }
-
+  if (!selectedOrganisationId.value) return
   await createOrganisationEvent({
     organisationId: selectedOrganisationId.value,
     title: eventTitle.value,
@@ -99,7 +140,6 @@ async function submitEvent() {
     startsAt: new Date(eventStartsAt.value).toISOString(),
     endsAt: new Date(eventEndsAt.value).toISOString(),
   })
-
   if (!error.value) {
     eventTitle.value = ''
     eventDescription.value = ''
@@ -112,21 +152,37 @@ async function submitEvent() {
 
 onMounted(async () => {
   await fetchOrganisations()
-  await Promise.all([
-    fetchOrganisationEvents(),
-    fetchSavedEvents(),
-  ])
-
+  await Promise.all([fetchOrganisationEvents(), fetchSavedEvents()])
   selectedOrganisationId.value = ownedOrganisations.value[0]?.id ?? null
 })
 </script>
 
 <template>
   <section class="organisations-page">
+
+    <!-- Header mit Toggle -->
     <header class="organisations-header">
       <div>
         <h1>Organisationen</h1>
         <p>Erstelle Organisationen, tritt ihnen bei und speichere Events für deine Wochenansicht.</p>
+      </div>
+      <div class="toggle-group" role="group" aria-label="Ansicht wählen">
+        <button
+          type="button"
+          class="toggle-btn"
+          :class="{ 'toggle-btn--active': viewMode === 'mine' }"
+          @click="viewMode = 'mine'"
+        >
+          Meine
+        </button>
+        <button
+          type="button"
+          class="toggle-btn"
+          :class="{ 'toggle-btn--active': viewMode === 'all' }"
+          @click="viewMode = 'all'"
+        >
+          Alle
+        </button>
       </div>
     </header>
 
@@ -138,252 +194,323 @@ onMounted(async () => {
     </div>
 
     <template v-else>
-    <section class="panel">
-        <div class="panel-head">
+
+      <!-- ═══════════════════ MEINE ORGANISATIONEN ═══════════════════ -->
+      <template v-if="viewMode === 'mine'">
+
+        <!-- Organisation erstellen -->
+        <section class="panel">
+          <div class="panel-head">
             <h2>Neue Organisation erstellen</h2>
-            <button
-            type="button"
-            class="secondary-button"
-            @click="showOrganisationForm = !showOrganisationForm"
-            >
-            {{ showOrganisationForm ? 'Schließen' : 'Organisation erstellen' }}
+            <button type="button" class="secondary-button" @click="showOrganisationForm = !showOrganisationForm">
+              {{ showOrganisationForm ? 'Schließen' : 'Organisation erstellen' }}
             </button>
-        </div>
-
-        <form
-            v-if="showOrganisationForm"
-            class="form"
-            @submit.prevent="submitOrganisation"
-        >
-          <label>
-            Name
-            <input
-              v-model="organisationName"
-              type="text"
-              required
-              minlength="2"
-              placeholder="z. B. AStA"
-            />
-          </label>
-
-          <label>
-            Beschreibung
-            <textarea
-              v-model="organisationDescription"
-              rows="3"
-              placeholder="Kurzbeschreibung der Organisation"
-            />
-          </label>
-
-          <label class="color-label">
-            Farbe in der Wochenansicht
-            <div class="color-picker-row">
-              <input
-                v-model="organisationColor"
-                type="color"
-                class="color-input"
-              />
-              <span class="color-preview" :style="{ background: organisationColor }">{{ organisationColor }}</span>
-            </div>
-          </label>
-
-          <button type="submit" class="primary-button" :disabled="saving">
-            Organisation erstellen
-          </button>
-        </form>
-      </section>
-
-      <section class="panel">
-        <h2>Alle Organisationen</h2>
-
-        <div v-if="organisationsWithState.length === 0" class="empty">
-          Noch keine Organisationen vorhanden.
-        </div>
-
-        <div v-else class="organisation-list">
-          <article
-            v-for="organisation in organisationsWithState"
-            :key="organisation.id"
-            class="organisation-card"
-          >
-            <div>
-              <h3>{{ organisation.name }}</h3>
-              <p v-if="organisation.description">{{ organisation.description }}</p>
-              <p v-else class="muted">Keine Beschreibung.</p>
-
-              <span v-if="organisation.isOwner" class="badge">Ersteller</span>
-              <span v-else-if="organisation.isMember" class="badge">Beigetreten</span>
-            </div>
-
-            <div class="card-actions">
-              <button
-                v-if="!organisation.isMember"
-                type="button"
-                class="secondary-button"
-                :disabled="saving"
-                @click="joinOrganisation(organisation.id)"
-              >
-                Beitreten
-              </button>
-
-              <button
-                v-else-if="!organisation.isOwner"
-                type="button"
-                class="secondary-button"
-                :disabled="saving"
-                @click="leaveOrganisation(organisation.id)"
-              >
-                Verlassen
-              </button>
-            </div>
-          </article>
-        </div>
-      </section>
-
-      <section class="panel">
-        <div class="panel-head">
-            <h2>Event erstellen</h2>
-            <button
-            v-if="ownedOrganisations.length > 0"
-            type="button"
-            class="secondary-button"
-            @click="showEventForm = !showEventForm"
-            >
-            {{ showEventForm ? 'Schließen' : 'Event erstellen' }}
-            </button>
-        </div>
-
-        <div v-if="ownedOrganisations.length === 0" class="empty">
-          Du kannst Events erstellen, sobald du selbst eine Organisation erstellt hast.
-        </div>
-
-        <form
-            v-else-if="showEventForm"
-            class="form"
-            @submit.prevent="submitEvent"
-            >
-          <label>
-            Organisation
-            <select v-model="selectedOrganisationId" required>
-              <option
-                v-for="organisation in ownedOrganisations"
-                :key="organisation.id"
-                :value="organisation.id"
-              >
-                {{ organisation.name }}
-              </option>
-            </select>
-          </label>
-
-          <label>
-            Titel
-            <input
-              v-model="eventTitle"
-              type="text"
-              required
-              minlength="2"
-              placeholder="z. B. Sommerfest"
-            />
-          </label>
-
-          <label>
-            Beschreibung
-            <textarea
-              v-model="eventDescription"
-              rows="3"
-              placeholder="Details zum Event"
-            />
-          </label>
-
-          <label>
-            Ort
-            <input
-              v-model="eventLocation"
-              type="text"
-              placeholder="z. B. Aula"
-            />
-          </label>
-
-          <div class="form-grid">
-            <label>
-              Start
-              <input v-model="eventStartsAt" type="datetime-local" required />
-            </label>
-
-            <label>
-              Ende
-              <input v-model="eventEndsAt" type="datetime-local" required />
-            </label>
           </div>
 
-          <button
-            type="submit"
-            class="primary-button"
-            :disabled="saving || !selectedOrganisation"
-          >
-            Event erstellen
-          </button>
-        </form>
-      </section>
+          <form v-if="showOrganisationForm" class="form" @submit.prevent="submitOrganisation">
+            <label>
+              Name
+              <input v-model="organisationName" type="text" required minlength="2" placeholder="z. B. AStA" />
+            </label>
+            <label>
+              Beschreibung
+              <textarea v-model="organisationDescription" rows="3" placeholder="Kurzbeschreibung der Organisation" />
+            </label>
+            <label class="color-label">
+              Farbe in der Wochenansicht
+              <div class="color-picker-row">
+                <input v-model="organisationColor" type="color" class="color-input" />
+                <span class="color-preview" :style="{ background: organisationColor }">{{ organisationColor }}</span>
+              </div>
+            </label>
+            <button type="submit" class="primary-button" :disabled="saving">Organisation erstellen</button>
+          </form>
+        </section>
 
-      <section class="panel">
-        <h2>Events meiner Organisationen</h2>
+        <!-- Meine Organisationen -->
+        <section class="panel">
+          <h2>Meine Organisationen</h2>
 
-        <div v-if="visibleEvents.length === 0" class="empty">
-          Keine Events vorhanden.
-        </div>
+          <div v-if="myOrganisations.length === 0" class="empty">
+            Du bist noch keiner Organisation beigetreten.
+          </div>
 
-        <div v-else class="event-list">
-          <article
-            v-for="event in visibleEvents"
-            :key="event.id"
-            class="event-card"
-          >
-            <div class="event-card-info">
-              <h3>{{ event.title }}</h3>
-              <p class="muted">{{ getOrganisationName(event.organisation_id) }}</p>
-              <p>
-                {{ formatDateTime(event.starts_at) }} – {{ formatDateTime(event.ends_at) }}
-              </p>
-              <p v-if="event.location">Ort: {{ event.location }}</p>
-              <p v-if="event.description">{{ event.description }}</p>
+          <div v-else class="organisation-list">
+            <article v-for="organisation in myOrganisations" :key="organisation.id" class="organisation-card">
+              <div>
+                <h3>{{ organisation.name }}</h3>
+                <p v-if="organisation.description">{{ organisation.description }}</p>
+                <p v-else class="muted">Keine Beschreibung.</p>
+                <span v-if="organisation.isOwner" class="badge">Ersteller</span>
+                <span v-else class="badge">Beigetreten</span>
+              </div>
+              <div class="card-actions">
+                <button
+                  v-if="!organisation.isOwner"
+                  type="button"
+                  class="secondary-button"
+                  :disabled="saving"
+                  @click="leaveOrganisation(organisation.id)"
+                >
+                  Verlassen
+                </button>
+                <button
+                  v-if="organisation.isOwner"
+                  type="button"
+                  class="danger-button"
+                  :disabled="saving"
+                  @click="startDeleteOrg(organisation.id)"
+                >
+                  Löschen
+                </button>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <!-- Event erstellen -->
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Event erstellen</h2>
+            <button
+              v-if="ownedOrganisations.length > 0"
+              type="button"
+              class="secondary-button"
+              @click="showEventForm = !showEventForm"
+            >
+              {{ showEventForm ? 'Schließen' : 'Event erstellen' }}
+            </button>
+          </div>
+
+          <div v-if="ownedOrganisations.length === 0" class="empty">
+            Du kannst Events erstellen, sobald du selbst eine Organisation erstellt hast.
+          </div>
+
+          <form v-else-if="showEventForm" class="form" @submit.prevent="submitEvent">
+            <label>
+              Organisation
+              <select v-model="selectedOrganisationId" required>
+                <option v-for="o in ownedOrganisations" :key="o.id" :value="o.id">{{ o.name }}</option>
+              </select>
+            </label>
+            <label>
+              Titel
+              <input v-model="eventTitle" type="text" required minlength="2" placeholder="z. B. Sommerfest" />
+            </label>
+            <label>
+              Beschreibung
+              <textarea v-model="eventDescription" rows="3" placeholder="Details zum Event" />
+            </label>
+            <label>
+              Ort
+              <input v-model="eventLocation" type="text" placeholder="z. B. Aula" />
+            </label>
+            <div class="form-grid">
+              <label>
+                Start
+                <input v-model="eventStartsAt" type="datetime-local" required :min="minEventDateTime" />
+              </label>
+              <label>
+                Ende
+                <input v-model="eventEndsAt" type="datetime-local" required :min="eventStartsAt || minEventDateTime" />
+              </label>
             </div>
+            <button type="submit" class="primary-button" :disabled="saving || !selectedOrganisation">
+              Event erstellen
+            </button>
+          </form>
+        </section>
 
-            <div class="event-card-actions">
-              <button
-                v-if="!savedEventIds.has(event.id)"
-                type="button"
-                class="secondary-button"
-                :disabled="saving"
-                @click="saveEvent(event.id)"
-              >
-                Zur Wochenansicht hinzufügen
-              </button>
+        <!-- Events meiner Organisationen -->
+        <section class="panel">
+          <h2>Events meiner Organisationen</h2>
 
-              <button
-                v-else
-                type="button"
-                class="secondary-button"
-                :disabled="saving"
-                @click="unsaveEvent(event.id)"
-              >
-                Aus Wochenansicht entfernen
-              </button>
+          <div v-if="myEvents.length === 0" class="empty">
+            Keine Events in deinen Organisationen.
+          </div>
 
-              <button
-                v-if="isEventOwner(event.organisation_id)"
-                type="button"
-                class="danger-button"
-                :disabled="saving"
-                @click="deleteOrganisationEvent(event.id)"
-              >
-                Löschen
-              </button>
-            </div>
-          </article>
-        </div>
-      </section>
+          <div v-else class="event-list">
+            <article v-for="event in myEvents" :key="event.id" class="event-card">
+              <div class="event-card-info">
+                <h3>{{ event.title }}</h3>
+                <p class="muted">{{ getOrganisationName(event.organisation_id) }}</p>
+                <p>{{ formatDateTime(event.starts_at) }} – {{ formatDateTime(event.ends_at) }}</p>
+                <p v-if="event.location">Ort: {{ event.location }}</p>
+                <p v-if="event.description">{{ event.description }}</p>
+              </div>
+              <div class="event-card-actions">
+                <button
+                  v-if="!savedEventIds.has(event.id)"
+                  type="button"
+                  class="secondary-button"
+                  :disabled="saving"
+                  @click="saveEvent(event.id)"
+                >
+                  Zur Wochenansicht hinzufügen
+                </button>
+                <button
+                  v-else
+                  type="button"
+                  class="secondary-button"
+                  :disabled="saving"
+                  @click="unsaveEvent(event.id)"
+                >
+                  Aus Wochenansicht entfernen
+                </button>
+                <button
+                  v-if="isEventOwner(event.organisation_id)"
+                  type="button"
+                  class="danger-button"
+                  :disabled="saving"
+                  @click="deleteOrganisationEvent(event.id)"
+                >
+                  Löschen
+                </button>
+              </div>
+            </article>
+          </div>
+        </section>
+
+      </template>
+
+      <!-- ═══════════════════ ALLE ORGANISATIONEN ════════════════════ -->
+      <template v-else>
+
+        <!-- Alle Organisationen -->
+        <section class="panel">
+          <h2>Alle Organisationen</h2>
+
+          <div v-if="organisationsWithState.length === 0" class="empty">
+            Noch keine Organisationen vorhanden.
+          </div>
+
+          <div v-else class="organisation-list">
+            <article v-for="organisation in organisationsWithState" :key="organisation.id" class="organisation-card">
+              <div>
+                <h3>{{ organisation.name }}</h3>
+                <p v-if="organisation.description">{{ organisation.description }}</p>
+                <p v-else class="muted">Keine Beschreibung.</p>
+                <span v-if="organisation.isOwner" class="badge">Ersteller</span>
+                <span v-else-if="organisation.isMember" class="badge">Beigetreten</span>
+              </div>
+              <div class="card-actions">
+                <button
+                  v-if="!organisation.isMember"
+                  type="button"
+                  class="secondary-button"
+                  :disabled="saving"
+                  @click="joinOrganisation(organisation.id)"
+                >
+                  Beitreten
+                </button>
+                <button
+                  v-else-if="!organisation.isOwner"
+                  type="button"
+                  class="secondary-button"
+                  :disabled="saving"
+                  @click="leaveOrganisation(organisation.id)"
+                >
+                  Verlassen
+                </button>
+                <button
+                  v-if="organisation.isOwner"
+                  type="button"
+                  class="danger-button"
+                  :disabled="saving"
+                  @click="startDeleteOrg(organisation.id)"
+                >
+                  Löschen
+                </button>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <!-- Alle Events -->
+        <section class="panel">
+          <h2>Alle Events</h2>
+
+          <div v-if="events.length === 0" class="empty">
+            Noch keine Events vorhanden.
+          </div>
+
+          <div v-else class="event-list">
+            <article v-for="event in events" :key="event.id" class="event-card">
+              <div class="event-card-info">
+                <h3>{{ event.title }}</h3>
+                <p class="muted">{{ getOrganisationName(event.organisation_id) }}</p>
+                <p>{{ formatDateTime(event.starts_at) }} – {{ formatDateTime(event.ends_at) }}</p>
+                <p v-if="event.location">Ort: {{ event.location }}</p>
+                <p v-if="event.description">{{ event.description }}</p>
+              </div>
+              <div class="event-card-actions">
+                <template v-if="isOrgMember(event.organisation_id)">
+                  <button
+                    v-if="!savedEventIds.has(event.id)"
+                    type="button"
+                    class="secondary-button"
+                    :disabled="saving"
+                    @click="saveEvent(event.id)"
+                  >
+                    Zur Wochenansicht hinzufügen
+                  </button>
+                  <button
+                    v-else
+                    type="button"
+                    class="secondary-button"
+                    :disabled="saving"
+                    @click="unsaveEvent(event.id)"
+                  >
+                    Aus Wochenansicht entfernen
+                  </button>
+                </template>
+                <button
+                  v-else
+                  type="button"
+                  class="secondary-button"
+                  :disabled="saving"
+                  @click="joinOrganisation(event.organisation_id)"
+                >
+                  Organisation beitreten
+                </button>
+                <button
+                  v-if="isEventOwner(event.organisation_id)"
+                  type="button"
+                  class="danger-button"
+                  :disabled="saving"
+                  @click="deleteOrganisationEvent(event.id)"
+                >
+                  Löschen
+                </button>
+              </div>
+            </article>
+          </div>
+        </section>
+
+      </template>
+
     </template>
+
+    <!-- Bestätigungsdialog: Organisation löschen -->
+    <Teleport to="body">
+      <div v-if="confirmDeleteOrgId" class="confirm-overlay" @click.self="cancelDeleteOrg">
+        <div class="confirm-dialog" role="dialog" aria-modal="true">
+          <h3>Organisation löschen?</h3>
+          <p>
+            Möchtest du <strong>{{ confirmDeleteOrgName }}</strong> wirklich löschen?
+            Alle Events der Organisation werden ebenfalls gelöscht.
+            Diese Aktion kann nicht rückgängig gemacht werden.
+          </p>
+          <div class="confirm-actions">
+            <button type="button" class="secondary-button" @click="cancelDeleteOrg">Abbrechen</button>
+            <button type="button" class="danger-button" :disabled="saving" @click="executeDeleteOrg">
+              Endgültig löschen
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
   </section>
 </template>
 
@@ -400,6 +527,11 @@ onMounted(async () => {
   border: 0.0625rem solid var(--color-border);
   border-radius: 0.875rem;
   padding: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
 }
 
 .organisations-header h1 {
@@ -410,6 +542,36 @@ onMounted(async () => {
 .organisations-header p {
   margin: 0.35rem 0 0;
   color: var(--color-text-muted);
+}
+
+.toggle-group {
+  display: flex;
+  border: 0.0625rem solid var(--color-border);
+  border-radius: 999px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.toggle-btn {
+  border: none;
+  background: var(--color-surface-raised);
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0.4rem 1rem;
+  transition: background 0.15s, color 0.15s;
+}
+
+.toggle-btn:hover {
+  background: var(--color-border);
+  color: var(--color-text);
+}
+
+.toggle-btn--active {
+  background: var(--color-primary);
+  color: #fff;
 }
 
 .panel {
@@ -518,6 +680,9 @@ textarea {
 .card-actions {
   display: flex;
   align-items: flex-start;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 .badge {
@@ -629,6 +794,49 @@ textarea {
   color: white;
   text-shadow: 0 1px 2px rgba(0,0,0,0.35);
   letter-spacing: 0.04em;
+}
+
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.confirm-dialog {
+  background: var(--color-surface);
+  border: 0.0625rem solid var(--color-border);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  max-width: 28rem;
+  width: 90%;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  box-shadow: 0 0.5rem 2rem rgba(0, 0, 0, 0.2);
+}
+
+.confirm-dialog h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.confirm-dialog p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  line-height: 1.6;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
 }
 
 @media (max-width: 45em) {

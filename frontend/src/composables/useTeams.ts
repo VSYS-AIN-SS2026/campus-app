@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
+import { normalizeError } from '../utils/normalizeError'
 
 // Module-level singletons: shared across all useTeams() callers.
 const invitations = ref<any[]>([])
@@ -53,7 +54,7 @@ export function useTeams() {
       .eq('team_members.user_id', user.id)
     
     if (err) {
-      error.value = err.message
+      error.value = normalizeError(err)
       loading.value = false
       return
     }
@@ -131,7 +132,7 @@ export function useTeams() {
       .single()
 
     if (teamErr) {
-      error.value = teamErr.message
+      error.value = normalizeError(teamErr)
       loading.value = false
       return
     }
@@ -278,7 +279,7 @@ export function useTeams() {
       .eq('id', teamId)
 
     if (err) {
-      error.value = err.message
+      error.value = normalizeError(err)
     } else {
       await fetchTeams()
     }
@@ -291,7 +292,7 @@ export function useTeams() {
     const { data, error: err } = await client.rpc('trigger_team_cleanup')
 
     if (err) {
-      error.value = err.message
+      error.value = normalizeError(err)
       return 0
     }
 
@@ -304,11 +305,11 @@ export function useTeams() {
     if (!client) return
 
     if (!confirm('Team wirklich löschen?')) return
-    
+
     loading.value = true
     const { error: err } = await client.from('teams').delete().eq('id', teamId)
-    
-    if (err) error.value = err.message
+
+    if (err) error.value = normalizeError(err)
     else await fetchTeams()
     
     loading.value = false

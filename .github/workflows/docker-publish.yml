@@ -21,6 +21,10 @@ name: Build & Publish Frontend Image
 #   Variables:
 #     VITE_MAGIC_LINK_REDIRECT_URL   Redirect-URL des Deployments
 #                                    (z.B. https://campus-app.example.org)
+#     VITE_STATUS_PAGE_SLUG          Slug der Uptime-Kuma-Statusseite (z.B. campus)
+#     VITE_STATUS_PAGE_URL           Öffentliche URL der Statusseite (Banner-Link)
+#     VITE_STATUS_API_BASE           Status-API-Basis, direkt auf der Status-
+#                                    Subdomain (z.B. https://status.example.org/api/status-page)
 #
 # Hinweis: VITE_* wird zur BUILD-Zeit in das Bundle eingebacken. Das Image
 # ist damit an genau diese Werte (und Umgebung) gebunden.
@@ -80,6 +84,9 @@ jobs:
             VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}
             VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}
             VITE_MAGIC_LINK_REDIRECT_URL=${{ vars.VITE_MAGIC_LINK_REDIRECT_URL }}
+            VITE_STATUS_PAGE_SLUG=${{ vars.VITE_STATUS_PAGE_SLUG }}
+            VITE_STATUS_PAGE_URL=${{ vars.VITE_STATUS_PAGE_URL }}
+            VITE_STATUS_API_BASE=${{ vars.VITE_STATUS_API_BASE }}
 
       - name: Deploy to droplet (run restart.sh)
         uses: appleboy/ssh-action@v1
