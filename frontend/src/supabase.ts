@@ -8,6 +8,12 @@ const configuredRedirectUrl = import.meta.env.VITE_MAGIC_LINK_REDIRECT_URL?.trim
 // to the current origin (works for localhost, 127.0.0.1 and production alike).
 export const magicLinkRedirectTo = configuredRedirectUrl || window.location.origin
 
+// Development-only login bypass. Set VITE_AUTH_BYPASS=true in frontend/.env.local
+// to skip the magic link and continue as the demo user. The `import.meta.env.DEV`
+// guard ensures this is dead code (tree-shaken away) in production builds.
+export const authBypassEnabled =
+  import.meta.env.DEV && import.meta.env.VITE_AUTH_BYPASS === 'true'
+
 export const supabaseConfigError = !supabaseUrl || !supabaseKey
   ? 'Supabase ist lokal nicht konfiguriert. Lege frontend/.env.local mit VITE_SUPABASE_URL und VITE_SUPABASE_ANON_KEY an.'
   : null

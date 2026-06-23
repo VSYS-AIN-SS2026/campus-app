@@ -1,10 +1,27 @@
 <!doctype html>
-<html lang="en">
+<html lang="de">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
     <title>Campus App</title>
+    <meta name="description" content="Stundenplan, Module und Teamtermine für den HTWG-Campus." />
+
+    <!-- Browser tab + in-app header logo (HTWG brand mark) -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+
+    <!-- PWA install icon (iOS home screen) -->
+    <link rel="apple-touch-icon" href="/apple-touch-icon-180x180.png" />
+
+    <!-- Standalone status-bar colour, matched to the app header per colour scheme -->
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#172334" />
+
+    <!-- Installable web-app hints -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Campus" />
   </head>
   <body>
     <div id="app"></div>

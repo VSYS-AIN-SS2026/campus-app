@@ -8,6 +8,7 @@
     "typecheck": "vue-tsc --noEmit",
     "build": "vite build",
     "preview": "vite preview",
+    "generate:pwa-assets": "pwa-assets-generator",
     "test": "TZ=Europe/Berlin vitest run",
     "clean": "find src \\( -name '*.js' -o -name '*.vue.js' \\) -delete && rm -rf node_modules/.vite"
   },
@@ -17,10 +18,12 @@
     "vue-router": "^4.4.0"
   },
   "devDependencies": {
+    "@vite-pwa/assets-generator": "^0.2.6",
     "@vitejs/plugin-vue": "^5.1.4",
     "@vue/tsconfig": "^0.9.1",
     "typescript": "^6.0.3",
     "vite": "^5.4.10",
+    "vite-plugin-pwa": "^0.21.2",
     "vitest": "^4.1.7",
     "vue-tsc": "^3.2.7"
   }

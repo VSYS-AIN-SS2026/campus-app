@@ -8,6 +8,7 @@ import LsfEventImportModal from './components/LsfEventImportModal.vue'
 import ModuleDrawer from './components/ModuleDrawer.vue'
 import PlannerViewShell from './components/PlannerViewShell.vue'
 import ProfileSelectionPanel from './components/ProfileSelectionPanel.vue'
+import PwaPrompt from './components/PwaPrompt.vue'
 import Sidebar from './components/Sidebar.vue'
 import StatusBanner from './components/StatusBanner.vue'
 import { useAppController } from './composables/useAppController'
@@ -15,7 +16,7 @@ import { useConnectionStatus } from './composables/useConnectionStatus'
 import { useNotifications } from './composables/useNotifications'
 import { useTeams } from './composables/useTeams'
 
-const { magicLinkRedirectTo, allCategories, activePlannerView, authEmail, authError, authFirstName, authInfo, authLastName, authLoading, authSending, canEditModuleStatuses, categoryError, currentUser, currentUserEmail, userProfile, displayedWeeklyScheduleEvents, error, hiddenOccurrenceItems, hiddenPageEntries, hiddenPageError, hiddenPageLoading, hiddenSeriesItems, lastHiddenSeries, lastHiddenOccurrence, lastDeletedPersonalAppointment, loadImportedEvents, loading, lsfImportModule, modules, moduleStatusError, profileError, profileInfo, profileSaving, savedSpo, savedStudyProgram, savingCategoryModuleId, savingModuleId, scheduleVisibilityError, scheduleVisibilityInfo, selectedModule, selectedSpoId, selectedStudyProgramId, selectionDirty, showHiddenEvents, spoItems, studyProgramItems, weekStartDate, getSpoLabel, getStudyProgramLabel, hideScheduleOccurrence, hideScheduleSeries, saveModuleCategories, saveModuleStatus, saveStudyProfileSelection, sendMagicLink, showAllScheduleOccurrences, showAllScheduleSeries, showScheduleOccurrence, showScheduleSeries, signOut, undoHideScheduleOccurrence, undoHideScheduleSeries, loadPersonalAppointments, createPersonalAppointment, deletePersonalAppointment, undoDeletePersonalAppointment } = useAppController()
+const { magicLinkRedirectTo, allCategories, activePlannerView, authEmail, authError, authFirstName, authInfo, authLastName, authLoading, authSending, authBypassEnabled, canEditModuleStatuses, categoryError, currentUser, currentUserEmail, userProfile, displayedWeeklyScheduleEvents, error, hiddenOccurrenceItems, hiddenPageEntries, hiddenPageError, hiddenPageLoading, hiddenSeriesItems, lastHiddenSeries, lastHiddenOccurrence, lastDeletedPersonalAppointment, loadImportedEvents, loading, lsfImportModule, modules, moduleStatusError, profileError, profileInfo, profileSaving, savedSpo, savedStudyProgram, savingCategoryModuleId, savingModuleId, scheduleVisibilityError, scheduleVisibilityInfo, selectedModule, selectedSpoId, selectedStudyProgramId, selectionDirty, showHiddenEvents, spoItems, studyProgramItems, weekStartDate, getSpoLabel, getStudyProgramLabel, hideScheduleOccurrence, hideScheduleSeries, saveModuleCategories, saveModuleStatus, saveStudyProfileSelection, sendMagicLink, continueAsDemoUser, showAllScheduleOccurrences, showAllScheduleSeries, showScheduleOccurrence, showScheduleSeries, signOut, undoHideScheduleOccurrence, undoHideScheduleSeries, loadPersonalAppointments, createPersonalAppointment, deletePersonalAppointment, undoDeletePersonalAppointment } = useAppController()
 
 const savingPersonalAppointment = ref(false)
 const personalAppointmentError = ref<string | null>(null)
@@ -403,10 +404,12 @@ async function onSidebarNavigate(target: SidebarSection) {
                 :auth-sending="authSending"
                 :auth-error="authError"
                 :auth-info="authInfo"
+                :bypass-enabled="authBypassEnabled"
                 @update:auth-first-name="authFirstName = $event"
                 @update:auth-last-name="authLastName = $event"
                 @update:auth-email="authEmail = $event"
                 @submit="sendMagicLink"
+                @bypass="continueAsDemoUser"
               />
             </template>
             <template v-else-if="isTeamsRoute || isOrganisationsRoute || isProfileRoute">
@@ -504,6 +507,8 @@ async function onSidebarNavigate(target: SidebarSection) {
     @close="lsfImportModule = null"
     @imported="loadImportedEvents"
   />
+
+  <PwaPrompt />
 
   <ConnectionBanner :is-online="isOnline" :just-reconnected="justReconnected" />
 </template>

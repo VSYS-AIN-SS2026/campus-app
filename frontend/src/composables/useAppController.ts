@@ -5,7 +5,7 @@ import { createProfileController } from './appController/profile'
 import { createScheduleController } from './appController/schedule'
 import { getSpoLabel, getStudyProgramLabel } from './appController/shared'
 import { createAppControllerState } from './appController/state'
-import { magicLinkRedirectTo } from '../supabase'
+import { authBypassEnabled, magicLinkRedirectTo } from '../supabase'
 
 export function useAppController() {
   const state = createAppControllerState()
@@ -39,6 +39,7 @@ export function useAppController() {
     authLastName: state.authLastName,
     authLoading: state.authLoading,
     authSending: state.authSending,
+    authBypassEnabled,
     canEditModuleStatuses: state.canEditModuleStatuses,
     categoryError: state.categoryError,
     currentUser: state.currentUser,
@@ -86,6 +87,7 @@ export function useAppController() {
     saveModuleStatus: modules.saveModuleStatus,
     saveStudyProfileSelection: modules.saveStudyProfileSelection,
     sendMagicLink: auth.sendMagicLink,
+    continueAsDemoUser: auth.continueAsDemoUser,
     showAllScheduleOccurrences: schedule.showAllScheduleOccurrences,
     showAllScheduleSeries: schedule.showAllScheduleSeries,
     showScheduleOccurrence: schedule.showScheduleOccurrence,
