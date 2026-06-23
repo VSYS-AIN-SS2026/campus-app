@@ -33,8 +33,8 @@
  *     LSF_USERNAME + LSF_PASSWORD + LSF_TOTP_SECRET
  *
  * CLI flags:
- *   --dry-run                  Scrape + parse only; print a summary, write nothing
- *                              (no Supabase creds needed)
+ *   --dry-run                  Scrape + parse only; print a summary. No DB writes,
+ *                              no Supabase creds needed.
  *   --fresh                    Delete this semester's SG events before importing
  */
 import * as cheerio from 'cheerio';
@@ -123,7 +123,7 @@ async function getStudyProgramId(code) {
   return data?.[0]?.id ?? null;
 }
 
-async function resolveOrCreateModule(publishid, title, coordinator, studyProgramId) {
+async function resolveOrCreateModule(publishid, title, coordinator, studyProgramId, credits) {
   const name = lsf.stripLsfTitlePrefix(title) || title;
   if (DRY) return { id: `dry-${publishid}`, code: `SG-${publishid}`, name };
 
@@ -141,7 +141,7 @@ async function resolveOrCreateModule(publishid, title, coordinator, studyProgram
     version: 1,
     is_mandatory: false,
     is_specialization: false,
-    details: {},
+    details: credits != null ? { ects_total_computed: credits } : {},
   }).select('id, code, name').single();
   if (error) { console.error(`  module insert failed: ${error.message}`); return null; }
   console.log(`  + new module ${ins.code} "${ins.name}"`);
@@ -323,7 +323,8 @@ async function main() {
 
     const title = lsf.parseModuleTitle($);
     const coordinator = lsf.scrapeCoordinator($);
-    const mod = await resolveOrCreateModule(publishid, title, coordinator, studyProgramId);
+    const credits = lsf.scrapeCredits($);
+    const mod = await resolveOrCreateModule(publishid, title, coordinator, studyProgramId, credits);
     if (!mod) { fail++; continue; }
     await tagSg(mod.id, sgCategoryId);
 
@@ -363,7 +364,7 @@ async function main() {
     const withTimes = summary.filter((s) => s.events > 0).length;
     console.log(`\nDRY RUN summary: ${summary.length} SG modules (${withTimes} with weekly Termine, ${summary.length - withTimes} block/timeless):`);
     for (const s of summary) console.log(`  ${String(s.events).padStart(2)}×  ${s.code}  ${s.name}`);
-    console.log('\nNothing was written. Re-run without --dry-run (and with Supabase creds) to import.');
+    console.log('\nNothing was written (dry run). Re-run without --dry-run (and with Supabase creds) to import.');
     return;
   }
 

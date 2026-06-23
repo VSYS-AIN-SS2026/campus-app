@@ -240,6 +240,19 @@ export function scrapeCoordinator($) {
   return coordinator || null;
 }
 
+// ECTS/credits from the Grunddaten "Credits" cell. Often blank in LSF (esp. for
+// informal SG courses); returns null when absent.
+export function scrapeCredits($) {
+  let credits = null;
+  $('th').each(function () {
+    if (cleanText($(this).text()).toLowerCase() !== 'credits') return;
+    const num = parseFloat(cleanText($(this).next('td').text()).replace(',', '.'));
+    if (!Number.isNaN(num)) credits = num;
+    return false;
+  });
+  return credits;
+}
+
 /**
  * Parse the "Termine" table(s) of a module page into raw event descriptors.
  * Columns are located by header label (robust to layout differences between
