@@ -1,15 +1,18 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import type { ModuleEntry } from '../types'
+import { computed, nextTick, ref } from 'vue'
+import type { ModuleEntry, ModuleStatus } from '../types'
 import type { NewPersonalAppointmentInput } from '../types/personalAppointments'
 import ModuleList from './ModuleList.vue'
 import ModuleStatusList from './ModuleStatusList.vue'
+import ModuleProgressOverview from './ModuleProgressOverview.vue'
+import ModuleFilterBar, { type ModuleFilterState } from './ModuleFilterBar.vue'
+import SgSuggestions from './SgSuggestions.vue'
 import WeeklySchedule from './WeeklySchedule.vue'
 
 const props = defineProps<{
   selectedStudyProgramId: string | null
   selectedSpoId: string | null
-  activePlannerView: 'week' | 'modules'
+  activePlannerView: 'week' | 'modules' | 'sg'
   canEditModuleStatuses: boolean
   loading: boolean
   error: string | null
@@ -42,7 +45,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  'update:activePlannerView': [value: 'week' | 'modules']
+  'update:activePlannerView': [value: 'week' | 'modules' | 'sg']
   'hide-series': [payload: { seriesId: string; title: string }]
   'hide-occurrence': [occurrenceId: string]
   'show-series': [seriesId: string]
@@ -59,6 +62,46 @@ const emit = defineEmits<{
 }>()
 
 const moduleGrouping = ref<'semester' | 'status'>('semester')
+
+const moduleFilter = ref<ModuleFilterState>({ search: '', kind: null, tags: [] })
+
+function isSgModule(m: ModuleEntry): boolean {
+  return m.categories.some((c) => c.name.trim().toLowerCase() === 'studium generale')
+}
+
+const filteredModules = computed(() => {
+  const f = moduleFilter.value
+  const q = f.search.toLowerCase()
+  return props.modules.filter((m) => {
+    const sg = isSgModule(m)
+    // Pflicht / Wahlpflicht / SG are mutually exclusive. Default (no kind):
+    // SPO modules + only *chosen* SG (unchosen SG stays in its own view).
+    if (f.kind === 'sg') {
+      if (!sg) return false
+    } else if (f.kind === 'pflicht') {
+      if (sg || !m.is_mandatory) return false
+    } else if (f.kind === 'wahlpflicht') {
+      if (sg || m.is_mandatory) return false
+    } else if (sg && m.module_status === 'offen') {
+      return false
+    }
+    if (q && !(m.name.toLowerCase().includes(q) || m.code.toLowerCase().includes(q))) return false
+    if (f.tags.length) {
+      const names = new Set(m.categories.map((c) => c.name))
+      if (!f.tags.some((t) => names.has(t))) return false
+    }
+    return true
+  })
+})
+
+// Quick-nav from the progress overview: switch to the status grouping and
+// scroll the chosen status group into view.
+function onJump(status: ModuleStatus) {
+  moduleGrouping.value = 'status'
+  nextTick(() => {
+    document.getElementById(`module-group-${status}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  })
+}
 </script>
 
 <template>
@@ -112,6 +155,14 @@ const moduleGrouping = ref<'semester' | 'status'>('semester')
       >
         Modulliste
       </button>
+      <button
+        type="button"
+        class="planner-view-button"
+        :class="activePlannerView === 'sg' ? 'planner-view-button-active' : ''"
+        @click="emit('update:activePlannerView', 'sg')"
+      >
+        Studium Generale
+      </button>
     </div>
 
     <WeeklySchedule
@@ -138,7 +189,27 @@ const moduleGrouping = ref<'semester' | 'status'>('semester')
       @delete-personal-appointment="emit('delete-personal-appointment', $event)"
     />
 
-    <template v-else-if="!loading">
+    <div v-else-if="loading" class="loading-state">
+      <div class="spinner" />
+      <p>Module werden geladen…</p>
+    </div>
+
+    <SgSuggestions
+      v-else-if="activePlannerView === 'sg'"
+      :modules="modules"
+      @select="emit('select-module', $event)"
+    />
+
+    <template v-else>
+      <ModuleProgressOverview v-if="modules.length" :modules="modules" @jump="onJump" />
+
+      <ModuleFilterBar
+        v-if="modules.length"
+        :modules="modules"
+        :filtered-count="filteredModules.length"
+        @change="moduleFilter = $event"
+      />
+
       <div class="planner-view-switch module-grouping-switch" role="tablist" aria-label="Modulgruppierung">
         <button
           type="button"
@@ -158,22 +229,20 @@ const moduleGrouping = ref<'semester' | 'status'>('semester')
         </button>
       </div>
 
+      <p v-if="!filteredModules.length" class="modules-empty">
+        {{ modules.length ? 'Keine Module entsprechen den Filtern.' : 'Keine Module vorhanden.' }}
+      </p>
       <ModuleList
-        v-if="moduleGrouping === 'semester'"
-        :modules="modules"
+        v-else-if="moduleGrouping === 'semester'"
+        :modules="filteredModules"
         @select="emit('select-module', $event)"
       />
       <ModuleStatusList
         v-else
-        :modules="modules"
+        :modules="filteredModules"
         @select="emit('select-module', $event)"
       />
     </template>
-
-    <div v-else class="loading-state">
-      <div class="spinner" />
-      <p>Module werden geladen…</p>
-    </div>
   </template>
 
   <div v-else-if="!selectedStudyProgramId" class="empty-state">
@@ -192,5 +261,13 @@ const moduleGrouping = ref<'semester' | 'status'>('semester')
   display: flex;
   width: fit-content;
   margin: 0.55em 0 0.9em;
+}
+
+.modules-empty {
+  margin: 0;
+  padding: 1.5em 0.5em;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
 }
 </style>
