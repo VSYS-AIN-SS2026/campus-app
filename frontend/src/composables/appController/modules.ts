@@ -15,6 +15,7 @@ export function createModulesController(
   state: AppControllerState,
   deps: {
     clearHiddenForModule: (moduleId: string) => Promise<void>
+    loadImportedEvents: () => Promise<void>
   }
 ) {
   function setModuleStatus(moduleId: string, status: ModuleStatus) {
@@ -184,10 +185,15 @@ export function createModulesController(
       state.lsfImportModule.value = currentModule
     }
 
-    // Status verlässt "belegt": ausgeblendete Termine dieses Moduls aufräumen,
-    // damit ihre Hidden-Markierung nicht bestehen bleibt.
+    // Status verlässt "belegt": importierte Termine löschen und Hidden-Markierungen aufräumen.
     if (status === 'offen' || status === 'abgeschlossen') {
-      await deps.clearHiddenForModule(moduleId)
+      await supabase.rpc('delete_demo_user_events_for_module', {
+        p_module_id: moduleId,
+      })
+      await Promise.all([
+        deps.loadImportedEvents(),
+        deps.clearHiddenForModule(moduleId),
+      ])
     }
 
     await fetchWeeklySchedule()

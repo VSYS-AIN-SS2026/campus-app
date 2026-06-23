@@ -20,6 +20,7 @@ const emit = defineEmits<{
   'selected-day-label-change': [label: string]
   'hide-series': [payload: { seriesId: string; title: string }]
   'hide-occurrence': [occurrenceId: string]
+  'delete-personal': [occurrenceId: string]
 }>()
 
 const activeDayIndex = ref(0)
@@ -68,6 +69,21 @@ function normalizeIndex(index: number) {
   }
 
   return Math.min(Math.max(index, 0), props.days.length - 1)
+}
+
+function hexToRgba(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
+function orgEventStyle(event: NormalizedWeekEvent): Record<string, string> {
+  if (!event.color) return {}
+  return {
+    backgroundColor: hexToRgba(event.color, 0.18),
+    borderColor: hexToRgba(event.color, 0.55),
+  }
 }
 
 function scrollActiveTabIntoView() {
@@ -226,6 +242,18 @@ function requestHideOccurrence(event: NormalizedWeekEvent) {
   }
 
   emit('hide-occurrence', event.occurrenceId)
+}
+
+const confirmDeleteId = ref<string | null>(null)
+
+function requestDeletePersonal(event: NormalizedWeekEvent) {
+  confirmDeleteId.value = event.id
+}
+
+function commitDeletePersonal(event: NormalizedWeekEvent) {
+  confirmDeleteId.value = null
+  if (!event.occurrenceId) return
+  emit('delete-personal', event.occurrenceId)
 }
 
 function isSingleWordTitle(title: string) {
@@ -393,7 +421,7 @@ onUnmounted(() => {
         <span>{{ selectedDay.dateLabel }}</span>
       </header>
 
-      <section class="mobile-time-grid" :class="selectedDay.isToday ? 'mobile-time-grid-today' : ''" aria-label="Zeitachse">
+      <section class="mobile-time-grid" :class="selectedDay.isToday ? 'mobile-time-grid-today' : ''" aria-label="Zeitachse" @click="confirmDeleteId = null">
         <div class="mobile-time-axis">
           <span v-for="slot in props.hourSlots" :key="`mobile-time-${slot}`" class="mobile-time-label">
             {{ props.formatTimeLabel(slot) }}
@@ -411,23 +439,29 @@ onUnmounted(() => {
             v-for="event in selectedEvents"
             :key="`mobile-evt-${event.id}`"
             class="mobile-event"
-            :class="[`event-${event.status}`, { 'event-hidden': event.isHidden }]"
-            :style="{ ...props.eventStyle(event.start, event.end), position: 'absolute', left: '0.25rem', right: '0.25rem' }"
+            :class="[`event-${event.status}`, { 'event-hidden': event.isHidden, 'event-block--personal': event.eventType === 'personal' }]"
+            :style="{ ...props.eventStyle(event.start, event.end), ...orgEventStyle(event), position: 'absolute', left: '0.25rem', right: '0.25rem' }"
           >
             <strong class="event-title" :class="{ 'event-title-truncate': isSingleWordTitle(event.title) }">
               {{ event.title }}
             </strong>
             <span class="mobile-event-range">{{ event.startTime }}–{{ event.endTime }}</span>
             <span v-if="event.subtitle" class="event-subtitle">{{ event.subtitle }}</span>
+            <span v-if="event.location" class="event-location">{{ event.location }}</span>
+            <span v-if="event.description" class="event-description">{{ event.description }}</span>
             <span v-if="event.isHidden" class="event-hidden-label">Ausgeblendet</span>
-            <!-- Reihe ausblenden: gestapelte Zeilen = ganze Terminreihe. -->
+            <!--
+              Reihe ausblenden: gestapelte Zeilen = ganze Terminreihe.
+              Für persönliche Termine deaktiviert – persönliche Termine haben keine
+              Wiederholungsreihe, der Button wäre identisch mit "Ausblenden".
+            -->
             <button
-              v-if="event.seriesId"
+              v-if="event.seriesId && event.eventType !== 'personal'"
               type="button"
               class="mobile-event-action mobile-event-action-series"
               title="Ganze Reihe ausblenden"
               aria-label="Ganze Reihe ausblenden (alle Termine dieser Reihe)"
-              @click="requestHideSeries(event)"
+              @click.stop="requestHideSeries(event)"
             >
               <svg aria-hidden="true" class="mobile-event-action-icon" viewBox="0 0 16 16" fill="none">
                 <rect x="2.5" y="3" width="11" height="4" rx="1.25" stroke="currentColor" stroke-width="1.25" />
@@ -437,12 +471,12 @@ onUnmounted(() => {
             </button>
             <!-- Einzeltermin ausblenden: durchgestrichenes Auge = nur diesen Termin verbergen. -->
             <button
-              v-if="event.occurrenceId"
+              v-if="event.occurrenceId && confirmDeleteId !== event.id"
               type="button"
               class="mobile-event-action mobile-event-action-occurrence"
               title="Diesen Termin ausblenden"
               aria-label="Diesen Termin ausblenden (nur dieser Einzeltermin)"
-              @click="requestHideOccurrence(event)"
+              @click.stop="requestHideOccurrence(event)"
             >
               <svg aria-hidden="true" class="mobile-event-action-icon" viewBox="0 0 16 16" fill="none">
                 <path d="M2.5 8C3.8 5.8 5.7 4.7 8 4.7s4.2 1.1 5.5 3.3c-1.3 2.2-3.2 3.3-5.5 3.3S3.8 10.2 2.5 8Z" stroke="currentColor" stroke-width="1.2" />
@@ -450,6 +484,27 @@ onUnmounted(() => {
                 <path d="M3.2 12.8 12.8 3.2" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" />
               </svg>
             </button>
+            <!-- Termin löschen (nur für persönliche Termine) -->
+            <template v-if="event.eventType === 'personal'">
+              <button
+                v-if="confirmDeleteId !== event.id"
+                type="button"
+                class="mobile-event-action mobile-event-action-series"
+                title="Termin löschen"
+                aria-label="Termin löschen"
+                @click.stop="requestDeletePersonal(event)"
+              >
+                <svg aria-hidden="true" class="mobile-event-action-icon" viewBox="0 0 16 16" fill="none">
+                  <path d="M3 4.5h10M6 4.5V3.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 .5.5v1M4.5 4.5 5 12.5h6l.5-8" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" />
+                  <path d="M7 7v3.5M9 7v3.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" />
+                </svg>
+              </button>
+              <!-- Löschen bestätigen -->
+              <div v-else class="mobile-delete-confirm">
+                <button type="button" class="mobile-delete-confirm-btn mobile-delete-confirm-yes" title="Wirklich löschen" @click.stop="commitDeletePersonal(event)">✓</button>
+                <button type="button" class="mobile-delete-confirm-btn mobile-delete-confirm-no" title="Abbrechen" @click.stop="confirmDeleteId = null">✕</button>
+              </div>
+            </template>
           </div>
         </div>
       </section>
@@ -499,11 +554,19 @@ onUnmounted(() => {
 .event-title { font-size: 0.75rem; line-height: 1.25; color: var(--color-text); white-space: normal; overflow-wrap: break-word; word-break: normal; max-width: 100%; }
 .event-title-truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .event-subtitle { font-size: 0.68rem; color: var(--color-text-muted); line-height: 1.25; }
+.event-location { font-size: 0.65rem; color: var(--color-text-muted); line-height: 1.2; font-style: italic; }
+.event-description { font-size: 0.65rem; color: var(--color-text-muted); line-height: 1.2; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .mobile-event-action { position: absolute; top: 0.25rem; width: 1.375rem; height: 1.375rem; border: 0.0625rem solid var(--color-border); background: var(--color-surface); color: var(--color-text); border-radius: 999rem; font: inherit; font-size: 0.92rem; font-weight: 700; line-height: 1; padding: 0; display: inline-grid; place-items: center; }
 .mobile-event-action-series { right: 0.25rem; }
 .mobile-event-action-occurrence { right: 1.875rem; }
 .mobile-event-action-icon { display: block; width: 0.875rem; height: 0.875rem; }
 .mobile-event-action:hover { border-color: var(--color-primary); }
+.event-block--personal { background: color-mix(in srgb, var(--color-personal, #7c3aed) 14%, transparent) !important; border-left: 3px solid var(--color-personal, #7c3aed) !important; border-color: color-mix(in srgb, var(--color-personal, #7c3aed) 40%, transparent) !important; }
+.mobile-delete-confirm { position: absolute; top: 0.25rem; right: 0.25rem; display: flex; flex-direction: row-reverse; gap: 0.125rem; }
+.mobile-delete-confirm-btn { width: 1.375rem; height: 1.375rem; border-radius: 999rem; font: inherit; font-size: 0.65rem; font-weight: 700; line-height: 1; display: inline-grid; place-items: center; padding: 0; cursor: pointer; border: 0.0625rem solid; }
+.mobile-delete-confirm-yes { background: color-mix(in srgb, #dc2626 15%, var(--color-surface)); border-color: color-mix(in srgb, #dc2626 60%, transparent); color: #dc2626; }
+.mobile-delete-confirm-yes:hover { background: #dc2626; color: #fff; }
+.mobile-delete-confirm-no { background: var(--color-surface); border-color: var(--color-border); color: var(--color-text-muted); }
 @media (max-width: 45em) {
   .mobile-days { display: grid; grid-template-columns: 1fr; gap: 0.625rem; }
 }

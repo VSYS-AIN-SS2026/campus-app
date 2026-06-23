@@ -44,11 +44,14 @@ const members = ref<CombinedWeekMember[]>([])
 const memberSlots = ref<MemberScheduleSlot[]>([])
 const scheduleLoading = ref(false)
 
-async function loadTeamSchedule() {
+async function loadTeamSchedule(showLoader = false) {
   if (!supabase) return
-  scheduleLoading.value = true
+  if (showLoader) scheduleLoading.value = true
+  const monday = mondayOf(weekStart.value)
   const { data, error: err } = await supabase.rpc('get_team_week_schedule', {
     p_team_id: teamId,
+    p_week_start: localDateKey(monday),
+    p_time_zone: BROWSER_TIME_ZONE,
   })
   scheduleLoading.value = false
   if (err || !data) return
@@ -303,12 +306,13 @@ function teardownInvitationsRealtime() {
   authStateUnsub = null
 }
 
-// Wochenwechsel: Suchergebnisse verwerfen, Termine der neuen Woche laden.
+// Wochenwechsel: Suchergebnisse verwerfen, Termine und persönliche Slots neu laden.
 watch(weekStart, () => {
   searchResults.value = []
   searchPerformed.value = false
   error.value = null
   void loadAppointments()
+  void loadTeamSchedule()
 })
 
 async function onSearch(params: FreeSlotSearchParams) {
@@ -451,7 +455,7 @@ async function onCreate(payload: NewAppointmentInput) {
 onMounted(async () => {
   const { data: { user } } = await supabase!.auth.getUser()
   currentUserId.value = user?.id ?? null
-  void loadTeamSchedule()
+  void loadTeamSchedule(true)
   void loadAppointments()
   void loadMyInvitations()
   setupInvitationsRealtime()

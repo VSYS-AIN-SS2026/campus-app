@@ -16,10 +16,14 @@ export interface WeekEvent {
   date?: string
   title: string
   subtitle?: string
+  location?: string
+  description?: string
+  color?: string
   startTime: string
   endTime: string
   status: WeekEventStatus
   isHidden?: boolean
+  eventType?: 'personal'
 }
 
 export interface NormalizedWeekEvent extends WeekEvent {

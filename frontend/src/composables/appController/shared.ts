@@ -30,9 +30,13 @@ export type WeeklyScheduleEvent = {
   date?: string
   title: string
   subtitle?: string
+  location?: string
+  description?: string
+  color?: string
   startTime: string
   endTime: string
   status: ModuleStatus
+  eventType?: 'personal'
 }
 
 /** Zeile aus get_my_accepted_appointments (zugesagte Team-Termine, UTC). */

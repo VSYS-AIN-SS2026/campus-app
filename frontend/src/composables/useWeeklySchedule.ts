@@ -109,13 +109,16 @@ export function useWeeklySchedule(
   const hasEvents = computed(() => normalizedEvents.value.length > 0)
 
   function eventStyle(start: number, end: number, columnIndex = 0, columnCount = 1) {
-    const startOffset = ((start - startHourRef.value * 60) / totalMinutes.value) * 100
-    const height = ((end - start) / totalMinutes.value) * 100
+    const gridStart = startHourRef.value * 60
+    const effectiveStart = Math.max(start, gridStart)
+    const effectiveEnd = Math.min(end, gridStart + totalMinutes.value)
+    const startOffset = ((effectiveStart - gridStart) / totalMinutes.value) * 100
+    const height = ((effectiveEnd - effectiveStart) / totalMinutes.value) * 100
     const width = 100 / columnCount
     const left = columnIndex * width
 
     return {
-      top: `${Math.max(startOffset, 0)}%`,
+      top: `${startOffset}%`,
       height: `${Math.max(height, 3)}%`,
       left: `${left}%`,
       width: `${width}%`,

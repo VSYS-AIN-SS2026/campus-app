@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import CreatePersonalAppointmentDialog from './CreatePersonalAppointmentDialog.vue'
 import HiddenSeriesPopover from './weekly/HiddenSeriesPopover.vue'
 import WeekDesktopGrid from './weekly/WeekDesktopGrid.vue'
 import WeekMobileList from './weekly/WeekMobileList.vue'
 import { useWeeklySchedule } from '../composables/useWeeklySchedule'
+import { mondayOf } from '../utils/datetime'
 import type { ScheduleDay, WeekEvent } from '../types/schedule'
+import type { NewPersonalAppointmentInput } from '../types/personalAppointments'
 
 type WeekDesktopGridExpose = {
   scrollToDay: (index: number) => void
@@ -26,27 +29,33 @@ const props = withDefaults(defineProps<{
   weekStart: Date
   startHour?: number
   endHour?: number
+  savingPersonalAppointment?: boolean
+  personalAppointmentError?: string | null
 }>(), {
   loading: false,
   error: null,
   hiddenSeriesItems: () => [],
   hiddenOccurrenceItems: () => [],
-  // Standard-Sichtfenster der Wochenansicht: 08:00–18:00. Zeilen außerhalb davon
+  // Standard-Sichtfenster der Wochenansicht: 07:00–20:00. Zeilen außerhalb davon
   // werden nur eingeblendet, wenn dort tatsächlich Termine/Vorlesungen liegen.
-  startHour: 8,
-  endHour: 18,
+  startHour: 7,
+  endHour: 20,
+  savingPersonalAppointment: false,
+  personalAppointmentError: null,
 })
 
 // Früheste Start- und späteste Endzeit der aktuell sichtbaren Woche (Minuten ab
 // 00:00). Bezieht sich bewusst auf die angezeigten Events, damit Zeilen außerhalb
 // des Basisfensters nur dann erscheinen, wenn in DIESER Woche etwas dort liegt.
+// Sentinel-Werte für mehrtägige Segmente (start=0 / end=1440) werden ignoriert,
+// damit sie das Grid nicht auf 0–24 Uhr aufziehen.
 const eventMinuteBounds = computed(() => {
   let min = Number.POSITIVE_INFINITY
   let max = Number.NEGATIVE_INFINITY
   for (const dayEvents of continuousEventsByDay.value) {
     for (const event of dayEvents) {
-      if (event.start < min) min = event.start
-      if (event.end > max) max = event.end
+      if (event.start !== 0 && event.start < min) min = event.start
+      if (event.end !== 24 * 60 && event.end > max) max = event.end
     }
   }
   return { min, max }
@@ -82,7 +91,26 @@ const emit = defineEmits<{
   'show-all-series': []
   'toggle-show-hidden': []
   'navigate-to-hidden-page': []
+  'create-personal-appointment': [payload: NewPersonalAppointmentInput]
+  'clear-personal-appointment-error': []
+  'delete-personal-appointment': [occurrenceId: string]
 }>()
+
+const personalDialogOpen = ref(false)
+const personalDialogPending = ref(false)
+
+watch(
+  () => props.savingPersonalAppointment,
+  (saving) => {
+    if (!personalDialogPending.value) return
+    if (!saving && !props.personalAppointmentError) {
+      personalDialogOpen.value = false
+      personalDialogPending.value = false
+    } else if (!saving) {
+      personalDialogPending.value = false
+    }
+  }
+)
 
 function getTodayStart(): Date {
   const now = new Date()
@@ -94,8 +122,8 @@ let nowTimer: number | null = null
 const desktopGridRef = ref<WeekDesktopGridExpose | null>(null)
 const mobileListRef = ref<WeekMobileListExpose | null>(null)
 const isTodayVisibleInViewport = ref(true)
-const pivotDate = ref(getTodayStart())
-const selectedYear = ref(getTodayStart().getFullYear())
+const pivotDate = ref(new Date(props.weekStart))
+const selectedYear = ref(props.weekStart.getFullYear())
 const mobilSelectedDayLabel = ref('')
 
 const beforeDays = ref(0)
@@ -134,9 +162,10 @@ function nextWeek() {
 
 function jumpToToday() {
   const today = getTodayStart()
+  const monday = mondayOf(today)
   nowTimestamp.value = today.getTime()
-  pivotDate.value = new Date(today)
-  selectedYear.value = today.getFullYear()
+  pivotDate.value = new Date(monday)
+  selectedYear.value = monday.getFullYear()
   beforeDays.value = 0
   afterDays.value = 7
 
@@ -238,8 +267,8 @@ const nowLineTopPercent = computed<number | null>(() => {
 onMounted(() => {
   const today = getTodayStart()
   nowTimestamp.value = today.getTime()
-  pivotDate.value = new Date(today)
-  selectedYear.value = today.getFullYear()
+  pivotDate.value = new Date(props.weekStart)
+  selectedYear.value = props.weekStart.getFullYear()
   beforeDays.value = 0
   afterDays.value = 7
 
@@ -281,6 +310,15 @@ onUnmounted(() => {
             Heute
           </button>
           <button type="button" class="week-nav-btn app-button" @click="nextWeek">→</button>
+          <button
+            type="button"
+            class="week-nav-btn add-personal-btn app-button"
+            aria-label="Eigenen Termin anlegen"
+            title="Eigenen Termin anlegen"
+            @click="personalDialogOpen = true; emit('clear-personal-appointment-error')"
+          >
+            + Termin
+          </button>
         </div>
         <div v-if="props.hiddenSeriesItems.length || (props.hiddenOccurrenceItems?.length ?? 0) > 0" class="week-hidden-controls">
           <button
@@ -336,6 +374,7 @@ onUnmounted(() => {
         @today-visibility-change="isTodayVisibleInViewport = $event"
         @hide-series="emit('hide-series', $event)"
         @hide-occurrence="emit('hide-occurrence', $event)"
+        @delete-personal="emit('delete-personal-appointment', $event)"
       />
 
       <WeekMobileList
@@ -352,8 +391,17 @@ onUnmounted(() => {
         @selected-day-label-change="onMobileSelectedDayLabelChange"
         @hide-series="emit('hide-series', $event)"
         @hide-occurrence="emit('hide-occurrence', $event)"
+        @delete-personal="emit('delete-personal-appointment', $event)"
       />
     </template>
+
+    <CreatePersonalAppointmentDialog
+      :open="personalDialogOpen"
+      :loading="savingPersonalAppointment"
+      :error="personalAppointmentError"
+      @close="personalDialogOpen = false; personalDialogPending = false"
+      @submit="personalDialogPending = true; emit('create-personal-appointment', $event)"
+    />
   </section>
 </template>
 
@@ -457,6 +505,18 @@ onUnmounted(() => {
 
 .week-nav-btn-today {
   min-width: var(--button-today-min-width);
+}
+
+.add-personal-btn {
+  background: color-mix(in srgb, var(--color-personal, #7c3aed) 12%, var(--color-surface-raised));
+  border-color: color-mix(in srgb, var(--color-personal, #7c3aed) 40%, var(--color-border));
+  color: var(--color-personal, #7c3aed);
+  font-weight: 600;
+}
+
+.add-personal-btn:hover {
+  background: color-mix(in srgb, var(--color-personal, #7c3aed) 18%, var(--color-surface-raised));
+  border-color: var(--color-personal, #7c3aed);
 }
 
 .week-state {

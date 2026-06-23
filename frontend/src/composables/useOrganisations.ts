@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue'
 import { supabase } from '../supabase'
 import { normalizeError } from '../utils/normalizeError'
+import { loadSavedOrgEvents } from './savedOrgEventsStore'
 
 import type {
   NewOrganisationEventInput,
@@ -123,6 +124,7 @@ export function useOrganisations() {
         .insert({
           name,
           description: input.description?.trim() || null,
+          color: input.color ?? null,
           created_by: userId,
         })
 
@@ -172,6 +174,7 @@ export function useOrganisations() {
 
       info.value = 'Du bist der Organisation beigetreten.'
       await fetchOrganisations()
+      await fetchOrganisationEvents()
     } catch (err) {
       error.value = normalizeError(err, 'Beitritt fehlgeschlagen.')
     } finally {
@@ -190,6 +193,23 @@ export function useOrganisations() {
     try {
       const userId = await getCurrentUserId()
 
+      // Gespeicherte Events dieser Org aus der Wochenansicht entfernen
+      const orgEventIds = events.value
+        .filter(e => e.organisation_id === organisationId)
+        .map(e => e.id)
+
+      if (orgEventIds.length > 0) {
+        await client
+          .from('saved_organisation_events')
+          .delete()
+          .in('event_id', orgEventIds)
+          .eq('user_id', userId)
+
+        const next = new Set(savedEventIds.value)
+        for (const id of orgEventIds) next.delete(id)
+        savedEventIds.value = next
+      }
+
       const { error: deleteError } = await client
         .from('organisation_members')
         .delete()
@@ -200,6 +220,8 @@ export function useOrganisations() {
 
       info.value = 'Du hast die Organisation verlassen.'
       await fetchOrganisations()
+      await fetchOrganisationEvents()
+      await loadSavedOrgEvents()
     } catch (err) {
       error.value = normalizeError(err, 'Organisation konnte nicht verlassen werden.')
     } finally {
@@ -249,6 +271,32 @@ export function useOrganisations() {
     }
   }
 
+  async function deleteOrganisation(organisationId: string) {
+    const client = getClient()
+    if (!client) return
+
+    saving.value = true
+    error.value = null
+    info.value = null
+
+    try {
+      const { error: rpcError } = await client.rpc('delete_organisation', {
+        p_organisation_id: organisationId,
+      })
+
+      if (rpcError) throw rpcError
+
+      info.value = 'Organisation wurde gelöscht.'
+      await fetchOrganisations()
+      await fetchOrganisationEvents()
+      await loadSavedOrgEvents()
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Organisation konnte nicht gelöscht werden.'
+    } finally {
+      saving.value = false
+    }
+  }
+
   async function createOrganisationEvent(input: NewOrganisationEventInput) {
     const client = getClient()
     if (!client) return
@@ -262,6 +310,14 @@ export function useOrganisations() {
 
       if (input.title.trim().length < 2) {
         throw new Error('Der Event-Titel muss mindestens 2 Zeichen lang sein.')
+      }
+
+      if (new Date(input.startsAt) <= new Date()) {
+        throw new Error('Das Start-Datum darf nicht in der Vergangenheit liegen.')
+      }
+
+      if (new Date(input.endsAt) <= new Date(input.startsAt)) {
+        throw new Error('Das End-Datum muss nach dem Start-Datum liegen.')
       }
 
       const { error: insertError } = await client
@@ -314,7 +370,8 @@ export function useOrganisations() {
       }
 
       savedEventIds.value = new Set([...savedEventIds.value, eventId])
-      info.value = 'Event wurde gespeichert.'
+      info.value = 'Event wurde zur Wochenansicht hinzugefügt.'
+      await loadSavedOrgEvents()
     } catch (err) {
       error.value = normalizeError(err, 'Event konnte nicht gespeichert werden.')
     } finally {
@@ -344,9 +401,43 @@ export function useOrganisations() {
       const next = new Set(savedEventIds.value)
       next.delete(eventId)
       savedEventIds.value = next
-      info.value = 'Event wurde entfernt.'
+      info.value = 'Event wurde aus der Wochenansicht entfernt.'
+      await loadSavedOrgEvents()
     } catch (err) {
       error.value = normalizeError(err, 'Event konnte nicht entfernt werden.')
+    } finally {
+      saving.value = false
+    }
+  }
+
+  async function deleteOrganisationEvent(eventId: string) {
+    const client = getClient()
+    if (!client) return
+
+    saving.value = true
+    error.value = null
+    info.value = null
+
+    try {
+      const { error: deleteError } = await client
+        .from('organisation_events')
+        .delete()
+        .eq('id', eventId)
+
+      if (deleteError) throw deleteError
+
+      events.value = events.value.filter(e => e.id !== eventId)
+
+      if (savedEventIds.value.has(eventId)) {
+        const next = new Set(savedEventIds.value)
+        next.delete(eventId)
+        savedEventIds.value = next
+        await loadSavedOrgEvents()
+      }
+
+      info.value = 'Event wurde gelöscht.'
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Event konnte nicht gelöscht werden.'
     } finally {
       saving.value = false
     }
@@ -367,9 +458,11 @@ export function useOrganisations() {
     fetchOrganisationEvents,
     fetchSavedEvents,
     createOrganisation,
+    deleteOrganisation,
     joinOrganisation,
     leaveOrganisation,
     createOrganisationEvent,
+    deleteOrganisationEvent,
     saveEvent,
     unsaveEvent,
   }
