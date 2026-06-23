@@ -337,6 +337,7 @@ export function createModulesController(
       .from('module_handbook_entries')
       .select(`
       recommended_semester,
+      ects,
       modules!module_handbook_entries_module_id_fkey (
         id, code, name, coordinator, start_semester, version, details,
         is_mandatory, is_specialization, specialization_name, language,
@@ -359,11 +360,21 @@ export function createModulesController(
     const uniqueModules = new Map<string, ModuleEntry>()
 
     for (const row of data as any[]) {
+      const base = row.modules
+      // ECTS is per-SPO: a module can be reweighted across SPO versions (e.g.
+      // SOMO is 6 in AIN SPO 3.1 but 7 in SPO 4), so it lives on the handbook
+      // entry, not the shared module row. Override the module's total with this
+      // SPO's value when present — moduleEcts() reads details.ects_total_computed.
+      const details =
+        typeof row.ects === 'number'
+          ? { ...(base?.details ?? {}), ects_total_computed: row.ects }
+          : base?.details
       const module = {
-        ...row.modules,
+        ...base,
+        details,
         recommended_semester: row.recommended_semester,
         categories: [],
-        courses: row.modules?.courses ?? [],
+        courses: base?.courses ?? [],
         module_status: 'offen',
       } as ModuleEntry
 
