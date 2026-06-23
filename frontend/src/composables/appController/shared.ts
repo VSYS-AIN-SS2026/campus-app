@@ -19,7 +19,7 @@ export type ModuleCategoryRow = {
   type: string
 }
 
-export type PlannerView = 'week' | 'modules'
+export type PlannerView = 'week' | 'modules' | 'sg'
 
 export type WeeklyScheduleEvent = {
   id: string

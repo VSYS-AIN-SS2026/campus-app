@@ -318,6 +318,39 @@ Um einen weiteren Studiengang hinzuzufügen:
 1. `lsf_abstgvnr` in der `study_programs`-Tabelle eintragen
 2. Eintrag zur Matrix in `.github/workflows/lsf-import.yml` hinzufügen (für Parallel-Ausführung)
 
+### Studium-Generale-Module (`sg:import`)
+
+Studium Generale ist im LSF ein eigener Studiengang (ABSTGVNR `4532`). Der
+SG-Scraper teilt sich die LSF-Mechanik mit dem LSF-Scraper (`scripts/lib/lsf-core.js`),
+legt die SG-Module aber als vollwertige `modules`-Zeilen an (Code `SG-<publishid>`),
+verknüpft sie mit der Kategorie **Studium Generale** und schreibt ihre Termine
+nach `lsf_events`. Dadurch funktionieren Wochenplan und Konflikterkennung
+unverändert auch für SG-Module.
+
+Die SG-Katalogseiten sind **öffentlich** — es genügt VPN + Supabase-Zugangsdaten,
+ein LSF-Login ist nicht nötig. Genutzt wird dieselbe `.env` wie beim LSF-Scraper.
+
+```bash
+# Vorschau ohne DB-Schreibzugriff (keine Supabase-Creds nötig):
+node scripts/sg-import.js --dry-run
+
+# Import in die Datenbank:
+npm run sg:import
+```
+
+Hinweise:
+- `SG_ABSTGVNR` (Default `4532`) ist bewusst getrennt von `LSF_ABSTGVNR`, damit
+  dieselbe `.env` sowohl `lsf:import` (AIN) als auch `sg:import` bedienen kann.
+- Re-Importe sind idempotent (bestehende Events bleiben erhalten). `LSF_FORCE=true`
+  überspringt die „schon importiert"-Prüfung, `--fresh` löscht zuerst die
+  SG-Events des Semesters.
+- Block-/terminlose Module (z. B. mehrtägige Workshops) werden angelegt, haben
+  aber keine Wochentermine.
+- Im CI läuft der SG-Import automatisch als eigener Job (`studium-generale`) im
+  [`lsf-import.yml`](.github/workflows/lsf-import.yml)-Workflow — beim
+  Semester-Refresh (1. März / 1. Oktober) und bei einem vollständigen manuellen
+  Lauf (ohne einzelnen Studiengang).
+
 ---
 
 ## Häufige Probleme

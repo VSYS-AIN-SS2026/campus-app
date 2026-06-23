@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { ModuleEntry, ModuleStatus } from '../types'
+import { moduleEcts } from '../utils/progress'
 
 const props = defineProps<{
   module: ModuleEntry
@@ -8,12 +9,21 @@ const props = defineProps<{
 
 const emit = defineEmits<{ select: [module: ModuleEntry] }>()
 
-const totalEcts = computed(() =>
-  props.module.courses.reduce((s, c) => s + (c.ects ?? 0), 0)
+const totalEcts = computed(() => moduleEcts(props.module))
+
+const isSg = computed(() =>
+  props.module.categories.some((c) => c.name.trim().toLowerCase() === 'studium generale'),
 )
 
-const visibleCategories = computed(() => props.module.categories.slice(0, 3))
-const hiddenCategoryCount = computed(() => Math.max(props.module.categories.length - visibleCategories.value.length, 0))
+// When the prominent SG chip is shown, drop the plain "Studium Generale" tag.
+const displayCategories = computed(() =>
+  isSg.value
+    ? props.module.categories.filter((c) => c.name.trim().toLowerCase() !== 'studium generale')
+    : props.module.categories,
+)
+
+const visibleCategories = computed(() => displayCategories.value.slice(0, 3))
+const hiddenCategoryCount = computed(() => Math.max(displayCategories.value.length - visibleCategories.value.length, 0))
 
 function statusLabel(status: ModuleStatus): string {
   switch (status) {
@@ -40,7 +50,7 @@ function courseTypeClassKey(courseType: string): string {
 <template>
   <div
     class="module-card"
-    :class="`module-card-${module.module_status}`"
+    :class="[`module-card-${module.module_status}`, { 'module-card-sg': isSg }]"
     role="button"
     tabindex="0"
     @click="emit('select', module)"
@@ -51,10 +61,12 @@ function courseTypeClassKey(courseType: string): string {
     </div>
 
     <div class="card-body">
-      <div v-if="module.categories.length" class="category-row">
+      <span v-if="isSg" class="sg-chip">★ Studium Generale</span>
+
+      <div v-if="displayCategories.length" class="category-row">
         <div class="category-list">
           <span
-            v-for="category in module.categories"
+            v-for="category in displayCategories"
             :key="category.id"
             class="tag tag-category"
             :style="category.color ? { borderColor: category.color, color: category.color } : undefined"
@@ -80,7 +92,7 @@ function courseTypeClassKey(courseType: string): string {
           {{ module.language }}
         </span>
 
-        <template v-if="module.categories.length">
+        <template v-if="displayCategories.length">
           <span
             v-for="category in visibleCategories"
             :key="category.id"
@@ -148,6 +160,27 @@ function courseTypeClassKey(courseType: string): string {
 
 .module-card-abgeschlossen {
   border-left: 0.1875rem solid var(--color-primary);
+}
+
+.module-card-sg {
+  outline: 0.0625rem solid rgba(0, 128, 128, 0.55);
+  outline-offset: -0.0625rem;
+}
+
+.sg-chip {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  font-size: 70%;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 0.2em 0.55em;
+  border-radius: var(--radius-control);
+  color: #008080;
+  background: rgba(0, 128, 128, 0.12);
+  border: 0.0625rem solid #008080;
+  white-space: nowrap;
 }
 
 .card-left {

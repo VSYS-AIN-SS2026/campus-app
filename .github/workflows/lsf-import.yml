@@ -112,3 +112,45 @@ jobs:
         run: |
           STATUS="${{ job.status }}"
           echo "| ${{ matrix.code }} | $STATUS |" >> "$GITHUB_STEP_SUMMARY"
+
+  # ── Studium-Generale-Module (eigener LSF-Studiengang, ABSTGVNR 4532) ──
+  # Eigener Scraper (scripts/sg-import.js): legt die SG-Module als modules-Zeilen
+  # an, taggt sie mit der Kategorie "Studium Generale" und importiert ihre Termine.
+  # Läuft beim geplanten Semester-Refresh und bei einem vollständigen manuellen
+  # Lauf (ohne einzelnen Studiengang) — nicht bei gezieltem Einzel-Import.
+  # Die SG-Katalogseiten sind öffentlich; Auth-Secrets werden nur zur Sicherheit
+  # mitgegeben.
+  studium-generale:
+    if: ${{ github.event_name == 'schedule' || github.event.inputs.study_program == '' }}
+    runs-on: [self-hosted, htwg]
+    timeout-minutes: 30
+    name: 'Studium Generale'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run SG Import
+        env:
+          SG_ABSTGVNR:               '4532'
+          LSF_FORCE:                 ${{ github.event.inputs.force || 'false' }}
+          LSF_SESSION_COOKIE:        ${{ secrets.LSF_SESSION_COOKIE }}
+          LSF_USERNAME:              ${{ secrets.LSF_USERNAME }}
+          LSF_PASSWORD:              ${{ secrets.LSF_PASSWORD }}
+          LSF_TOTP_SECRET:           ${{ secrets.LSF_TOTP_SECRET }}
+          SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/sg-import.js
+
+      - name: Job summary
+        if: always()
+        run: |
+          STATUS="${{ job.status }}"
+          echo "| Studium Generale | $STATUS |" >> "$GITHUB_STEP_SUMMARY"

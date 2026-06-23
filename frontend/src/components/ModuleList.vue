@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import ModuleCard from './ModuleCard.vue'
 import type { ModuleEntry } from '../types'
+import { moduleEcts } from '../utils/progress'
 
 const props = defineProps<{
   modules: ModuleEntry[]
@@ -34,7 +35,7 @@ function semesterLabel(sem: number): string {
 }
 
 function totalEcts(mods: ModuleEntry[]): number {
-  return mods.reduce((s, m) => s + m.courses.reduce((cs, c) => cs + (c.ects ?? 0), 0), 0)
+  return mods.reduce((s, m) => s + moduleEcts(m), 0)
 }
 </script>
 

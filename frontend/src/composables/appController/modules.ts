@@ -280,6 +280,48 @@ export function createModulesController(
     state.profileInfo.value = 'Studiengang und SPO wurden in deinem Profil gespeichert.'
   }
 
+  // Studium-Generale modules aren't part of any SPO handbook — they're a
+  // separate catalog (tagged with the "Studium Generale" category). Load them
+  // so they can be folded into the module list + progress alongside SPO modules.
+  async function fetchSgModuleEntries(requestId: number): Promise<ModuleEntry[]> {
+    if (!supabase) return []
+
+    const { data: cat } = await supabase
+      .from('categories')
+      .select('id')
+      .eq('name', 'Studium Generale')
+      .maybeSingle()
+
+    if (!cat || !isActiveModuleRequest(requestId)) return []
+
+    const { data, error } = await supabase
+      .from('module_category_entries')
+      .select(`
+        modules!inner (
+          id, code, name, coordinator, start_semester, version, details,
+          is_mandatory, is_specialization, specialization_name, language,
+          courses (*)
+        )
+      `)
+      .eq('category_id', cat.id)
+
+    if (error || !isActiveModuleRequest(requestId)) return []
+
+    const seen = new Map<string, ModuleEntry>()
+    for (const row of (data as any[]) ?? []) {
+      const module = (row as any).modules
+      if (!module || seen.has(module.id)) continue
+      seen.set(module.id, {
+        ...module,
+        recommended_semester: null,
+        categories: [],
+        courses: module.courses ?? [],
+        module_status: 'offen',
+      } as ModuleEntry)
+    }
+    return Array.from(seen.values())
+  }
+
   async function fetchModules(handbookIds: string[], requestId: number) {
     state.loading.value = true
     state.error.value = null
@@ -332,7 +374,11 @@ export function createModulesController(
       }
     }
 
-    state.modules.value = Array.from(uniqueModules.values())
+    const sgModules = await fetchSgModuleEntries(requestId)
+    if (!isActiveModuleRequest(requestId)) {
+      return
+    }
+    state.modules.value = [...Array.from(uniqueModules.values()), ...sgModules]
 
     const moduleIds = state.modules.value.map(module => module.id)
 
